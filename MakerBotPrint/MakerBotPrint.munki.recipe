@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<key>Comment</key>
+		<string>Created with Recipe Robot v1.1.2 (https://github.com/homebysix/recipe-robot)</string>
+		<key>Description</key>
+		<string>Downloads the latest version of MakerBot Print and imports it into Munki.</string>
+		<key>Identifier</key>
+		<string>com.github.serrc-techops.munki.MakerBotPrint</string>
+		<key>Input</key>
+		<dict>
+			<key>MUNKI_REPO_SUBDIR</key>
+			<string>apps</string>
+			<key>NAME</key>
+			<string>MakerBotPrint</string>
+			<key>pkginfo</key>
+			<dict>
+				<key>blocking_applications</key>
+				<array>
+					<string>Electron Helper NP.app</string>
+					<string>Electron Helper.app</string>
+					<string>MakerBot Print.app</string>
+					<string>Electron Helper EH.app</string>
+				</array>
+				<key>catalogs</key>
+				<array>
+					<string>testing</string>
+				</array>
+				<key>description</key>
+				<string>MakerBot Print is the new desktop application that allows you to prepare, manage, and monitor 3D prints.
+					<ul>
+						<li>Prepare: Import design files in native CAD and fine-tune their settings for optimal results when printing.</li>
+						<li>Manage: Keep your projects organized by automatically arranging models across one or several build plates.</li>
+						<li>Monitor: Kick-off prints, control your printer, and monitor print progress remotely.</li>
+					</ul>
+				</string>
+				<key>developer</key>
+				<string>MakerBot Industries LLC</string>
+				<key>display_name</key>
+				<string>MakerBot Print</string>
+				<key>name</key>
+				<string>%NAME%</string>
+				<key>unattended_install</key>
+				<true/>
+				<key>minimum_os_version</key>
+				<string>10.12</string>
+			</dict>
+		</dict>
+		<key>MinimumVersion</key>
+		<string>1.0.0</string>
+		<key>ParentRecipe</key>
+		<string>com.github.serrc-techops.download.MakerBotPrint</string>
+		<key>Process</key>
+		<array>
+			<dict>
+				<key>Arguments</key>
+				<dict>
+					<key>pkg_path</key>
+					<string>%pathname%</string>
+				</dict>
+				<key>Processor</key>
+				<string>MakerBotPrintVersionFixer</string>
+			</dict>
+			<dict>
+				<key>Processor</key>
+				<string>MunkiPkginfoMerger</string>
+			</dict>
+			<dict>
+				<key>Arguments</key>
+				<dict>
+					<key>pkg_path</key>
+					<string>%pathname%</string>
+					<key>repo_subdirectory</key>
+					<string>%MUNKI_REPO_SUBDIR%</string>
+				</dict>
+				<key>Processor</key>
+				<string>MunkiImporter</string>
+			</dict>
+		</array>
+	</dict>
+</plist>
