@@ -29,11 +29,11 @@
 				</array>
 				<key>description</key>
 				<string>MakerBot Print is the new desktop application that allows you to prepare, manage, and monitor 3D prints.
-					<ul>
-						<li>Prepare: Import design files in native CAD and fine-tune their settings for optimal results when printing.</li>
-						<li>Manage: Keep your projects organized by automatically arranging models across one or several build plates.</li>
-						<li>Monitor: Kick-off prints, control your printer, and monitor print progress remotely.</li>
-					</ul>
+					&lt;ul&gt;
+						&lt;li&gt;Prepare: Import design files in native CAD and fine-tune their settings for optimal results when printing.</li>
+						&lt;li&gt;Manage: Keep your projects organized by automatically arranging models across one or several build plates.</li>
+						&lt;li&gt;Monitor: Kick-off prints, control your printer, and monitor print progress remotely.</li>
+					&lt;/ul&gt;
 				</string>
 				<key>developer</key>
 				<string>MakerBot Industries LLC</string>
