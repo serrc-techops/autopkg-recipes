@@ -47,12 +47,34 @@
 			<dict>
 				<key>pkg_path</key>
 				<string>%pathname%</string>
+				<key>extract_root</key>
+				<string>%RECIPE_CACHE_DIR%/pkgroot</string>
+			</dict>
+			<key>Processor</key>
+			<string>PkgExtractor</string>
+		</dict>
+		<dict>
+			<key>Arguments</key>
+			<dict>
+				<key>pkg_path</key>
+				<string>%RECIPE_CACHE_DIR%/pkgroot/CrisisGo.pkg</string>
 				<key>repo_subdirectory</key>
 				<string>%MUNKI_REPO_SUBDIR%</string>
 			</dict>
 			<key>Processor</key>
 			<string>MunkiImporter</string>
 		</dict>
+		<dict>
+        	<key>Processor</key>
+            <string>PathDeleter</string>
+            <key>Arguments</key>
+            <dict>
+                <key>path_list</key>
+                <array>
+                	<string>%RECIPE_CACHE_DIR%/pkgroot</string>
+            	</array>
+            </dict>
+        </dict>
 	</array>
 </dict>
 </plist>
