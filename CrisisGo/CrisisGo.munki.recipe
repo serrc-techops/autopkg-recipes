@@ -57,7 +57,7 @@
 					<key>source_pkg</key>
 					<string>%pathname%</string>
 					<key>pkg_path</key>
-					<string>/tmp/tempPackage.pkg</string>
+					<string>/tmp/>%NAME%.pkg</string>
 				</dict>
 				<key>Processor</key>
 				<string>PkgCopier</string>
@@ -69,6 +69,8 @@
 			<dict>
 				<key>Arguments</key>
 				<dict>
+					<key>force_munkiimport</key>
+					<true/>
 					<key>pkg_path</key>
 					<string>%pkg_path%</string>
 					<key>repo_subdirectory</key>
