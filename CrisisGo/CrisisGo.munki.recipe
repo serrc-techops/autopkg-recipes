@@ -82,7 +82,7 @@
 				<dict>
 					<key>path_list</key>
 					<array>
-						<string>%pkg_path%</string>
+						<string>/tmp/%NAME%.pkg</string>
 					</array>
 				</dict>
 				<key>Processor</key>
