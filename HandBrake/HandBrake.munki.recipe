@@ -1,48 +1,73 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-	<key>Description</key>
-	<string>Downloads the current release version of HandBrake and imports into Munki.</string>
-	<key>Identifier</key>
-	<string>com.github.serrc-techops.munki.HandBrake</string>
-	<key>Input</key>
 	<dict>
-		<key>MUNKI_REPO_SUBDIR</key>
-		<string>app</string>
-		<key>NAME</key>
-		<string>HandBrake</string>
-		<key>pkginfo</key>
+		<key>Description</key>
+		<string>Downloads the current release version of HandBrake and imports into Munki.</string>
+		<key>Identifier</key>
+		<string>com.github.serrc-techops.munki.HandBrake</string>
+		<key>Input</key>
 		<dict>
-			<key>catalogs</key>
-			<array>
-				<string>testing</string>
-			</array>
-			<key>description</key>
-			<string>HandBrake is an open-source, GPL-licensed, multiplatform, multithreaded video transcoder.</string>
-			<key>display_name</key>
+			<key>MUNKI_REPO_SUBDIR</key>
+			<string>app</string>
+			<key>NAME</key>
 			<string>HandBrake</string>
-			<key>name</key>
-			<string>%NAME%</string>
-			<key>unattended_install</key>
-			<true/>
-		</dict>
-	</dict>
-	<key>ParentRecipe</key>
-	<string>com.github.serrc-techops.download.HandBrake</string>
-	<key>Process</key>
-	<array>
-		<dict>
-			<key>Arguments</key>
+			<key>pkginfo</key>
 			<dict>
-				<key>pkg_path</key>
-				<string>%pathname%</string>
-				<key>repo_subdirectory</key>
-				<string>%MUNKI_REPO_SUBDIR%</string>
+				<key>catalogs</key>
+				<array>
+					<string>testing</string>
+				</array>
+				<key>description</key>
+				<string>HandBrake is an open-source, GPL-licensed, multiplatform, multithreaded video transcoder.</string>
+				<key>display_name</key>
+				<string>HandBrake</string>
+				<key>name</key>
+				<string>%NAME%</string>
+				<key>unattended_install</key>
+				<true/>
 			</dict>
-			<key>Processor</key>
-			<string>MunkiImporter</string>
 		</dict>
-	</array>
-</dict>
-</plist>
+		<key>ParentRecipe</key>
+		<string>com.github.serrc-techops.download.HandBrake</string>
+		<key>Process</key>
+		<array>
+			<dict>
+				<key>Arguments</key>
+				<dict>
+					<key>pkg_path</key>
+					<string>%pathname%</string>
+					<key>repo_subdirectory</key>
+					<string>%MUNKI_REPO_SUBDIR%</string>
+				</dict>
+				<dict>
+					<key>Processor</key>
+					<string>URLTextSearcher</string>
+					<key>Arguments</key>
+					<dict>
+						<key>result_output_var_name</key>
+						<string>minimum_os_version</string>
+						<key>url</key>
+						<string>https://handbrake.fr/appcast.x86_64.xml</string>
+						<key>re_pattern</key>
+						<string>(?<=(<sparkle:minimumSystemVersion>))(.*)(?=(</sparkle:minimumSystemVersion>))
+						</string>
+					</dict>
+				</dict>
+				<dict>
+					<key>Processor</key>
+					<string>MunkiPkginfoMerger</string>
+					<key>Arguments</key>
+					<dict>
+						<key>additional_pkginfo</key>
+						<dict>
+							<key>minimum_os_version</key>
+							<string>%minimum_os_version%</string>
+						</dict>
+					</dict>
+					<key>Processor</key>
+					<string>MunkiImporter</string>
+				</dict>
+			</array>
+		</dict>
+	</plist>
