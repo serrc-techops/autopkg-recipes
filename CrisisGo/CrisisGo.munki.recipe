@@ -71,7 +71,6 @@
 				<dict>
 					<key>additional_makepkginfo_options</key>
 					<array>
-						<key>--pkgvers</key>
 						<string>--pkgvers=%pkg_version%</string>
 					</array>
 					<key>pkg_path</key>
