@@ -72,7 +72,7 @@
 					<key>additional_makepkginfo_options</key>
 					<array>
 						<key>--pkgvers</key>
-						<string>%version%</string>
+						<string>--pkgvers=%pkg_version%</string>
 					</array>
 					<key>pkg_path</key>
 					<string>%pkg_path%</string>
