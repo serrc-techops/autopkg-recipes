@@ -50,8 +50,7 @@
 						<key>url</key>
 						<string>https://handbrake.fr/appcast.x86_64.xml</string>
 						<key>re_pattern</key>
-						<string>(?<=(<sparkle:minimumSystemVersion>))(.*)(?=(</sparkle:minimumSystemVersion>))
-						</string>
+						<string>(?&lt;=(&lt;sparkle:minimumSystemVersion&gt;))(.*)(?=(&lt;/sparkle:minimumSystemVersion&gt;))</string>
 					</dict>
 				</dict>
 				<dict>
