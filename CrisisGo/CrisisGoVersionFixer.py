@@ -25,9 +25,9 @@ class CrisisGoVersionFixer(Processor):
         },
     }
     output_variables = {
-        "additional_pkginfo": {
-            "description": "Pkginfo dictionary containing package version.",
-        },
+        #"additional_pkginfo": {
+        #    "description": "Pkginfo dictionary containing package version.",
+        #},
         "pkg_version": {
             "description": "String containing package version.",
         },
@@ -53,7 +53,7 @@ class CrisisGoVersionFixer(Processor):
             if bundle.get('id') == 'com.crisisgomac':
                 self.output("Found correct package version %s" %
                             bundle.get('CFBundleShortVersionString'))
-                self.env["additional_pkginfo"]["version"] = bundle.get('CFBundleShortVersionString')
+                #self.env["additional_pkginfo"]["version"] = bundle.get('CFBundleShortVersionString')
                 self.env["pkg_version"] = bundle.get('CFBundleShortVersionString')
                 break
 
