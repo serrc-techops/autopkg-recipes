@@ -69,6 +69,11 @@
 			<dict>
 				<key>Arguments</key>
 				<dict>
+					<key>additional_makepkginfo_options</key>
+					<array>
+						<key>--pkgvers</key>
+						<string>%version%</string>
+					</array>
 					<key>pkg_path</key>
 					<string>%pkg_path%</string>
 					<key>repo_subdirectory</key>
