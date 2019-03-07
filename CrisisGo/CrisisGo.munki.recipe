@@ -41,7 +41,6 @@
 		<key>ParentRecipe</key>
 		<string>com.github.serrc-techops.download.CrisisGo</string>
 		<key>Process</key>
-		<key>Process</key>
 		<array>
 			<dict>
 				<key>Arguments</key>
