@@ -63,10 +63,6 @@
 				<string>PkgCopier</string>
 			</dict>
 			<dict>
-				<key>Processor</key>
-				<string>MunkiPkginfoMerger</string>
-			</dict>
-			<dict>
 				<key>Arguments</key>
 				<dict>
 					<key>additional_makepkginfo_options</key>
