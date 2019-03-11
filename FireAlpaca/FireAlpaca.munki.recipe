@@ -35,6 +35,19 @@
     <key>Process</key>
     <array>
         <dict>
+				<key>Processor</key>
+				<string>URLTextSearcher</string>
+				<key>Arguments</key>
+				<dict>
+                    <key>result_output_var_name</key>
+                    <string>app_version</string>
+                    <key>url</key>
+					<string>https://firealpaca.com/</string>
+					<key>re_pattern</key>
+					<string>(?&lt;=\&lt;div class="main_bottom_box_latest"\&gt;latest Version : \&lt;em\&gt;)([^\s]+)(?= *)</string>
+				</dict>
+			</dict>
+        <dict>
             <key>Processor</key>
             <string>Unarchiver</string>
             <key>Arguments</key>
@@ -59,6 +72,10 @@
         <dict>
             <key>Arguments</key>
             <dict>
+                <key>additional_makepkginfo_options</key>
+                <array>
+                    <string>--pkgvers=%app_version%</string>
+                </array>
                 <key>pkg_path</key>
                 <string>%dmg_path%</string>
                 <key>repo_subdirectory</key>
