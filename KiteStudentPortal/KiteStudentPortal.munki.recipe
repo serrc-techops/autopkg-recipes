@@ -65,9 +65,22 @@
 				<key>Arguments</key>
 				<dict>
 					<key>source_path</key>
-					<string>%pathname%</string>
+					<string>%pathname%/Kite Student Portal.app</string>
 					<key>destination_path</key>
-					<string>%RECIPE_CACHE_DIR%/Applications</string>
+					<string>%RECIPE_CACHE_DIR%/Applications/Kite Student Portal.app</string>
+					<key>overwrite</key>
+					<true/>
+				</dict>
+			</dict>
+			<dict>
+				<key>Processor</key>
+				<string>ParentCopier</string>
+				<key>Arguments</key>
+				<dict>
+					<key>source_path</key>
+					<string>%pathname%/Kite preferences.app</string>
+					<key>destination_path</key>
+					<string>%RECIPE_CACHE_DIR%/Applications/Kite preferences.app</string>
 					<key>overwrite</key>
 					<true/>
 				</dict>
