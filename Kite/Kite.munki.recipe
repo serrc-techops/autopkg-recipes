@@ -32,6 +32,8 @@
 			<true/>
 			<key>unattended_uninstall</key>
 			<true/>
+			<key>icon_name</key>
+			<string>Kite.png</string>
 		</dict>
 	</dict>
 	<key>MinimumVersion</key>
