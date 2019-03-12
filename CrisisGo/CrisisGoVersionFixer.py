@@ -17,7 +17,7 @@ def pkgutil(*args):
 
 
 class CrisisGoVersionFixer(Processor):
-    description = "Determines the correct version of the MakerBot Print installer."
+    description = "Determines the correct version of the CrisisGo installer."
     input_variables = {
         "pkg_path": {
             "required": True,
