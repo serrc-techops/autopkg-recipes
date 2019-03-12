@@ -17,13 +17,15 @@
 				<string>testing</string>
 			</array>
 			<key>description</key>
-			<string></string>
+			<string>The Kite Suite provides an online testing interface for students that includes practice items.</string>
 			<key>developer</key>
 			<string></string>
 			<key>category</key>
 			<string>Education</string>
 			<key>notes</key>
 			<string>Updated via AutoPkg</string>
+			<key>developer</key>
+			<string>DLM</string>
 			<key>display_name</key>
 			<string>Kite Student Portal</string>
 			<key>name</key>
