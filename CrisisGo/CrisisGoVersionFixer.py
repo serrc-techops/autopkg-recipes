@@ -35,7 +35,7 @@ class CrisisGoVersionFixer(Processor):
 
     __doc__ = description
 
-    def get_makerbotprint_pkg_version(self):
+    def get_pkg_version(self):
         pkgutil('--expand', self.env['pkg_path'], '/tmp/tempDir')
 
         tree = ET.parse('/tmp/tempDir/CrisisGo.pkg/PackageInfo')
@@ -58,7 +58,7 @@ class CrisisGoVersionFixer(Processor):
                 break
 
     def main(self):
-        self.get_makerbotprint_pkg_version()
+        self.get_pkg_version()
 
 
 if __name__ == "__main__":
