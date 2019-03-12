@@ -40,6 +40,8 @@
 			<dict>
 				<key>input_plist_path</key>
 				<string>%pathname%/Kite Student Portal.app/Contents/Info.plist</string>
+				<key>plist_version_key</key>
+				<string>CFBundleInfoDictionaryVersion</string>
 			</dict>
 			<key>Processor</key>
 			<string>Versioner</string>
