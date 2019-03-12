@@ -9,9 +9,7 @@
 	<key>Input</key>
 	<dict>
 		<key>MUNKI_REPO_SUBDIR</key>
-		<string>%NAME%</string>
-		<key>NAME</key>
-		<string>kiteclient</string>
+		<string>app</string>
 		<key>pkginfo</key>
 		<dict>
 			<key>catalogs</key>
@@ -27,9 +25,9 @@
 			<key>notes</key>
 			<string>Updated via AutoPkg</string>
 			<key>display_name</key>
-			<string>Kite</string>
+			<string>Kite Client</string>
 			<key>name</key>
-			<string>%NAME%</string>
+			<string>kiteclient</string>
 			<key>unattended_install</key>
 			<true/>
 			<key>unattended_uninstall</key>
@@ -45,6 +43,10 @@
 		<dict>
 			<key>Arguments</key>
 			<dict>
+				<key>additional_makepkginfo_options</key>
+				<array>
+					<string>--pkgvers=%version%</string>
+				</array>
 				<key>pkg_path</key>
 				<string>%pathname%</string>
 				<key>repo_subdirectory</key>
