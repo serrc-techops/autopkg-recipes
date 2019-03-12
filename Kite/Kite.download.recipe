@@ -47,17 +47,6 @@
 			<string>Versioner</string>
 		</dict>
 		<dict>
-			<key>Arguments</key>
-			<dict>
-				<key>source</key>
-				<string>%pathname%</string>
-				<key>target</key>
-				<string>%NAME%-%version%.dmg</string>
-			</dict>
-			<key>Processor</key>
-			<string>FileMover</string>
-		</dict>
-		<dict>
 			<key>Processor</key>
 			<string>EndOfCheckPhase</string>
 		</dict>
