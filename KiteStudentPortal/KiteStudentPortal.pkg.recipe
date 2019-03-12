@@ -9,7 +9,7 @@
 	<key>Input</key>
 	<dict>
 		<key>BUNDLE_ID</key>
-		<string>com.dlm.KiteStudentPortal</string>
+		<string>com.github.serrc-techops.pkg.KiteStudentPortal</string>
 		<key>NAME</key>
 		<string>KiteStudentPortal</string>
 	</dict>
