@@ -5,11 +5,11 @@
 	<key>Description</key>
 	<string>Downloads the latest version of Kite and creates a package.</string>
 	<key>Identifier</key>
-	<string>com.github.homebysix.pkg.Kite</string>
+	<string>com.github.serrc-techops.pkg.KiteStudentPortal</string>
 	<key>Input</key>
 	<dict>
 		<key>BUNDLE_ID</key>
-		<string>com.github.serrc-techops.pkg.KiteStudentPortal</string>
+		<string>com.dlm.KiteStudentPortal</string>
 		<key>NAME</key>
 		<string>KiteStudentPortal</string>
 	</dict>
