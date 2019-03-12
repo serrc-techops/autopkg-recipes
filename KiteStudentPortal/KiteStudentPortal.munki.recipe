@@ -72,7 +72,6 @@
 					<true/>
 				</dict>
 			</dict>
-		<array>
 			<dict>
 				<key>Processor</key>
 				<string>MunkiInstallsItemsCreator</string>
@@ -107,7 +106,7 @@
 				<string>MunkiImporter</string>
 				<key>Arguments</key>
 				<dict>
-					key>additional_makepkginfo_options</key>
+					<key>additional_makepkginfo_options</key>
 					<array>
 						<string>--pkgvers=%version%</string>
 					</array>
