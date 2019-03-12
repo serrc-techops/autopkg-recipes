@@ -38,11 +38,11 @@
 		<dict>
 			<key>Arguments</key>
 			<dict>
-				<key>dmg_path</key>
-				<string>%pathname%</string>
+				<key>input_plist_path</key>
+				<string>%pathname%/Kite Student Portal.app/Contents/Info.plist</string>
 			</dict>
 			<key>Processor</key>
-			<string>AppDmgVersioner</string>
+			<string>Versioner</string>
 		</dict>
 		<dict>
 			<key>Arguments</key>
