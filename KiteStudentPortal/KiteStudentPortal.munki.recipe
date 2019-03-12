@@ -64,10 +64,12 @@
 				<string>MunkiInstallsItemsCreator</string>
 				<key>Arguments</key>
 				<dict>
+					key>faux_root</key>
+					<string>%RECIPE_CACHE_DIR%/kiteclient.dmg</string>
 					<key>installs_item_paths</key>
 					<array>
-						<string>Kite Student Portal.app</string>
-						<string>Kite preferences.app</string>
+						<string>/Applications/Kite Student Portal.app</string>
+						<string>/Applications/Kite preferences.app</string>
 					</array>
 				</dict>
 			</dict>
