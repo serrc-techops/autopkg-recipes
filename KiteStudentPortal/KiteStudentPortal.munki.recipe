@@ -23,6 +23,7 @@
 				<key>category</key>
 				<string>Education</string>
 				<key>notes</key>
+				<string>Updated via AutoPkg</string>
 				<key>items_to_copy</key>
 				<array>
 					<dict>
@@ -38,7 +39,6 @@
 						<string>Kite preferences.app</string>
 					</dict>
 				</array>
-				<string>Updated via AutoPkg</string>
 				<key>developer</key>
 				<string>DLM</string>
 				<key>display_name</key>
