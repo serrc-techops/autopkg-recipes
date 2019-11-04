@@ -23,9 +23,9 @@
 				<key>Arguments</key>
 				<dict>
 					<key>url</key>
-					<string>crisisgoapp.s3.amazonaws\.com/crisisgoapp/Mac</string>
+					<string>crisisgoapp.s3.amazonaws\.com/Mac</string>
 					<key>re_pattern</key>
-					<string>href="(?P&lt;url&gt;https://crisisgoapp.s3.amazonaws\.com/crisisgoapp/Mac/CrisisGo_[0-9].*\.pkg)"</string>
+					<string>href="(?P&lt;url&gt;https://crisisgoapp.s3.amazonaws\.com/Mac/CrisisGo_[0-9].*\.pkg)"</string>
 				</dict>
 			</dict>
 		<dict>
