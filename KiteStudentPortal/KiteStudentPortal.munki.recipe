@@ -32,12 +32,6 @@
 						<key>source_item</key>
 						<string>Kite Student Portal.app</string>
 					</dict>
-					<dict>
-						<key>destination_path</key>
-						<string>/Applications</string>
-						<key>source_item</key>
-						<string>Kite preferences.app</string>
-					</dict>
 				</array>
 				<key>developer</key>
 				<string>DLM</string>
@@ -74,19 +68,6 @@
 			</dict>
 			<dict>
 				<key>Processor</key>
-				<string>ParentCopier</string>
-				<key>Arguments</key>
-				<dict>
-					<key>source_path</key>
-					<string>%pathname%/Kite preferences.app</string>
-					<key>destination_path</key>
-					<string>%RECIPE_CACHE_DIR%/Applications/Kite preferences.app</string>
-					<key>overwrite</key>
-					<true/>
-				</dict>
-			</dict>
-			<dict>
-				<key>Processor</key>
 				<string>MunkiInstallsItemsCreator</string>
 				<key>Arguments</key>
 				<dict>
@@ -95,7 +76,6 @@
 					<key>installs_item_paths</key>
 					<array>
 						<string>/Applications/Kite Student Portal.app</string>
-						<string>/Applications/Kite preferences.app</string>
 					</array>
 				</dict>
 			</dict>
