@@ -81,7 +81,7 @@ class ParentCopier(DmgMounter):
                     shutil.rmtree(dest_item)
                 else:
                     os.unlink(dest_item)
-            except OSError, err:
+            except:
                 raise ProcessorError(
                     "Can't remove %s: %s" % (dest_item, err.strerror))
 
