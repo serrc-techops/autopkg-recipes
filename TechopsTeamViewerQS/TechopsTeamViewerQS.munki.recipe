@@ -33,7 +33,7 @@
 			<key>unattended_uninstall</key>
 			<true/>
 			<key>notes</key>
-			<string>Updated via AutoPkg</stirng>
+			<string>Updated via AutoPkg</string>
 		</dict>
 	</dict>
 	<key>MinimumVersion</key>
