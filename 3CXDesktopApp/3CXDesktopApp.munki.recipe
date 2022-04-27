@@ -2,10 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>Comment</key>
-	<string>Created with Recipe Robot v2.2.0 (https://github.com/homebysix/recipe-robot)</string>
-	<key>Description</key>
-	<string>Downloads the latest version of 3CX Desktop App and imports it into Munki.</string>
 	<key>Identifier</key>
 	<string>TechopsTeamViewerQS.munki.3CXDesktopApp</string>
 	<key>Input</key>
@@ -13,15 +9,21 @@
 		<key>MUNKI_REPO_SUBDIR</key>
 		<string>app</string>
 		<key>NAME</key>
-		<string>3CX Desktop App</string>
+		<string>3CXDesktopApp</string>
 		<key>pkginfo</key>
 		<dict>
 			<key>catalogs</key>
 			<array>
-				<string>production</string>
+				<string>testing</string>
 			</array>
 			<key>description</key>
-			<string> </string>
+			<string></string>
+                        <key>blocking_applications</key>
+                        <array>
+                                <string>3CX Desktop App</string>
+                        </array>
+                        <key>category</key>
+                        <string>Communication</string>
 			<key>developer</key>
 			<string>3CX</string>
 			<key>display_name</key>
@@ -32,6 +34,12 @@
 			<true/>
 			<key>unattended_uninstall</key>
 			<true/>
+                        <key>notes</key>
+                        <string>Updated via AutoPkg</string>
+                        <key>icon_name</key>
+                        <string>3CXDesktopApp.png</string>
+                        <key>minimum_os_version</key>
+                        <string>10.11</string>
 		</dict>
 	</dict>
 	<key>MinimumVersion</key>
