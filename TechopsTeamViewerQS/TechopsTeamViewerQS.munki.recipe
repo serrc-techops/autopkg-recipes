@@ -20,6 +20,8 @@
 			<array>
 				<string>production</string>
 			</array>
+ 			<key>category</key>
+ 			<string>Utilities</string>
 			<key>description</key>
 			<string>All-In-One Solution for Remote Access and Support over the Internet.</string>
 			<key>developer</key>
