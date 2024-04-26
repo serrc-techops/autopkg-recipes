@@ -23,7 +23,7 @@
 				<key>filename</key>
 				<string>%NAME%.zip</string>
 				<key>url</key>
-				<string>https://customdesign.teamviewer.com/download/version_15x/2hafgqm_mac/TeamViewerQS.zip</string>
+				<string>https://customdesignservice.teamviewer.com/download/mac/v15/2hafgqm/TeamViewerQS.zip</string>
 			</dict>
 			<key>Processor</key>
 			<string>URLDownloader</string>
