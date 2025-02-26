@@ -20,6 +20,8 @@
                 <dict>
                     <key>github_repo</key>
                     <string>GeoDaCenter/geoda</string>
+                    <key>asset_regex</key>
+                    <string>GeoDa.*-x86_64-Installer.dmg</string>
                 </dict>
             </dict>
             <dict>
