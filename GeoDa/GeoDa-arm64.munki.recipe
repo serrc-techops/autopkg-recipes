@@ -21,7 +21,7 @@
 				<key>description</key>
 				<string>An open source application designed to implement techniques for exploratory spatial data analysis (ESDA) on lattice data (points and polygons).</string>
 				<key>display_name</key>
-				<string>GeoDa (Intel)</string>
+				<string>GeoDa (ARM)</string>
 				<key>name</key>
 				<string>%NAME%</string>
 				<key>unattended_install</key>
