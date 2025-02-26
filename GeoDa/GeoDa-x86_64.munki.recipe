@@ -32,6 +32,8 @@
 				<string>GeoDa.png</string>
 				<key>notes</key>
 				<string>Updated via AutoPkg</string>
+				<key>installable_condition</key>
+				<string>arch == "x86_64"</string>
 			</dict>
 		</dict>
 		<key>ParentRecipe</key>
