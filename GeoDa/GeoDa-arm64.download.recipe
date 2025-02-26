@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>Downloads the current arm64 release version of GeoDa.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.GeoDa-arm64</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>GeoDa</string>
+        </dict>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>GitHubReleasesInfoProvider</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>github_repo</key>
+                    <string>GeoDaCenter/geoda</string>
+                    <key>asset_regex</key>
+                    <string>GeoDa.*-arm64-Installer.dmg</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Arguments</key>
+                <dict>
+                    <key>filename</key>
+                    <string>%NAME%-arm64.dmg</string>
+                </dict>
+                <key>Processor</key>
+                <string>URLDownloader</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+        </array>
+    </dict>
+</plist>
