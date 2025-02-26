@@ -3,9 +3,9 @@
 <plist version="1.0">
 	<dict>
 		<key>Description</key>
-		<string>Downloads the current release version of GeoDa and imports into Munki.</string>
+		<string>Downloads the current release x86_64 version of GeoDa and imports into Munki.</string>
 		<key>Identifier</key>
-		<string>com.github.serrc-techops.munki.GeoDa</string>
+		<string>com.github.serrc-techops.munki.GeoDa-x86_64</string>
 		<key>Input</key>
 		<dict>
 			<key>MUNKI_REPO_SUBDIR</key>
@@ -21,7 +21,7 @@
 				<key>description</key>
 				<string>An open source application designed to implement techniques for exploratory spatial data analysis (ESDA) on lattice data (points and polygons).</string>
 				<key>display_name</key>
-				<string>GeoDa</string>
+				<string>GeoDa (Intel)</string>
 				<key>name</key>
 				<string>%NAME%</string>
 				<key>unattended_install</key>
@@ -32,13 +32,10 @@
 				<string>GeoDa.png</string>
 				<key>notes</key>
 				<string>Updated via AutoPkg</string>
-	                        <key>category</key>
-	                        <string>Mathmatics</string>
-	                        <key>Developer</key>
-	                        <string>GeoDaCenter</string>
+			</dict>
 		</dict>
 		<key>ParentRecipe</key>
-		<string>com.github.serrc-techops.download.GeoDa</string>
+		<string>com.github.serrc-techops.download.GeoDa-x86_64</string>
 		<key>Process</key>
 		<array>
 			<dict>
