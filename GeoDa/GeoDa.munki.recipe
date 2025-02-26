@@ -32,7 +32,10 @@
 				<string>GeoDa.png</string>
 				<key>notes</key>
 				<string>Updated via AutoPkg</string>
-			</dict>
+	                        <key>category</key>
+	                        <string>Mathmatics</string>
+	                        <key>Developer</key>
+	                        <string>GeoDaCenter</string>
 		</dict>
 		<key>ParentRecipe</key>
 		<string>com.github.serrc-techops.download.GeoDa</string>
