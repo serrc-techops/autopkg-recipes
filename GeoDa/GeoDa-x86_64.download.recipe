@@ -3,9 +3,9 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>Downloads the current release version of GeoDa.</string>
+        <string>Downloads the current x86_64 release version of GeoDa.</string>
         <key>Identifier</key>
-        <string>com.github.serrc-techops.download.GeoDa</string>
+        <string>com.github.serrc-techops.download.GeoDa-x86_64</string>
         <key>Input</key>
         <dict>
             <key>NAME</key>
@@ -28,7 +28,7 @@
                 <key>Arguments</key>
                 <dict>
                     <key>filename</key>
-                    <string>%NAME%.dmg</string>
+                    <string>%NAME%-x86_64.dmg</string>
                 </dict>
                 <key>Processor</key>
                 <string>URLDownloader</string>
