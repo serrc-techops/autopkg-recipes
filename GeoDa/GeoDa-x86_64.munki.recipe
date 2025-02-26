@@ -34,6 +34,12 @@
 				<string>Updated via AutoPkg</string>
 				<key>installable_condition</key>
 				<string>arch == "x86_64"</string>
+				<key>category</key>
+				<string>Mathmatics</string>
+				<key>developer</key>
+				<string>GeoDaCenter</string>
+				<key>minimum_os_version</key>
+				<string>11</string>
 			</dict>
 		</dict>
 		<key>ParentRecipe</key>
