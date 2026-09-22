@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<key>Description</key>
+		<string>Downloads the current release version of swiftDialog and imports into Munki.</string>
+		<key>Identifier</key>
+		<string>com.github.serrc-techops.munki.swiftDialog</string>
+		<key>Input</key>
+		<dict>
+			<key>MUNKI_REPO_SUBDIR</key>
+			<string>util</string>
+			<key>NAME</key>
+			<string>swiftDialog</string>
+			<key>pkginfo</key>
+			<dict>
+				<key>catalogs</key>
+				<array>
+					<string>testing</string>
+				</array>
+				<key>description</key>
+				<string>swiftDialog is a utility for showing dialogs, prompts and progress windows on macOS from scripts; this import exists so the package is in the repository bucket for the enrollment-time Enterprise App in zentral-site-deployment mdm/apps/enrollment/_common/swiftdialog, and no Munki manifest needs to reference it.</string>
+				<key>developer</key>
+				<string>Bart Reardon</string>
+				<key>display_name</key>
+				<string>swiftDialog</string>
+				<key>minimum_os_version</key>
+				<string>15.0</string>
+				<key>name</key>
+				<string>%NAME%</string>
+				<key>unattended_install</key>
+				<true/>
+				<key>unattended_uninstall</key>
+				<true/>
+			</dict>
+		</dict>
+		<key>MinimumVersion</key>
+		<string>1.0.0</string>
+		<key>ParentRecipe</key>
+		<string>com.github.serrc-techops.download.swiftDialog</string>
+		<key>Process</key>
+		<array>
+			<dict>
+				<key>Arguments</key>
+				<dict>
+					<key>pkg_path</key>
+					<string>%pathname%</string>
+					<key>repo_subdirectory</key>
+					<string>%MUNKI_REPO_SUBDIR%</string>
+				</dict>
+				<key>Processor</key>
+				<string>MunkiImporter</string>
+			</dict>
+		</array>
+	</dict>
+</plist>

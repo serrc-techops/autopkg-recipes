@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>Downloads the current release version of swiftDialog (the .pkg asset of the newest non-pre-release on GitHub, kept under the asset's own file name) and verifies its Developer ID Installer signature.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.swiftDialog</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>swiftDialog</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>GitHubReleasesInfoProvider</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>github_repo</key>
+                    <string>swiftDialog/swiftDialog</string>
+                    <key>asset_regex</key>
+                    <string>dialog-[\d.]+-\d+\.pkg</string>
+                    <key>include_prereleases</key>
+                    <false/>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>URLDownloader</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+            <dict>
+                <key>Arguments</key>
+                <dict>
+                    <key>expected_authority_names</key>
+                    <array>
+                        <string>Developer ID Installer: Commonwealth Scientific and Industrial Research Organisation (PWA5E9TQ59)</string>
+                        <string>Developer ID Certification Authority</string>
+                        <string>Apple Root CA</string>
+                    </array>
+                    <key>input_path</key>
+                    <string>%pathname%</string>
+                </dict>
+                <key>Processor</key>
+                <string>CodeSignatureVerifier</string>
+            </dict>
+        </array>
+    </dict>
+</plist>
