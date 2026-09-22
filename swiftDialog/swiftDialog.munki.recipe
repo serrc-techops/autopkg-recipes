@@ -18,12 +18,16 @@
 				<array>
 					<string>testing</string>
 				</array>
+				<key>category</key>
+				<string>Utilities</string>
 				<key>description</key>
 				<string>swiftDialog is a utility for showing dialogs, prompts and progress windows on macOS from scripts; this import exists so the package is in the repository bucket for the enrollment-time Enterprise App in zentral-site-deployment mdm/apps/enrollment/_common/swiftdialog, and no Munki manifest needs to reference it.</string>
 				<key>developer</key>
 				<string>Bart Reardon</string>
 				<key>display_name</key>
 				<string>swiftDialog</string>
+				<key>icon_name</key>
+				<string>swiftDialog.png</string>
 				<key>minimum_os_version</key>
 				<string>15.0</string>
 				<key>name</key>
@@ -32,6 +36,8 @@
 				<true/>
 				<key>unattended_uninstall</key>
 				<true/>
+				<key>notes</key>
+				<string>Updated via AutoPkg</string>
 			</dict>
 		</dict>
 		<key>MinimumVersion</key>
