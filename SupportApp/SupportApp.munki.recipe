@@ -25,13 +25,17 @@
 				<key>developer</key>
 				<string>Root3 B.V.</string>
 				<key>display_name</key>
-				<string>Support</string>
+				<string>SupportApp</string>
 				<key>minimum_os_version</key>
 				<string>14.0</string>
 				<key>name</key>
 				<string>%NAME%</string>
 				<key>unattended_install</key>
 				<true/>
+				<key>unattended_uninstall</key>
+				<true/>
+				<key>icon_name</key>
+				<string>SupportApp.png</string>
 				<key>notes</key>
 				<string>Updated via AutoPkg</string>
 			</dict>
