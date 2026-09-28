@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<key>Description</key>
+		<string>Downloads the current release version of the ReportMate macOS client and imports into Munki. Upstream publishes the package unsigned: run with -k PKG=/path/to/signed.pkg to import a package you signed and notarized yourself. The item requires the Munki item osquery, so that osquery is installed first; the client's installer installs its own copy of osquery only when it finds none.</string>
+		<key>Identifier</key>
+		<string>com.github.serrc-techops.munki.ReportMateClientMac</string>
+		<key>Input</key>
+		<dict>
+			<key>MUNKI_REPO_SUBDIR</key>
+			<string>management</string>
+			<key>NAME</key>
+			<string>ReportMateClientMac</string>
+			<key>pkginfo</key>
+			<dict>
+				<key>catalogs</key>
+				<array>
+					<string>testing</string>
+				</array>
+				<key>category</key>
+				<string>Management Tools</string>
+				<key>description</key>
+				<string>ReportMate reports this Mac's software installs, hardware, operating system, network and security settings to your organisation's ReportMate server.</string>
+				<key>developer</key>
+				<string>ReportMate</string>
+				<key>display_name</key>
+				<string>ReportMate Client</string>
+				<key>minimum_os_version</key>
+				<string>14.0</string>
+				<key>name</key>
+				<string>%NAME%</string>
+				<key>requires</key>
+				<array>
+					<string>osquery</string>
+				</array>
+				<key>unattended_install</key>
+				<true/>
+				<key>unattended_uninstall</key>
+				<true/>
+				<key>notes</key>
+				<string>Updated via AutoPkg. Upstream publishes the package unsigned; import a signed and notarized copy with the PKG override. The installer replaces /usr/local/munki/postflight with a wrapper that runs the previous postflight and then ReportMate.</string>
+			</dict>
+		</dict>
+		<key>MinimumVersion</key>
+		<string>1.0.0</string>
+		<key>ParentRecipe</key>
+		<string>com.github.serrc-techops.download.ReportMateClientMac</string>
+		<key>Process</key>
+		<array>
+			<dict>
+				<key>Arguments</key>
+				<dict>
+					<key>pkg_path</key>
+					<string>%pathname%</string>
+					<key>repo_subdirectory</key>
+					<string>%MUNKI_REPO_SUBDIR%</string>
+				</dict>
+				<key>Processor</key>
+				<string>MunkiImporter</string>
+			</dict>
+		</array>
+	</dict>
+</plist>
