@@ -1,12 +1,21 @@
 #!/usr/local/autopkg/python
 """Patch ReportMate's postinstall: two fixed rules, always both applied.
 
-Rule 1 -- Munki postflight integration. Upstream's Scripts/postinstall
-unconditionally overwrites /usr/local/munki/postflight with its own
-wrapper, backing up whatever was there into postflight.d/. On a Mac whose
-postflight already runs every script in postflight.d/ -- Zentral's Munki
-package does this -- the backed-up copy is itself a runner of that same
-directory, so it recurses into itself on every Munki run, without end.
+Rule 1 -- the installs collection. Upstream starts it from a script under
+/usr/local/munki/postflight.d/, which macOS Installer overwrites completely
+on every install: it unconditionally replaces
+/usr/local/munki/postflight with its own wrapper, backing up whatever was
+there into postflight.d/. On a Mac whose postflight already runs every
+script in postflight.d/ -- Zentral's Munki package does this -- the
+backed-up copy is itself a runner of that same directory, so it recurses
+into itself on every Munki run, without end. Zentral's Monolith
+distribution also deletes and recreates postflight.d/ on every install, so
+a script placed there would not survive anyway. This build instead makes
+upstream's own installs-collection launchd job (already shipped,
+already installed by an earlier part of postinstall) watch Munki's own
+report file, and creates, changes and moves nothing under
+/usr/local/munki -- except to undo whatever an earlier, unpatched install
+left there.
 
 Rule 2 -- osquery. This build never downloads or installs osquery; osquery
 is provided by Munki instead. Upstream's "INSTALL OSQUERY IF MISSING"
@@ -25,7 +34,8 @@ the behaviour of the block they produce.
 The processor:
   - locates each section of Scripts/postinstall by the banner line that
     precedes it and the "fi" that follows its final log line, extracts the
-    Munki section's two here-documents unchanged, and replaces each whole
+    Munki section's two here-documents (validated, then discarded -- this
+    build's replacement never writes them), and replaces each whole
     section with a fixed block (see build_munki_replacement() and
     build_osquery_replacement());
   - refuses, without writing anything, if a section's markers are missing,
@@ -55,7 +65,7 @@ class PostinstallPatchError(Exception):
 # patched. Bump the rule numbers if a replacement block's behaviour changes.
 MARKER = (
     "# serrc-techops custom build: ReportMateClientMac postflight "
-    "integration rule 2, osquery-not-installed rule 1"
+    "integration rule 3, osquery-not-installed rule 1"
 )
 
 MUNKI_HEADING = "# MUNKI POSTFLIGHT INTEGRATION"
@@ -172,98 +182,81 @@ _MUNKI_REPLACEMENT_TEMPLATE = """# ═══════════════
 # MUNKI POSTFLIGHT INTEGRATION
 __MARKER__
 # ══════════════════════════════════════════════════════════════════════════════
-# Upstream always overwrites /usr/local/munki/postflight and, on a Mac whose
-# postflight already runs everything in postflight.d/ (Zentral's Munki
-# package does this), moves that runner into postflight.d/ -- where it then
-# runs itself, without end, on every Munki run. This build never overwrites
-# a postflight that is not one it installed itself, and repairs a Mac the
-# unpatched installer already left in that state.
+# The installs collection is started by launchd, watching Munki's own report
+# file, not by a script under /usr/local/munki. This installer creates,
+# changes and moves nothing there, except to undo what an earlier, unpatched
+# install may have left behind.
 
+JOB_PLIST="/Library/LaunchDaemons/com.github.reportmate.installs.plist"
+MUNKI_REPORT="/Library/Managed Installs/ManagedInstallReport.plist"
 MUNKI_DIR="/usr/local/munki"
 POSTFLIGHT_D="${MUNKI_DIR}/postflight.d"
 POSTFLIGHT="${MUNKI_DIR}/postflight"
 
-is_reportmate_wrapper() {
+is_reportmate_text() {
     grep -q "Deployed by: ReportMate macOS Client" "$1" 2>/dev/null
 }
 
-# True when the file at $1 -- following a symlink -- itself runs everything
-# in a postflight.d directory (its content names "postflight.d").
-runs_postflight_d() {
-    grep -q "postflight\\.d" "$1" 2>/dev/null
-}
-
-if [ -d "$MUNKI_DIR" ]; then
-    log_message "Munki detected, installing postflight integration..."
-
-    mkdir -p "$POSTFLIGHT_D"
-    chmod 755 "$POSTFLIGHT_D"
-
-    # Repair a Mac the unpatched installer already ran on: it moved a
-    # postflight.d/ runner (Zentral's, Sal's, or another tool's) into
-    # postflight.d/ under a backup name. Put it back where it runs once,
-    # not from inside the directory it iterates.
-    if is_reportmate_wrapper "$POSTFLIGHT"; then
-        for backup in sal.sh original.sh munkireport.sh; do
-            entry="${POSTFLIGHT_D}/${backup}"
-            if { [ -e "$entry" ] || [ -L "$entry" ]; } && runs_postflight_d "$entry"; then
-                log_message "Repairing: moving postflight.d/${backup} back to postflight (it runs postflight.d/ itself)"
-                mv -f "$entry" "$POSTFLIGHT"
-                break
-            fi
-        done
+# Make the already-installed installs-collection job watch Munki's report
+# file instead of waiting for anything under /usr/local/munki. Unload, edit,
+# reload; every other key of the file is left as it is.
+if [ -f "$JOB_PLIST" ]; then
+    /bin/launchctl bootout system "$JOB_PLIST" 2>/dev/null
+    /usr/bin/plutil -replace WatchPaths -json '["'"${MUNKI_REPORT}"'"]' "$JOB_PLIST"
+    /usr/bin/plutil -replace ThrottleInterval -integer 60 "$JOB_PLIST"
+    if /bin/launchctl bootstrap system "$JOB_PLIST" 2>/dev/null; then
+        log_message "installs collection now triggers when Munki writes its report"
+    else
+        log_message "WARNING: failed to load com.github.reportmate.installs - collection scheduled by this daemon will not run"
     fi
+else
+    log_message "com.github.reportmate.installs.plist not found; skipping installs-collection trigger setup"
+fi
 
-    # Remove stale copies of our own wrapper left in postflight.d/ by an
-    # earlier install (upstream's own cleanup, preserved).
+# Undo what an earlier, unpatched install left under /usr/local/munki.
+# Never touch a postflight that is not ReportMate's own wrapper -- a
+# dangling link included: is_reportmate_text can't read through one, so it
+# is simply never true for one, and nothing below is reached for it.
+if is_reportmate_text "$POSTFLIGHT"; then
+    # A stale copy of the wrapper itself, at either name upstream's own
+    # installer used for that cleanup, is debris, not something to restore.
     for stale in "${POSTFLIGHT_D}/00-original.sh" "${POSTFLIGHT_D}/original.sh"; do
-        if is_reportmate_wrapper "$stale"; then
+        if is_reportmate_text "$stale"; then
             log_message "Removing stale wrapper copy from postflight.d/: $(basename "$stale")"
             rm -f "$stale"
         fi
     done
 
-    # Write the ReportMate postflight.d script; unchanged from upstream.
-    log_message "Installing ReportMate postflight script..."
-    cat > "${POSTFLIGHT_D}/reportmate.sh" << 'REPORTMATE_EOF'
-__REPORTMATE_BODY__
-REPORTMATE_EOF
-    chmod 755 "${POSTFLIGHT_D}/reportmate.sh"
-    chown root:wheel "${POSTFLIGHT_D}/reportmate.sh"
-
-    # Decide what belongs at $POSTFLIGHT. Never overwrite a postflight that
-    # is not ours -- a postflight that already runs postflight.d/ (such as
-    # Zentral's) already picks up reportmate.sh on its own. "Missing" means
-    # neither a file nor a link is there: a link whose target does not
-    # exist is something else already in place, not missing -- "cat >" on
-    # it would write through the link and create its target, which is not
-    # this path at all.
-    if [ ! -e "$POSTFLIGHT" ] && [ ! -L "$POSTFLIGHT" ]; then
-        log_message "Installing postflight wrapper..."
-        cat > "$POSTFLIGHT" << 'WRAPPER_EOF'
-__WRAPPER_BODY__
-WRAPPER_EOF
-        chmod 755 "$POSTFLIGHT"
-        chown root:wheel "$POSTFLIGHT"
-    elif is_reportmate_wrapper "$POSTFLIGHT"; then
-        log_message "Updating postflight wrapper..."
-        cat > "$POSTFLIGHT" << 'WRAPPER_EOF'
-__WRAPPER_BODY__
-WRAPPER_EOF
-        chmod 755 "$POSTFLIGHT"
-        chown root:wheel "$POSTFLIGHT"
-    elif [ -L "$POSTFLIGHT" ] && [ ! -e "$POSTFLIGHT" ]; then
-        log_message "Existing postflight is a link whose target does not exist; leaving it as is"
-    else
-        if ! runs_postflight_d "$POSTFLIGHT"; then
-            log_message "Existing postflight does not run postflight.d/; the installs collection will not start after a Munki run until a runner of postflight.d is in place"
+    # Whatever upstream's installer backed up under one of its own three
+    # names is what was there before it ran; put it back, as the link or
+    # file it is.
+    restored=""
+    for backup in sal.sh original.sh munkireport.sh; do
+        entry="${POSTFLIGHT_D}/${backup}"
+        if [ -e "$entry" ] || [ -L "$entry" ]; then
+            log_message "Restoring postflight from postflight.d/${backup}"
+            mv -f "$entry" "$POSTFLIGHT"
+            restored="yes"
+            break
         fi
-    fi
+    done
 
-    log_message "Munki postflight integration installed"
-else
-    log_message "Munki not detected, skipping postflight integration"
-fi"""
+    if [ -z "$restored" ]; then
+        log_message "Removing ReportMate's postflight wrapper (nothing was there before)"
+        rm -f "$POSTFLIGHT"
+    fi
+fi
+
+# ReportMate's own postflight.d/ script, if an earlier install left one,
+# regardless of what postflight now is.
+reportmate_sh="${POSTFLIGHT_D}/reportmate.sh"
+if is_reportmate_text "$reportmate_sh"; then
+    log_message "Removing postflight.d/reportmate.sh"
+    rm -f "$reportmate_sh"
+fi
+
+log_message "Done: the installs collection is started by launchd; nothing was added under /usr/local/munki"
+"""
 
 
 _OSQUERY_REPLACEMENT_TEXT = """# ══════════════════════════════════════════════════════════════════════════════
@@ -296,14 +289,14 @@ else
 fi"""
 
 
-def build_munki_replacement(wrapper_body, reportmate_body):
-    """Return the full replacement text for the Munki section, with the two
-    here-document bodies reinserted unchanged."""
-    text = _MUNKI_REPLACEMENT_TEMPLATE
-    text = text.replace("__MARKER__", MARKER)
-    text = text.replace("__WRAPPER_BODY__", wrapper_body)
-    text = text.replace("__REPORTMATE_BODY__", reportmate_body)
-    return text
+def build_munki_replacement():
+    """Return the full, fixed replacement text for the Munki section. It
+    never writes upstream's wrapper or postflight.d/reportmate.sh, so
+    neither here-document body is used here -- extract_heredoc() is still
+    called on the original section by patch_munki_section() below, purely
+    to validate that it looks like a genuine, well-formed upstream
+    installer before anything is replaced."""
+    return _MUNKI_REPLACEMENT_TEMPLATE.replace("__MARKER__", MARKER)
 
 
 def build_osquery_replacement():
@@ -324,14 +317,17 @@ def _splice(text, start_line, end_line, replacement_text):
 
 
 def patch_munki_section(text):
-    """Return (new_text, wrapper_body, reportmate_body)."""
+    """Return (new_text, wrapper_body, reportmate_body). The two bodies are
+    the original, unpatched section's -- returned for tests that need real
+    upstream content to build fixture state with -- not because the
+    replacement (which writes neither) uses them."""
     start, end = find_section(text, MUNKI_HEADING, MUNKI_END_LOG, MUNKI_SECTION_NAME)
     section_text = "\n".join(text.splitlines()[start : end + 1])
 
     wrapper_body = extract_heredoc(section_text, "WRAPPER_EOF")
     reportmate_body = extract_heredoc(section_text, "REPORTMATE_EOF")
 
-    replacement = build_munki_replacement(wrapper_body, reportmate_body)
+    replacement = build_munki_replacement()
     return _splice(text, start, end, replacement), wrapper_body, reportmate_body
 
 
@@ -364,6 +360,18 @@ def patch_postinstall(text):
         raise PostinstallPatchError(
             "patched text still contains upstream's unconditional postflight "
             "backup; refusing to produce it"
+        )
+
+    if "<< 'WRAPPER_EOF'" in new_text or "<< 'REPORTMATE_EOF'" in new_text:
+        # This build never writes upstream's wrapper or postflight.d/
+        # reportmate.sh -- the installs collection is triggered by launchd
+        # instead. Structurally unreachable, since patch_munki_section
+        # replaces the whole section with text that opens neither
+        # here-document, but kept as an explicit check for the same reason
+        # as the one above.
+        raise PostinstallPatchError(
+            "patched text still opens upstream's postflight wrapper or "
+            "reportmate.sh here-document; refusing to produce it"
         )
 
     new_text = patch_osquery_section(new_text)

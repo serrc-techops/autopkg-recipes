@@ -3,7 +3,7 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>Builds a custom, unsigned ReportMateClientMac package. It patches Scripts/postinstall so it never moves an existing postflight.d/ runner (such as Zentral's Munki package) out of place -- moving it is what makes the postflight run itself without end -- and never downloads or installs osquery, which Munki provides instead. Run this recipe, sign and notarize its output, then import it with ReportMateClientMac.munki.recipe -k PKG=/path/to/the/signed/package.</string>
+        <string>Builds a custom, unsigned ReportMateClientMac package. It patches Scripts/postinstall so the installs collection starts when Munki writes its report, not from a script under /usr/local/munki; Munki's own scripts there are left alone (upstream's installer would otherwise move one out of the way and make it run itself without end), and osquery is never downloaded or installed, since Munki provides it. Run this recipe, sign and notarize its output, then import it with ReportMateClientMac.munki.recipe -k PKG=/path/to/the/signed/package.</string>
         <key>Identifier</key>
         <string>com.github.serrc-techops.pkg.ReportMateClientMac</string>
         <key>Input</key>

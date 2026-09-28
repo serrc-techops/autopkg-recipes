@@ -1,22 +1,34 @@
 """Behavioural tests for the replacement Munki-postflight-integration block.
 
-Each scenario builds real on-disk state in a fresh temporary directory,
-with every path the installer or postflight touches rewritten into that
-directory (MUNKI_DIR, and the log directory both the wrapper and
-reportmate.sh use). The installer's Munki section -- either the original,
-unpatched one or ReportMatePostinstallPatcher's replacement -- is then run
-for real as a standalone script (log_message() is the only thing it
-depends on from the rest of postinstall, so that is stubbed in), and one
-simulated Munki postflight run (`postflight auto`, what launchd invokes
-after managedsoftwareupdate) is run afterward under a short time limit.
+The block now has two independent effects: it edits the already-installed
+com.github.reportmate.installs launchd job (TriggerTests, below) and it
+undoes whatever an earlier, unpatched install left under /usr/local/munki
+(ScenarioN classes) -- it never creates anything new there. Every test
+builds real on-disk state in a fresh temporary directory, with every path
+the block touches rewritten into it (MUNKI_DIR, the launchd job's
+directory, and -- only where the *original*, unpatched section is run, to
+build a "damaged" starting state -- the log directory its wrapper/
+reportmate.sh would otherwise write to), then runs the block for real as a
+standalone script (log_message() is the only thing it depends on from the
+rest of postinstall, so that is stubbed in).
 
-Nothing here ever runs under /usr/local, /Library or /Applications; nothing
-is installed. Every subprocess is started in its own process group
+Hard rule: no job is ever loaded into real launchd. Every installer run
+gets a fake `launchctl` prepended to PATH (see run_in_own_group's `env`
+support and BehaviourTestCase.run_installer/TriggerTestCase.run_installer)
+that only records its own invocations to a file. rewrite_paths() turns
+the block's /bin/launchctl into that stand-in, so the real one is never
+called.
+
+Every subprocess is started in its own process group
 (start_new_session=True) and that whole group is killed in a `finally`
 whether the process finished, failed, or timed out -- see
-run_in_own_group() -- so scenario 7's intentionally non-terminating control
-case cannot leave anything running. tearDownModule() sweeps any process
-group a test did not get to clean up itself, as a last resort.
+run_in_own_group() -- so scenario 9's intentionally non-terminating
+control case cannot leave anything running. tearDownModule() sweeps any
+process group a test did not get to clean up itself, as a last resort.
+
+Timeouts here are generous: this sandbox's process-spawn overhead varies
+and has been observed well over 0.5s per fork/exec, and a single installer
+run spawns many.
 
 Zentral's real Munki postflight runner is used (fixtures/
 zentral_postflight_runner.py; only its interpreter line and POSTFLIGHT_DIR
@@ -24,14 +36,17 @@ constant are rewritten -- see that file's own header). The per-run script
 it runs from postflight.d/ ("zentral", analogous to Zentral's own
 zentral_postflight) and every other stand-in script used to populate
 postflight.d/ in these scenarios are original to this test suite: each
-just appends "<name> ran" to a shared runs.log, which is how "every script
-in postflight.d/ ran exactly once" is checked for scenarios where nothing
-upstream (like reportmate.sh) already logs distinctively. reportmate.sh is
-real, unmodified in substance (only /usr/local/munki and the log directory
-are rewritten, the same as for the wrapper), and its own real log line
-("Munki run finished (runtype:") is used to count its invocations instead.
+just appends "<name> ran" to a shared runs.log.
+
+"Compare the tree... names, link targets and checksums" is
+snapshot_munki_tree(): a dict of every path under MUNKI_DIR to ("link",
+target), ("dir", None), or ("file", sha256) -- symlinks are never
+followed, so a dangling one is captured correctly and a checksum is only
+ever computed for a real file.
 """
+import hashlib
 import os
+import plistlib
 import shutil
 import signal
 import subprocess
@@ -40,13 +55,13 @@ import time
 import unittest
 from collections import Counter
 
-from _support import patcher, read_fixture
+from _support import patcher, read_fixture, FIXTURES_DIR
 
 FIXTURE = read_fixture("postinstall_fixture.sh")
 
-NORMAL_TIMEOUT = 8.0   # generous upper bound; these should return almost instantly
-CONTROL_TIMEOUT = 2.0  # scenario 7 is *expected* to still be running at this point
-INSTALLER_TIMEOUT = 10.0  # the installer step itself never loops; a hang here is a bug
+INSTALLER_TIMEOUT = 60.0  # an installer run spawns many processes; generous
+NORMAL_TIMEOUT = 45.0     # simulated postflight run, when it should finish
+CONTROL_TIMEOUT = 10.0    # scenario 9 is *expected* to still be running at this point
 
 
 def _section(text, heading, end_log, name):
@@ -57,11 +72,20 @@ def _section(text, heading, end_log, name):
 ORIGINAL_MUNKI_SECTION = _section(
     FIXTURE, patcher.MUNKI_HEADING, patcher.MUNKI_END_LOG, patcher.MUNKI_SECTION_NAME
 )
-PATCHED_FIXTURE = patcher.patch_postinstall(FIXTURE)
-PATCHED_MUNKI_SECTION = _section(
-    PATCHED_FIXTURE, patcher.MUNKI_HEADING, patcher.MUNKI_END_LOG, patcher.MUNKI_SECTION_NAME
-)
+# The new replacement is fixed text (no per-package substitution beyond the
+# marker), so build it directly rather than round-tripping through a patched
+# postinstall and re-locating it -- the new block has no "fi" of its own for
+# find_section() to anchor on, by design (it no longer depends on whether
+# /usr/local/munki exists at all).
+PATCHED_MUNKI_SECTION = patcher.build_munki_replacement()
+
+# Upstream's real, unmodified wrapper and postflight.d/reportmate.sh bodies,
+# used to build "ReportMate's wrapper/script already here" fixture states.
+# Never used as anything this build itself would write -- it writes neither.
 ORIGINAL_WRAPPER_BODY = patcher.extract_heredoc(ORIGINAL_MUNKI_SECTION, "WRAPPER_EOF")
+ORIGINAL_REPORTMATE_BODY = patcher.extract_heredoc(ORIGINAL_MUNKI_SECTION, "REPORTMATE_EOF")
+
+JOB_PLIST_FIXTURE = os.path.join(FIXTURES_DIR, "reportmate_installs_job.plist")
 
 
 # --------------------------------------------------------------------------
@@ -82,7 +106,7 @@ def _kill_group(pgid):
         _SPAWNED_PGIDS.remove(pgid)
 
 
-def run_in_own_group(argv, timeout, stdout_path=None):
+def run_in_own_group(argv, timeout, stdout_path=None, env=None):
     """Run `argv` in its own process group and always kill that whole group
     afterward -- on normal completion, on failure, and on timeout alike.
     Returns (ended, returncode); returncode is None when `ended` is False.
@@ -94,6 +118,7 @@ def run_in_own_group(argv, timeout, stdout_path=None):
             stdout=stdout_handle,
             stderr=subprocess.STDOUT if stdout_path else subprocess.DEVNULL,
             start_new_session=True,
+            env=env,
         )
     finally:
         if stdout_path:
@@ -129,7 +154,7 @@ def tearDownModule():
 
 
 # --------------------------------------------------------------------------
-# Scenario construction helpers.
+# Construction helpers.
 # --------------------------------------------------------------------------
 
 def write_executable(path, text):
@@ -140,15 +165,51 @@ def write_executable(path, text):
 
 def make_recorder_script(name, runs_log_path):
     """A trivial, original-to-this-suite stand-in for a postflight.d/ entry
-    (or, for scenario 4, for $POSTFLIGHT itself): it only records that it
-    ran, once, into the shared runs.log."""
+    (or, for some scenarios, for $POSTFLIGHT itself): it only records that
+    it ran, once, into the shared runs.log."""
     return '#!/bin/sh\necho "%s ran" >> "%s"\n' % (name, runs_log_path)
 
 
-def rewrite_paths(text, munki_dir, log_dir):
+def make_fake_launchctl(bin_dir, calls_log, exit_code=0):
+    """A stub `launchctl` that only records "$@" to `calls_log` and exits
+    `exit_code`. Never touches real launchd -- this is how every test here
+    satisfies "do not load a job into launchd"."""
+    write_executable(
+        os.path.join(bin_dir, "launchctl"),
+        '#!/bin/bash\necho "$@" >> "%s"\nexit %d\n' % (calls_log, exit_code),
+    )
+
+
+def rewrite_paths(text, munki_dir, launchdaemons_dir, log_dir=None):
     text = text.replace("/usr/local/munki", munki_dir)
-    text = text.replace("/Library/Managed Reports/logs", log_dir)
+    text = text.replace("/Library/LaunchDaemons", launchdaemons_dir)
+    # The block calls /bin/launchctl; the tests run a recording stand-in.
+    text = text.replace("/bin/launchctl", "launchctl")
+    if log_dir is not None:
+        text = text.replace("/Library/Managed Reports/logs", log_dir)
     return text
+
+
+def snapshot_munki_tree(munki_dir):
+    """Every path under `munki_dir` to ("link", target), ("dir", None), or
+    ("file", sha256-hex) -- names, link targets and checksums, exactly as
+    required. Symlinks are never followed (so a dangling one, or one to a
+    directory, is captured correctly as itself, not descended into)."""
+    snapshot = {}
+    if not os.path.isdir(munki_dir):
+        return snapshot
+    for root, dirs, files in os.walk(munki_dir, followlinks=False):
+        for name in dirs + files:
+            full = os.path.join(root, name)
+            rel = os.path.relpath(full, munki_dir)
+            if os.path.islink(full):
+                snapshot[rel] = ("link", os.readlink(full))
+            elif os.path.isdir(full):
+                snapshot[rel] = ("dir", None)
+            else:
+                with open(full, "rb") as handle:
+                    snapshot[rel] = ("file", hashlib.sha256(handle.read()).hexdigest())
+    return snapshot
 
 
 class BehaviourTestCase(unittest.TestCase):
@@ -157,8 +218,20 @@ class BehaviourTestCase(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
         self.munki_dir = os.path.join(self.root, "munki")
         self.log_dir = os.path.join(self.root, "logs")
-        self.runs_log = os.path.join(self.root, "runs.log")
+        self.launchdaemons_dir = os.path.join(self.root, "LaunchDaemons")
+        os.makedirs(self.launchdaemons_dir, exist_ok=True)
+        self.job_plist = os.path.join(
+            self.launchdaemons_dir, "com.github.reportmate.installs.plist"
+        )
+        shutil.copy(JOB_PLIST_FIXTURE, self.job_plist)  # realistic by default
         self.zentral_runtime = os.path.join(self.root, "zentral-runtime")
+        self.runs_log = os.path.join(self.root, "runs.log")
+
+        self.fake_bin = os.path.join(self.root, "fake-bin")
+        os.makedirs(self.fake_bin, exist_ok=True)
+        self.launchctl_calls_log = os.path.join(self.root, "launchctl-calls.log")
+        make_fake_launchctl(self.fake_bin, self.launchctl_calls_log)
+
         self._installer_count = 0
 
     # -- installer / postflight execution -------------------------------
@@ -166,22 +239,33 @@ class BehaviourTestCase(unittest.TestCase):
     def run_installer(self, section_text, timeout=INSTALLER_TIMEOUT, capture=False):
         """Run an installer's Munki section for real, as a standalone
         script (log_message() stubbed, paths rewritten into this test's
-        temporary directory). Returns the captured stdout+stderr text when
-        `capture` is true, else None. Asserts the installer step itself
-        completed -- it should never loop; only the postflight it installs
-        might (that is what run_postflight()/scenario 7 checks)."""
+        temporary directory, a fake launchctl first on PATH). Returns the
+        captured stdout+stderr text when `capture` is true, else None.
+        Asserts the installer step itself completed -- it should never
+        loop; only the postflight it might leave in place could (that is
+        what run_postflight()/scenario 9 check)."""
         self._installer_count += 1
         script_path = os.path.join(self.root, "installer-%d.sh" % self._installer_count)
-        body = rewrite_paths(section_text, self.munki_dir, self.log_dir)
+        body = rewrite_paths(section_text, self.munki_dir, self.launchdaemons_dir, self.log_dir)
         write_executable(
             script_path,
             '#!/bin/bash\nlog_message() { echo "[installer] $1"; }\n' + body + "\n",
         )
-        capture_path = os.path.join(self.root, "installer-%d.out" % self._installer_count) if capture else None
-        ended, returncode = run_in_own_group(
-            ["/bin/bash", script_path], timeout=timeout, stdout_path=capture_path
+        capture_path = (
+            os.path.join(self.root, "installer-%d.out" % self._installer_count)
+            if capture
+            else None
         )
-        self.assertTrue(ended, "the installer step itself did not end within %ss (it never loops -- this is a harness bug, not the bug under test)" % timeout)
+        env = dict(os.environ)
+        env["PATH"] = self.fake_bin + ":" + env["PATH"]
+        ended, returncode = run_in_own_group(
+            ["/bin/bash", script_path], timeout=timeout, stdout_path=capture_path, env=env
+        )
+        self.assertTrue(
+            ended,
+            "the installer step itself did not end within %ss (it never "
+            "loops -- this is a harness bug, not the bug under test)" % timeout,
+        )
         self.assertEqual(returncode, 0, "installer step exited %r" % (returncode,))
         if capture:
             with open(capture_path, "r") as handle:
@@ -195,7 +279,7 @@ class BehaviourTestCase(unittest.TestCase):
         postflight_path = os.path.join(self.munki_dir, "postflight")
         return run_in_own_group([postflight_path, "auto"], timeout=timeout)
 
-    # -- shared scenario-1-shaped setup ("Zentral already correctly in place") --
+    # -- shared "Zentral already correctly in place" setup ---------------
 
     def make_zentral_layout(self):
         """postflight -> Zentral's real runner; postflight.d/zentral ->
@@ -220,7 +304,10 @@ class BehaviourTestCase(unittest.TestCase):
         os.symlink(collector_path, os.path.join(postflight_d, "zentral"))
         return runner_path
 
-    # -- assertions on the shared runs.log and reportmate.sh's own log --
+    # -- assertion helpers -------------------------------------------------
+
+    def snapshot(self):
+        return snapshot_munki_tree(self.munki_dir)
 
     def run_count(self, name):
         if not os.path.exists(self.runs_log):
@@ -229,273 +316,227 @@ class BehaviourTestCase(unittest.TestCase):
             lines = handle.read().splitlines()
         return Counter(lines)["%s ran" % name]
 
-    def reportmate_ran_count(self):
-        log_path = os.path.join(self.log_dir, "reportmate-postflight.log")
-        if not os.path.exists(log_path):
-            return 0
-        with open(log_path) as handle:
-            content = handle.read()
-        # reportmate.sh's own, real, unmodified log line -- distinct from
-        # anything the wrapper or Zentral's runner logs, so counting it
-        # tells us how many times reportmate.sh itself ran, regardless of
-        # which runner invoked it.
-        return content.count("Munki run finished (runtype:")
-
 
 # --------------------------------------------------------------------------
 # Scenario 1: Zentral's runner already correctly in place.
 # --------------------------------------------------------------------------
 
 class Scenario1ZentralRunnerAlreadyInPlace(BehaviourTestCase):
-    def test_postflight_unchanged_reportmate_added_and_both_run_once(self):
-        runner_path = self.make_zentral_layout()
-        postflight_path = os.path.join(self.munki_dir, "postflight")
-        target_before = os.path.realpath(postflight_path)
-        self.assertEqual(target_before, os.path.realpath(runner_path))
+    def test_nothing_under_the_folder_changed_and_script_ran_once(self):
+        self.make_zentral_layout()
+        before = self.snapshot()
 
         self.run_installer(PATCHED_MUNKI_SECTION)
 
-        # postflight is still the very same link.
-        self.assertTrue(os.path.islink(postflight_path))
-        self.assertEqual(os.path.realpath(postflight_path), target_before)
-
-        reportmate_sh = os.path.join(self.munki_dir, "postflight.d", "reportmate.sh")
-        self.assertTrue(os.path.isfile(reportmate_sh))
-        self.assertTrue(os.access(reportmate_sh, os.X_OK))
+        self.assertEqual(self.snapshot(), before, "nothing under the folder should have changed")
 
         ended, returncode = self.run_postflight()
         self.assertTrue(ended, "simulated postflight did not end within the time limit")
         self.assertEqual(returncode, 0)
         self.assertEqual(self.run_count("zentral"), 1)
-        self.assertEqual(self.reportmate_ran_count(), 1)
+
+    def test_run_twice_changes_nothing(self):
+        # Scenario 8.
+        self.make_zentral_layout()
+        self.run_installer(PATCHED_MUNKI_SECTION)
+        after_first = self.snapshot()
+
+        self.run_installer(PATCHED_MUNKI_SECTION)
+
+        self.assertEqual(self.snapshot(), after_first)
 
 
 # --------------------------------------------------------------------------
-# Scenario 2: the damaged state upstream's unpatched installer leaves,
-# repaired to scenario 1's state.
+# Scenario 2: the state upstream's unpatched installer leaves on such a
+# Mac, repaired to scenario 1's state.
 # --------------------------------------------------------------------------
 
-class Scenario2RepairsDamagedState(BehaviourTestCase):
-    def test_repaired_to_scenario_1_state(self):
-        runner_path = self.make_zentral_layout()
-        postflight_path = os.path.join(self.munki_dir, "postflight")
-        postflight_d = os.path.join(self.munki_dir, "postflight.d")
-        original_target = os.path.realpath(postflight_path)
+class Scenario2RepairsToScenario1State(BehaviourTestCase):
+    def _damage(self):
+        self.make_zentral_layout()
+        scenario1_snapshot = self.snapshot()
 
-        # Damage it exactly the way upstream's unpatched installer does.
+        # Upstream's own (unpatched) installer, run once: this is exactly
+        # what a site running the *unpatched* upstream package would have
+        # produced on top of scenario 1's state.
         self.run_installer(ORIGINAL_MUNKI_SECTION)
+
+        postflight_d = os.path.join(self.munki_dir, "postflight.d")
         sal_sh = os.path.join(postflight_d, "sal.sh")
-        self.assertTrue(os.path.lexists(sal_sh), "expected upstream to move the runner to postflight.d/sal.sh")
-        self.assertEqual(os.path.realpath(sal_sh), original_target)
-        with open(postflight_path) as handle:
+        self.assertTrue(
+            os.path.lexists(sal_sh),
+            "expected upstream to move the runner to postflight.d/sal.sh",
+        )
+        with open(os.path.join(self.munki_dir, "postflight")) as handle:
             self.assertIn("Deployed by: ReportMate macOS Client", handle.read())
 
-        # Now run the patched installer on top of that damage: repair.
+        return scenario1_snapshot
+
+    def test_repaired_to_scenario_1_state(self):
+        scenario1_snapshot = self._damage()
+
         self.run_installer(PATCHED_MUNKI_SECTION)
 
-        self.assertFalse(os.path.lexists(sal_sh), "sal.sh should have been moved back")
-        self.assertTrue(os.path.islink(postflight_path))
-        self.assertEqual(os.path.realpath(postflight_path), original_target)
-        self.assertEqual(os.path.realpath(postflight_path), os.path.realpath(runner_path))
-
-        reportmate_sh = os.path.join(postflight_d, "reportmate.sh")
-        self.assertTrue(os.path.isfile(reportmate_sh))
-
-        # postflight.d/ is back to exactly scenario 1's contents.
-        self.assertEqual(sorted(os.listdir(postflight_d)), ["reportmate.sh", "zentral"])
+        self.assertEqual(self.snapshot(), scenario1_snapshot)
 
         ended, returncode = self.run_postflight()
         self.assertTrue(ended, "simulated postflight did not end within the time limit")
         self.assertEqual(returncode, 0)
         self.assertEqual(self.run_count("zentral"), 1)
-        self.assertEqual(self.reportmate_ran_count(), 1)
 
-
-# --------------------------------------------------------------------------
-# Scenario 3: no postflight at all.
-# --------------------------------------------------------------------------
-
-class Scenario3NoPostflight(BehaviourTestCase):
-    def test_wrapper_installed(self):
-        os.makedirs(self.munki_dir, exist_ok=True)
-        postflight_path = os.path.join(self.munki_dir, "postflight")
-        self.assertFalse(os.path.lexists(postflight_path))
+    def test_run_twice_changes_nothing(self):
+        # Scenario 8.
+        self._damage()
+        self.run_installer(PATCHED_MUNKI_SECTION)
+        after_first = self.snapshot()
 
         self.run_installer(PATCHED_MUNKI_SECTION)
 
+        self.assertEqual(self.snapshot(), after_first)
+
+
+# --------------------------------------------------------------------------
+# Scenario 3: no postflight and no postflight.d.
+# --------------------------------------------------------------------------
+
+class Scenario3NoPostflightNoDirectory(BehaviourTestCase):
+    def test_nothing_was_created(self):
+        os.makedirs(self.munki_dir, exist_ok=True)
+        self.assertEqual(self.snapshot(), {})
+
+        self.run_installer(PATCHED_MUNKI_SECTION)
+
+        self.assertEqual(self.snapshot(), {}, "nothing should have been created")
+        self.assertFalse(os.path.lexists(os.path.join(self.munki_dir, "postflight")))
+        self.assertFalse(os.path.isdir(os.path.join(self.munki_dir, "postflight.d")))
+
+
+# --------------------------------------------------------------------------
+# Scenario 4: a plain, unrelated reporting script at $POSTFLIGHT.
+# --------------------------------------------------------------------------
+
+class Scenario4PlainReportingScript(BehaviourTestCase):
+    def test_unchanged(self):
+        os.makedirs(self.munki_dir, exist_ok=True)
+        postflight_path = os.path.join(self.munki_dir, "postflight")
+        write_executable(postflight_path, make_recorder_script("legacy-postflight", self.runs_log))
+        before = self.snapshot()
+
+        self.run_installer(PATCHED_MUNKI_SECTION)
+
+        self.assertEqual(self.snapshot(), before, "must be unchanged, byte for byte")
+
+
+# --------------------------------------------------------------------------
+# Scenario 5: ReportMate's wrapper, with a plain script as munkireport.sh
+# and reportmate.sh.
+# --------------------------------------------------------------------------
+
+class Scenario5WrapperWithPlainMunkireportScript(BehaviourTestCase):
+    def _setup(self):
+        os.makedirs(self.munki_dir, exist_ok=True)
+        postflight_d = os.path.join(self.munki_dir, "postflight.d")
+        os.makedirs(postflight_d, exist_ok=True)
+
+        postflight_path = os.path.join(self.munki_dir, "postflight")
+        wrapper_text = rewrite_paths(ORIGINAL_WRAPPER_BODY, self.munki_dir, self.launchdaemons_dir, self.log_dir)
+        write_executable(postflight_path, wrapper_text)
+
+        munkireport_path = os.path.join(postflight_d, "munkireport.sh")
+        munkireport_text = make_recorder_script("munkireport.sh", self.runs_log)
+        write_executable(munkireport_path, munkireport_text)
+
+        reportmate_sh = os.path.join(postflight_d, "reportmate.sh")
+        reportmate_text = rewrite_paths(ORIGINAL_REPORTMATE_BODY, self.munki_dir, self.launchdaemons_dir, self.log_dir)
+        write_executable(reportmate_sh, reportmate_text)
+
+        return postflight_path, munkireport_path, reportmate_sh, munkireport_text
+
+    def test_plain_script_becomes_postflight_wrapper_and_reportmate_gone(self):
+        postflight_path, munkireport_path, reportmate_sh, munkireport_text = self._setup()
+
+        self.run_installer(PATCHED_MUNKI_SECTION)
+
+        self.assertFalse(os.path.lexists(munkireport_path), "should have been moved")
+        self.assertFalse(os.path.lexists(reportmate_sh), "should have been removed")
         self.assertTrue(os.path.isfile(postflight_path))
         self.assertFalse(os.path.islink(postflight_path))
         with open(postflight_path) as handle:
-            content = handle.read()
-        self.assertIn("Deployed by: ReportMate macOS Client", content)
-        self.assertTrue(os.access(postflight_path, os.X_OK))
+            self.assertEqual(handle.read(), munkireport_text, "postflight must be the plain script, byte for byte")
 
-        reportmate_sh = os.path.join(self.munki_dir, "postflight.d", "reportmate.sh")
-        self.assertTrue(os.path.isfile(reportmate_sh))
+    def test_run_twice_changes_nothing(self):
+        # Scenario 8.
+        self._setup()
+        self.run_installer(PATCHED_MUNKI_SECTION)
+        after_first = self.snapshot()
 
-        ended, returncode = self.run_postflight()
-        self.assertTrue(ended)
-        self.assertEqual(returncode, 0)
-        self.assertEqual(self.reportmate_ran_count(), 1)
+        self.run_installer(PATCHED_MUNKI_SECTION)
+
+        self.assertEqual(self.snapshot(), after_first)
 
 
 # --------------------------------------------------------------------------
-# Added on review: a dangling link at $POSTFLIGHT (a link whose target does
-# not exist). "Missing" means neither a file nor a link is present -- a
-# dangling link is something else already in place, not missing. The
-# installer must leave it exactly as it is: "cat > $POSTFLIGHT" on a
-# dangling link writes through it and creates a file at the target, which
-# is a different path entirely (and, on a real Mac, could be a path this
-# build has no business creating).
+# Scenario 6: ReportMate's wrapper alone, with reportmate.sh.
 # --------------------------------------------------------------------------
 
-class ScenarioDanglingPostflightLink(BehaviourTestCase):
-    def test_dangling_link_left_alone_nothing_created_at_its_target(self):
+class Scenario6WrapperAloneWithReportmateScript(BehaviourTestCase):
+    def test_no_postflight_no_reportmate_sh(self):
+        os.makedirs(self.munki_dir, exist_ok=True)
+        postflight_d = os.path.join(self.munki_dir, "postflight.d")
+        os.makedirs(postflight_d, exist_ok=True)
+
+        postflight_path = os.path.join(self.munki_dir, "postflight")
+        wrapper_text = rewrite_paths(ORIGINAL_WRAPPER_BODY, self.munki_dir, self.launchdaemons_dir, self.log_dir)
+        write_executable(postflight_path, wrapper_text)
+
+        reportmate_sh = os.path.join(postflight_d, "reportmate.sh")
+        reportmate_text = rewrite_paths(ORIGINAL_REPORTMATE_BODY, self.munki_dir, self.launchdaemons_dir, self.log_dir)
+        write_executable(reportmate_sh, reportmate_text)
+
+        self.run_installer(PATCHED_MUNKI_SECTION)
+
+        self.assertFalse(os.path.lexists(postflight_path))
+        self.assertFalse(os.path.lexists(reportmate_sh))
+        # postflight.d/ itself stays, even now empty.
+        self.assertTrue(os.path.isdir(postflight_d))
+        self.assertEqual(os.listdir(postflight_d), [])
+
+
+# --------------------------------------------------------------------------
+# Scenario 7: a dangling link at $POSTFLIGHT.
+# --------------------------------------------------------------------------
+
+class Scenario7DanglingPostflightLink(BehaviourTestCase):
+    def test_unchanged_nothing_created_at_its_target(self):
         os.makedirs(self.munki_dir, exist_ok=True)
         postflight_path = os.path.join(self.munki_dir, "postflight")
         missing_target = os.path.join(self.root, "postflight-not-installed-yet")
         self.assertFalse(os.path.lexists(missing_target))
         os.symlink(missing_target, postflight_path)
+        before = self.snapshot()
 
-        installer_output = self.run_installer(PATCHED_MUNKI_SECTION, capture=True)
+        self.run_installer(PATCHED_MUNKI_SECTION)
 
-        # The link itself is untouched: still a link, still pointing at the
-        # same, still-nonexistent target.
+        self.assertEqual(self.snapshot(), before)
         self.assertTrue(os.path.islink(postflight_path))
         self.assertEqual(os.readlink(postflight_path), missing_target)
         self.assertFalse(
             os.path.lexists(missing_target),
             "nothing should have been created at the dangling link's target",
         )
-        self.assertIn("link whose target does not exist", installer_output)
-
-        # Writing postflight.d/reportmate.sh is unconditional either way.
-        reportmate_sh = os.path.join(self.munki_dir, "postflight.d", "reportmate.sh")
-        self.assertTrue(os.path.isfile(reportmate_sh))
 
 
 # --------------------------------------------------------------------------
-# Scenario 4: an unrelated, plain reporting script sits at $POSTFLIGHT.
-# --------------------------------------------------------------------------
-
-class Scenario4PlainReportingScript(BehaviourTestCase):
-    def test_untouched_byte_for_byte_and_not_a_runner_log_line_printed(self):
-        os.makedirs(self.munki_dir, exist_ok=True)
-        postflight_path = os.path.join(self.munki_dir, "postflight")
-        original_text = make_recorder_script("legacy-postflight", self.runs_log)
-        write_executable(postflight_path, original_text)
-        before = os.stat(postflight_path)
-
-        installer_output = self.run_installer(PATCHED_MUNKI_SECTION, capture=True)
-
-        with open(postflight_path) as handle:
-            after_text = handle.read()
-        self.assertEqual(original_text, after_text, "postflight must be untouched, byte for byte")
-        after = os.stat(postflight_path)
-        self.assertEqual(before.st_mode, after.st_mode)
-
-        self.assertIn(
-            "installs collection will not start after a Munki run until a "
-            "runner of postflight.d is in place",
-            installer_output,
-        )
-
-        # reportmate.sh is still written into postflight.d/ regardless
-        # (that step is unconditional) -- it simply never gets invoked,
-        # because the existing postflight does not run postflight.d/ at all.
-        reportmate_sh = os.path.join(self.munki_dir, "postflight.d", "reportmate.sh")
-        self.assertTrue(os.path.isfile(reportmate_sh))
-
-        ended, returncode = self.run_postflight()
-        self.assertTrue(ended)
-        self.assertEqual(returncode, 0)
-        self.assertEqual(self.run_count("legacy-postflight"), 1)
-        self.assertEqual(self.reportmate_ran_count(), 0)
-
-
-# --------------------------------------------------------------------------
-# Scenario 5: ReportMate's wrapper already in place, with a plain script.
-# --------------------------------------------------------------------------
-
-class Scenario5WrapperWithPlainScript(BehaviourTestCase):
-    def test_wrapper_rewritten_script_stays(self):
-        os.makedirs(self.munki_dir, exist_ok=True)
-        postflight_d = os.path.join(self.munki_dir, "postflight.d")
-        os.makedirs(postflight_d, exist_ok=True)
-
-        postflight_path = os.path.join(self.munki_dir, "postflight")
-        wrapper_text = rewrite_paths(ORIGINAL_WRAPPER_BODY, self.munki_dir, self.log_dir)
-        write_executable(postflight_path, wrapper_text)
-
-        other_path = os.path.join(postflight_d, "10-other.sh")
-        other_text = make_recorder_script("10-other.sh", self.runs_log)
-        write_executable(other_path, other_text)
-
-        self.run_installer(PATCHED_MUNKI_SECTION)
-
-        with open(postflight_path) as handle:
-            new_wrapper_text = handle.read()
-        self.assertIn("Deployed by: ReportMate macOS Client", new_wrapper_text)
-        self.assertTrue(os.access(postflight_path, os.X_OK))
-
-        with open(other_path) as handle:
-            self.assertEqual(other_text, handle.read(), "the pre-existing script must stay untouched")
-
-        reportmate_sh = os.path.join(postflight_d, "reportmate.sh")
-        self.assertTrue(os.path.isfile(reportmate_sh))
-
-        ended, returncode = self.run_postflight()
-        self.assertTrue(ended)
-        self.assertEqual(returncode, 0)
-        self.assertEqual(self.run_count("10-other.sh"), 1)
-        self.assertEqual(self.reportmate_ran_count(), 1)
-
-
-# --------------------------------------------------------------------------
-# Scenario 6: the patched installer run twice on scenario 1's state.
-# --------------------------------------------------------------------------
-
-class Scenario6RunTwiceIsIdempotent(BehaviourTestCase):
-    def test_same_result_when_run_twice(self):
-        runner_path = self.make_zentral_layout()
-        postflight_path = os.path.join(self.munki_dir, "postflight")
-        postflight_d = os.path.join(self.munki_dir, "postflight.d")
-        reportmate_sh = os.path.join(postflight_d, "reportmate.sh")
-
-        self.run_installer(PATCHED_MUNKI_SECTION)
-        target_after_first = os.path.realpath(postflight_path)
-        with open(reportmate_sh) as handle:
-            content_after_first = handle.read()
-        listing_after_first = sorted(os.listdir(postflight_d))
-
-        self.run_installer(PATCHED_MUNKI_SECTION)  # again, same inputs
-
-        self.assertEqual(os.path.realpath(postflight_path), target_after_first)
-        self.assertEqual(os.path.realpath(postflight_path), os.path.realpath(runner_path))
-        with open(reportmate_sh) as handle:
-            content_after_second = handle.read()
-        self.assertEqual(content_after_first, content_after_second)
-        self.assertEqual(sorted(os.listdir(postflight_d)), listing_after_first)
-
-        ended, returncode = self.run_postflight()
-        self.assertTrue(ended)
-        self.assertEqual(returncode, 0)
-        self.assertEqual(self.run_count("zentral"), 1)
-        self.assertEqual(self.reportmate_ran_count(), 1)
-
-
-# --------------------------------------------------------------------------
-# Scenario 7: control. Upstream's unpatched section, run against scenario
+# Scenario 9: control. Upstream's unpatched section, run against scenario
 # 1's initial state, must NOT end within the time limit -- this is the bug
-# this whole build exists to fix, reproduced to prove the test rig (and the
-# fix in the other scenarios) is real.
+# this whole build exists to fix, reproduced to prove the test rig is real.
 # --------------------------------------------------------------------------
 
-class Scenario7ControlUnpatchedHangs(BehaviourTestCase):
+class Scenario9ControlUnpatchedHangs(BehaviourTestCase):
     def test_unpatched_section_does_not_end_within_the_time_limit(self):
         self.make_zentral_layout()
-        # Upstream's own (unpatched) installer, run once: this is exactly
-        # what a site running the *unpatched* upstream package would have.
+        # Upstream's own (unpatched) installer, run once: exactly what a
+        # site running the *unpatched* upstream package would have.
         self.run_installer(ORIGINAL_MUNKI_SECTION)
 
         started = time.monotonic()
@@ -511,6 +552,155 @@ class Scenario7ControlUnpatchedHangs(BehaviourTestCase):
         )
         self.assertIsNone(returncode)
         self.assertGreaterEqual(elapsed, CONTROL_TIMEOUT)
+
+
+# --------------------------------------------------------------------------
+# The trigger: rule 1, tested against a copy of upstream's own job file.
+# Running the whole block (not a hand-sliced "first part") against a
+# temporary directory that holds only the job file exercises exactly the
+# same code path as "the block's first part" -- the undo steps below it
+# only ever act when something is found under /usr/local/munki, and
+# nothing is here, so they are no-ops.
+# --------------------------------------------------------------------------
+
+class TriggerTests(unittest.TestCase):
+    def setUp(self):
+        self.root = tempfile.mkdtemp(prefix="reportmate-trigger-")
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+        self.munki_dir = os.path.join(self.root, "munki")  # deliberately never created
+        self.launchdaemons_dir = os.path.join(self.root, "LaunchDaemons")
+        os.makedirs(self.launchdaemons_dir, exist_ok=True)
+        self.job_plist = os.path.join(
+            self.launchdaemons_dir, "com.github.reportmate.installs.plist"
+        )
+        shutil.copy(JOB_PLIST_FIXTURE, self.job_plist)
+
+        self.fake_bin = os.path.join(self.root, "fake-bin")
+        os.makedirs(self.fake_bin, exist_ok=True)
+        self.launchctl_calls_log = os.path.join(self.root, "launchctl-calls.log")
+
+        self._installer_count = 0
+
+    def run_installer(self, timeout=INSTALLER_TIMEOUT, capture=False):
+        self._installer_count += 1
+        script_path = os.path.join(self.root, "installer-%d.sh" % self._installer_count)
+        body = rewrite_paths(PATCHED_MUNKI_SECTION, self.munki_dir, self.launchdaemons_dir)
+        write_executable(
+            script_path,
+            '#!/bin/bash\nlog_message() { echo "[installer] $1"; }\n' + body + "\n",
+        )
+        capture_path = (
+            os.path.join(self.root, "installer-%d.out" % self._installer_count)
+            if capture
+            else None
+        )
+        env = dict(os.environ)
+        env["PATH"] = self.fake_bin + ":" + env["PATH"]
+        ended, returncode = run_in_own_group(
+            ["/bin/bash", script_path], timeout=timeout, stdout_path=capture_path, env=env
+        )
+        self.assertTrue(ended, "the installer step itself did not end within %ss" % timeout)
+        self.assertEqual(returncode, 0)
+        if capture:
+            with open(capture_path, "r") as handle:
+                return handle.read()
+        return None
+
+    def read_job_plist(self):
+        with open(self.job_plist, "rb") as handle:
+            return plistlib.load(handle)
+
+    def read_calls(self):
+        if not os.path.exists(self.launchctl_calls_log):
+            return []
+        with open(self.launchctl_calls_log) as handle:
+            return handle.read().splitlines()
+
+    def test_watchpaths_and_throttle_interval_other_keys_unchanged(self):
+        with open(JOB_PLIST_FIXTURE, "rb") as handle:
+            original = plistlib.load(handle)
+
+        make_fake_launchctl(self.fake_bin, self.launchctl_calls_log)
+        self.run_installer()
+
+        new = self.read_job_plist()
+        self.assertEqual(new["WatchPaths"], ["/Library/Managed Installs/ManagedInstallReport.plist"])
+        self.assertEqual(new["ThrottleInterval"], 60)
+        for key in set(original) | set(new):
+            if key in ("WatchPaths", "ThrottleInterval"):
+                continue
+            self.assertEqual(
+                original.get(key), new.get(key), "key %r should equal upstream's" % key
+            )
+
+    def test_setting_is_idempotent_regardless_of_prior_state(self):
+        # "the result is the same whether the key existed or not" -- start
+        # from a file that already has different values for both keys.
+        with open(self.job_plist, "rb") as handle:
+            plist = plistlib.load(handle)
+        plist["WatchPaths"] = ["/some/other/path"]
+        plist["ThrottleInterval"] = 5
+        with open(self.job_plist, "wb") as handle:
+            plistlib.dump(plist, handle)
+
+        make_fake_launchctl(self.fake_bin, self.launchctl_calls_log)
+        self.run_installer()
+
+        new = self.read_job_plist()
+        self.assertEqual(new["WatchPaths"], ["/Library/Managed Installs/ManagedInstallReport.plist"])
+        self.assertEqual(new["ThrottleInterval"], 60)
+
+    def test_calls_are_unload_before_load_after(self):
+        make_fake_launchctl(self.fake_bin, self.launchctl_calls_log)
+        self.run_installer()
+
+        calls = self.read_calls()
+        self.assertEqual(len(calls), 2, "expected exactly one unload and one load: %r" % calls)
+        self.assertTrue(calls[0].startswith("bootout system "), calls[0])
+        self.assertTrue(calls[1].startswith("bootstrap system "), calls[1])
+        self.assertIn(self.job_plist, calls[0])
+        self.assertIn(self.job_plist, calls[1])
+
+    def test_second_run_gives_the_same_file(self):
+        make_fake_launchctl(self.fake_bin, self.launchctl_calls_log)
+        self.run_installer()
+        after_first = self.read_job_plist()
+
+        self.run_installer()
+
+        self.assertEqual(self.read_job_plist(), after_first)
+
+    def test_missing_file_creates_and_loads_nothing(self):
+        os.remove(self.job_plist)
+        make_fake_launchctl(self.fake_bin, self.launchctl_calls_log)
+
+        output = self.run_installer(capture=True)
+
+        self.assertFalse(os.path.exists(self.job_plist), "nothing should have been created")
+        self.assertEqual(self.read_calls(), [], "nothing should have been loaded")
+        self.assertIn("com.github.reportmate.installs.plist not found", output)
+
+    def test_warning_logged_when_load_fails(self):
+        # bootout (the first call) succeeds; bootstrap (the second) fails --
+        # a stub that only fails on its second invocation.
+        write_executable(
+            os.path.join(self.fake_bin, "launchctl"),
+            "#!/bin/bash\n"
+            'echo "$@" >> "%s"\n'
+            'if [ "$1" = "bootstrap" ]; then exit 1; fi\n'
+            "exit 0\n" % self.launchctl_calls_log,
+        )
+
+        output = self.run_installer(capture=True)
+
+        self.assertIn(
+            "WARNING: failed to load com.github.reportmate.installs - "
+            "collection scheduled by this daemon will not run",
+            output,
+        )
+        # The edit itself still happened before the failed load attempt.
+        new = self.read_job_plist()
+        self.assertEqual(new["ThrottleInterval"], 60)
 
 
 if __name__ == "__main__":

@@ -86,6 +86,18 @@ class CheckPostinstallTextTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "osquery download/install"):
             checker.check_postinstall_text(partial)
 
+    def test_refuses_text_with_marker_but_wrapper_heredoc_reintroduced(self):
+        patched = patcher.patch_postinstall(FIXTURE)
+        tampered = patched + "\ncat > \"$POSTFLIGHT\" << 'WRAPPER_EOF'\nfoo\nWRAPPER_EOF\n"
+        with self.assertRaisesRegex(ValueError, "still opens"):
+            checker.check_postinstall_text(tampered)
+
+    def test_refuses_text_with_marker_but_reportmate_heredoc_reintroduced(self):
+        patched = patcher.patch_postinstall(FIXTURE)
+        tampered = patched + "\ncat > \"$X\" << 'REPORTMATE_EOF'\nfoo\nREPORTMATE_EOF\n"
+        with self.assertRaisesRegex(ValueError, "still opens"):
+            checker.check_postinstall_text(tampered)
+
 
 class ReportMatePostinstallCheckerProcessorTests(unittest.TestCase):
     def setUp(self):
@@ -114,6 +126,15 @@ class ReportMatePostinstallCheckerProcessorTests(unittest.TestCase):
 
         proc = checker.ReportMatePostinstallChecker({"pkg_path": pkg_path})
         with self.assertRaisesRegex(ProcessorError, "osquery download/install"):
+            proc.main()
+
+    def test_refuses_a_package_that_still_writes_the_wrapper(self):
+        patched_text = patcher.patch_postinstall(FIXTURE)
+        tampered = patched_text + "\ncat > \"$POSTFLIGHT\" << 'WRAPPER_EOF'\nfoo\nWRAPPER_EOF\n"
+        pkg_path = build_flat_pkg(self.tmp_dir, tampered, "still-writes-wrapper.pkg")
+
+        proc = checker.ReportMatePostinstallChecker({"pkg_path": pkg_path})
+        with self.assertRaisesRegex(ProcessorError, "still opens"):
             proc.main()
 
     def test_a_signed_looking_package_expands_and_is_checked_the_same_way(self):

@@ -3,7 +3,7 @@
 <plist version="1.0">
 	<dict>
 		<key>Description</key>
-		<string>Imports a ReportMate macOS client package into Munki. Only accepts the custom build ReportMateClientMac.pkg.recipe produces: build with that recipe, sign and notarize its output, then run this recipe with -k PKG=/path/to/the/signed/package. Requires the Munki item osquery, since this build does not install osquery itself.</string>
+		<string>Imports a ReportMate macOS client package into Munki. Only accepts the custom build ReportMateClientMac.pkg.recipe produces, whose installs collection starts when Munki writes its report, not from a script under /usr/local/munki: build with that recipe, sign and notarize its output, then run this recipe with -k PKG=/path/to/the/signed/package. Requires the Munki item osquery, since this build does not install osquery itself.</string>
 		<key>Identifier</key>
 		<string>com.github.serrc-techops.munki.ReportMateClientMac</string>
 		<key>Input</key>
@@ -39,7 +39,7 @@
 				<key>unattended_uninstall</key>
 				<true/>
 				<key>notes</key>
-				<string>Updated via AutoPkg from the custom build (ReportMateClientMac.pkg.recipe), signed and notarized, and imported with the PKG override. This build does not install osquery itself, so a Mac without the required osquery Munki item gets ReportMate but no osquery-based module data until Munki installs it.</string>
+				<string>Updated via AutoPkg from the custom build (ReportMateClientMac.pkg.recipe), signed and notarized, and imported with the PKG override. The installs collection starts when Munki writes its report, and this build never installs osquery itself, so a Mac without the required osquery Munki item gets ReportMate but no osquery-based module data until Munki installs it.</string>
 			</dict>
 		</dict>
 		<key>MinimumVersion</key>

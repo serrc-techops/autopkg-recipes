@@ -20,6 +20,10 @@ def munki_section_text(text):
 
 
 class FindSectionTests(unittest.TestCase):
+    """find_section() locates *upstream's* section, in the unpatched
+    fixture, by its own markers -- unaffected by what this build's
+    replacement contains, so these are unchanged by the launchd redesign."""
+
     def test_finds_munki_section(self):
         start, end = patcher.find_section(
             FIXTURE, patcher.MUNKI_HEADING, patcher.MUNKI_END_LOG, patcher.MUNKI_SECTION_NAME
@@ -91,6 +95,10 @@ class FindSectionTests(unittest.TestCase):
 
 
 class ExtractHeredocTests(unittest.TestCase):
+    """extract_heredoc() reads upstream's original heredocs -- still called
+    by patch_munki_section() to validate the input looks like a genuine
+    installer, even though the new replacement discards the bodies."""
+
     def setUp(self):
         self.section = munki_section_text(FIXTURE)
 
@@ -131,23 +139,38 @@ class PatchPostinstallTests(unittest.TestCase):
         patched = patcher.patch_postinstall(FIXTURE)
         self.assertIn(patcher.MARKER, patched)
 
+    def test_upstream_heredocs_still_validated_even_though_discarded(self):
+        # patch_munki_section() still calls extract_heredoc() on the
+        # original section (to refuse a future release that no longer
+        # looks like a genuine installer) even though the new replacement
+        # never reuses the bodies -- a missing here-document must still
+        # refuse, exactly as before the launchd redesign.
+        broken = FIXTURE.replace("<< 'WRAPPER_EOF'", "")
+        with self.assertRaises(patcher.PostinstallPatchError):
+            patcher.patch_postinstall(broken)
+
     def test_backup_text_removed(self):
         patched = patcher.patch_postinstall(FIXTURE)
         self.assertNotIn("Backing up existing postflight", patched)
 
-    def test_heredoc_bodies_preserved_byte_for_byte(self):
+    def test_neither_heredoc_opening_present(self):
+        # This build starts the installs collection through launchd and
+        # writes neither the postflight wrapper nor postflight.d/
+        # reportmate.sh -- the two here-document openings upstream's own
+        # (unpatched) section has must both be absent from the output.
+        patched = patcher.patch_postinstall(FIXTURE)
+        self.assertNotIn("<< 'WRAPPER_EOF'", patched)
+        self.assertNotIn("<< 'REPORTMATE_EOF'", patched)
+
+    def test_neither_heredoc_body_text_present(self):
         section = munki_section_text(FIXTURE)
         wrapper_body = patcher.extract_heredoc(section, "WRAPPER_EOF")
         reportmate_body = patcher.extract_heredoc(section, "REPORTMATE_EOF")
 
         patched = patcher.patch_postinstall(FIXTURE)
 
-        # The replacement block writes the wrapper body in two places (the
-        # "missing" and "update" cases of the $POSTFLIGHT decision), and the
-        # reportmate body in one; each occurrence must be the exact original
-        # bytes, so a substring match already proves byte-for-byte equality.
-        self.assertEqual(patched.count(wrapper_body), 2)
-        self.assertEqual(patched.count(reportmate_body), 1)
+        self.assertNotIn(wrapper_body, patched)
+        self.assertNotIn(reportmate_body, patched)
 
     def test_osquery_download_and_install_always_replaced(self):
         # osquery is provided by Munki; this build never downloads or
@@ -202,19 +225,6 @@ class PatchPostinstallTests(unittest.TestCase):
         with self.assertRaises(patcher.PostinstallPatchError):
             patcher.patch_postinstall(dup)
 
-    def test_osquery_safety_net_catches_a_replacement_that_kept_forbidden_text(self):
-        # Same reasoning as the Munki safety net: patch_osquery_section()
-        # always replaces the whole section, so this is not reachable
-        # through patch_postinstall() as written. Exercise the underlying
-        # check directly to prove it would still catch a regression.
-        new_text, _wrapper, _reportmate = patcher.patch_munki_section(FIXTURE)
-        osquery_patched = patcher.patch_osquery_section(new_text)
-        reintroduced = osquery_patched.replace(
-            patcher.MARKER,
-            patcher.MARKER + "\n# github.com/osquery/osquery/releases (regression)",
-        )
-        self.assertIn("github.com/osquery/osquery/releases", reintroduced)
-
     def test_patching_twice_is_refused(self):
         patched = patcher.patch_postinstall(FIXTURE)
         with self.assertRaisesRegex(patcher.PostinstallPatchError, "already carries"):
@@ -225,20 +235,60 @@ class PatchPostinstallTests(unittest.TestCase):
         with self.assertRaises(patcher.PostinstallPatchError):
             patcher.patch_postinstall(broken)
 
-    def test_safety_net_catches_a_replacement_that_kept_the_forbidden_text(self):
-        # patch_munki_section() always removes "Backing up existing
-        # postflight" because it replaces the whole section outright, so
-        # this path is not reachable through patch_postinstall() as written.
-        # Exercise the safety net directly to prove it would still catch a
-        # future regression that reintroduced the text.
-        new_text, _wrapper, _reportmate = patcher.patch_munki_section(FIXTURE)
-        reintroduced = new_text.replace(
-            patcher.MARKER, patcher.MARKER + "\n# Backing up existing postflight (regression)"
+
+class SafetyNetTests(unittest.TestCase):
+    """patch_postinstall() checks, after building each replacement, that
+    none of three specific upstream behaviours survived -- structurally
+    unreachable through the normal flow, since build_munki_replacement()
+    and build_osquery_replacement() are fixed text that never contains
+    them, but kept as an explicit last line of defence. Exercised here by
+    temporarily substituting a non-compliant replacement function, so the
+    check that would catch a real regression is proven to actually fire,
+    not just asserted to exist."""
+
+    def _substitute(self, attr, replacement_func):
+        original = getattr(patcher, attr)
+        setattr(patcher, attr, replacement_func)
+        self.addCleanup(setattr, patcher, attr, original)
+
+    def test_munki_backup_text_safety_net_fires(self):
+        original = patcher.build_munki_replacement
+        self._substitute(
+            "build_munki_replacement",
+            lambda: original() + "\n# Backing up existing postflight (regression)",
         )
-        self.assertIn("Backing up existing postflight", reintroduced)
+        with self.assertRaisesRegex(patcher.PostinstallPatchError, "unconditional postflight"):
+            patcher.patch_postinstall(FIXTURE)
+
+    def test_munki_heredoc_safety_net_fires_for_wrapper(self):
+        original = patcher.build_munki_replacement
+        self._substitute(
+            "build_munki_replacement",
+            lambda: original() + "\ncat > \"$POSTFLIGHT\" << 'WRAPPER_EOF'\nfoo\nWRAPPER_EOF",
+        )
+        with self.assertRaisesRegex(patcher.PostinstallPatchError, "here-document"):
+            patcher.patch_postinstall(FIXTURE)
+
+    def test_munki_heredoc_safety_net_fires_for_reportmate(self):
+        original = patcher.build_munki_replacement
+        self._substitute(
+            "build_munki_replacement",
+            lambda: original() + "\ncat > \"$X\" << 'REPORTMATE_EOF'\nfoo\nREPORTMATE_EOF",
+        )
+        with self.assertRaisesRegex(patcher.PostinstallPatchError, "here-document"):
+            patcher.patch_postinstall(FIXTURE)
+
+    def test_osquery_safety_net_fires(self):
+        original = patcher.build_osquery_replacement
+        self._substitute(
+            "build_osquery_replacement",
+            lambda: original() + "\n# github.com/osquery/osquery/releases (regression)",
+        )
+        with self.assertRaisesRegex(patcher.PostinstallPatchError, "osquery download"):
+            patcher.patch_postinstall(FIXTURE)
 
 
-class MunkiReplacementBehaviourFixtureTests(unittest.TestCase):
+class MunkiReplacementFidelityTests(unittest.TestCase):
     """Fidelity checks on the *content* of the replacement block itself,
     independent of whether it actually behaves correctly when run (that is
     tests/test_behaviour.py's job)."""
@@ -246,27 +296,84 @@ class MunkiReplacementBehaviourFixtureTests(unittest.TestCase):
     def setUp(self):
         self.patched = patcher.patch_postinstall(FIXTURE)
 
-    def test_never_unconditionally_overwrites_postflight(self):
-        # The four-way "missing / ours / dangling link / anything else"
-        # decision must all be present; a version that went back to
-        # unconditionally overwriting would fail this.
-        self.assertIn('if [ ! -e "$POSTFLIGHT" ] && [ ! -L "$POSTFLIGHT" ]; then', self.patched)
-        self.assertIn('elif is_reportmate_wrapper "$POSTFLIGHT"; then', self.patched)
-        self.assertIn('elif [ -L "$POSTFLIGHT" ] && [ ! -e "$POSTFLIGHT" ]; then', self.patched)
-        self.assertIn("link whose target does not exist", self.patched)
-        self.assertIn("does not run postflight.d/", self.patched)
+    def test_no_longer_gated_on_munki_directory_existing(self):
+        # The launchd trigger applies regardless of whether Munki is
+        # installed; there is no outer "if -d MUNKI_DIR ... else ... fi"
+        # wrapping the whole section any more.
+        self.assertNotIn("Munki not detected, skipping postflight integration", self.patched)
+        self.assertNotIn("Munki detected, installing postflight integration", self.patched)
 
-    def test_repairs_a_runner_moved_into_postflight_d(self):
-        self.assertIn("sal.sh original.sh munkireport.sh", self.patched)
-        self.assertIn("runs_postflight_d", self.patched)
+    def test_creates_nothing_under_usr_local_munki(self):
+        # No mkdir anywhere in either replaced section (rule 2: no new
+        # directory, wrapper, or reportmate.sh).
+        self.assertNotIn("mkdir", self.patched)
+
+    def test_trigger_edits_watchpaths_and_throttle_interval(self):
+        self.assertIn(
+            'JOB_PLIST="/Library/LaunchDaemons/com.github.reportmate.installs.plist"',
+            self.patched,
+        )
+        self.assertIn(
+            'MUNKI_REPORT="/Library/Managed Installs/ManagedInstallReport.plist"',
+            self.patched,
+        )
+        self.assertIn("-replace WatchPaths -json", self.patched)
+        self.assertIn("-replace ThrottleInterval -integer 60", self.patched)
+
+    def test_trigger_calls_launchctl_by_its_absolute_path(self):
+        # An installer script must not depend on PATH for a system tool.
+        self.assertIn('/bin/launchctl bootout system "$JOB_PLIST"', self.patched)
+        self.assertIn('/bin/launchctl bootstrap system "$JOB_PLIST"', self.patched)
+        self.assertNotIn(' launchctl bootout system "$JOB_PLIST"', self.patched)
+        self.assertNotIn(' launchctl bootstrap system "$JOB_PLIST"', self.patched)
+
+    def test_trigger_unload_before_edit_before_load_in_source_order(self):
+        section = self.patched
+        unload_index = section.index('/bin/launchctl bootout system "$JOB_PLIST"')
+        watchpaths_index = section.index("-replace WatchPaths")
+        throttle_index = section.index("-replace ThrottleInterval")
+        load_index = section.index('/bin/launchctl bootstrap system "$JOB_PLIST"')
+        self.assertLess(unload_index, watchpaths_index)
+        self.assertLess(watchpaths_index, throttle_index)
+        self.assertLess(throttle_index, load_index)
+
+    def test_trigger_load_failure_logged_in_upstreams_own_words(self):
+        # Upstream's own daemon-install loop logs failures as
+        # "WARNING: failed to load {label} - collection scheduled by this
+        # daemon will not run"; this build reuses that phrasing.
+        self.assertIn(
+            "WARNING: failed to load com.github.reportmate.installs - "
+            "collection scheduled by this daemon will not run",
+            self.patched,
+        )
+
+    def test_undo_only_when_postflight_is_reportmates_wrapper(self):
+        self.assertIn('is_reportmate_text() {', self.patched)
+        self.assertIn('grep -q "Deployed by: ReportMate macOS Client" "$1"', self.patched)
+        self.assertIn('if is_reportmate_text "$POSTFLIGHT"; then', self.patched)
+
+    def test_undo_checks_all_three_upstream_backup_names(self):
+        self.assertIn("for backup in sal.sh original.sh munkireport.sh", self.patched)
+        self.assertIn('mv -f "$entry" "$POSTFLIGHT"', self.patched)
+
+    def test_undo_removes_wrapper_when_nothing_to_restore(self):
+        self.assertIn('rm -f "$POSTFLIGHT"', self.patched)
+
+    def test_undo_removes_stale_wrapper_copies_at_upstreams_two_names(self):
+        self.assertIn(
+            'for stale in "${POSTFLIGHT_D}/00-original.sh" "${POSTFLIGHT_D}/original.sh"',
+            self.patched,
+        )
+
+    def test_reportmate_sh_removed_regardless_of_postflight_state(self):
+        self.assertIn('reportmate_sh="${POSTFLIGHT_D}/reportmate.sh"', self.patched)
+        self.assertIn('if is_reportmate_text "$reportmate_sh"; then', self.patched)
+        self.assertIn('rm -f "$reportmate_sh"', self.patched)
 
     def test_never_touches_preflight(self):
         # Never touch Munki's separate preflight/preflight.d. The
         # replacement block should not mention it at all.
         self.assertNotIn("preflight", self.patched.lower())
-
-    def test_munki_not_detected_branch_preserved(self):
-        self.assertIn("Munki not detected, skipping postflight integration", self.patched)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,11 @@
-The fixture `postinstall_fixture.sh` next to this file reproduces two
-sections of ReportMate's macOS client installer verbatim (see the fixture's
-own header comment for the exact origin and line numbers). That installer
-is MIT licensed:
+The fixtures `postinstall_fixture.sh` and `reportmate_installs_job.plist`
+next to this file reproduce parts of ReportMate's macOS client verbatim:
+two sections of its installer script (see that fixture's own header
+comment for the exact origin and line numbers), and the
+com.github.reportmate.installs launchd job template it writes
+(`rm-src/mac/build.sh`, the heredoc starting `cat >
+"$APP_LAUNCHDAEMONS/com.github.reportmate.installs.plist"`). That source is
+MIT licensed:
 
 MIT License
 

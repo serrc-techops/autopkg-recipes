@@ -6,8 +6,10 @@ about to be imported (pkg_path) into a temporary directory with pkgutil --
 a signed package expands the same way an unsigned one does -- and inspects
 its Scripts/postinstall: only a package built by
 ReportMateClientMac.pkg.recipe, carrying ReportMatePostinstallPatcher.py's
-marker with both upstream behaviours it always replaces still absent --
-the unconditional "Backing up existing postflight", and the osquery
+marker with every upstream behaviour it always replaces still absent --
+the unconditional "Backing up existing postflight"; the postflight wrapper
+and postflight.d/reportmate.sh here-documents, since this build starts the
+installs collection through launchd and writes neither; and the osquery
 download/install -- may be imported. Otherwise the recipe stops before
 MunkiImporter runs.
 
@@ -25,9 +27,11 @@ from autopkglib import Processor, ProcessorError
 # which imports both and compares the constants directly.
 MARKER = (
     "# serrc-techops custom build: ReportMateClientMac postflight "
-    "integration rule 2, osquery-not-installed rule 1"
+    "integration rule 3, osquery-not-installed rule 1"
 )
 FORBIDDEN_BACKUP_TEXT = "Backing up existing postflight"
+FORBIDDEN_WRAPPER_HEREDOC = "<< 'WRAPPER_EOF'"
+FORBIDDEN_REPORTMATE_HEREDOC = "<< 'REPORTMATE_EOF'"
 FORBIDDEN_OSQUERY_URL = "github.com/osquery/osquery/releases"
 FORBIDDEN_INSTALLER_CALL = "/usr/sbin/installer"
 
@@ -47,6 +51,13 @@ def check_postinstall_text(text):
         raise ValueError(
             "Scripts/postinstall still contains %r; this is upstream's "
             "unpatched Munki postflight integration." % FORBIDDEN_BACKUP_TEXT
+        )
+    if FORBIDDEN_WRAPPER_HEREDOC in text or FORBIDDEN_REPORTMATE_HEREDOC in text:
+        raise ValueError(
+            "Scripts/postinstall still opens %r or %r; this build starts "
+            "the installs collection through launchd and must write "
+            "neither the postflight wrapper nor postflight.d/reportmate.sh."
+            % (FORBIDDEN_WRAPPER_HEREDOC, FORBIDDEN_REPORTMATE_HEREDOC)
         )
     if FORBIDDEN_OSQUERY_URL in text or FORBIDDEN_INSTALLER_CALL in text:
         raise ValueError(

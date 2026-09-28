@@ -5,8 +5,11 @@ package file. When run: pkgutil --expand it, patch a copy of its
 Scripts/postinstall with patch_postinstall(), pkgutil --flatten the
 result, pkgutil --expand that again, and check:
 
-  - the custom-build marker is present in the re-expanded Scripts/postinstall,
-    and neither upstream behaviour it replaces remains (the unconditional
+  - the custom-build marker is present in the re-expanded Scripts/postinstall;
+    neither here-document opening upstream's postflight wrapper and
+    postflight.d/reportmate.sh use is present (this build writes neither --
+    the installs collection is started by launchd instead); and neither
+    other upstream behaviour this build replaces remains (the unconditional
     postflight backup; the osquery download URL and installer call);
   - Payload, Bom and PackageInfo are byte-identical to upstream's own
     expansion of the same package -- only Scripts/postinstall was ever
@@ -84,6 +87,13 @@ class EndToEndTests(unittest.TestCase):
             "github.com/osquery/osquery/releases", self.reexpanded_postinstall
         )
         self.assertNotIn("/usr/sbin/installer", self.reexpanded_postinstall)
+
+    def test_neither_heredoc_opening_present_after_round_trip(self):
+        # This build starts the installs collection through launchd and
+        # writes neither the postflight wrapper nor postflight.d/
+        # reportmate.sh.
+        self.assertNotIn("<< 'WRAPPER_EOF'", self.reexpanded_postinstall)
+        self.assertNotIn("<< 'REPORTMATE_EOF'", self.reexpanded_postinstall)
 
     def test_osquery_detection_branch_survives_round_trip(self):
         self.assertIn(
