@@ -3,7 +3,7 @@
 <plist version="1.0">
 	<dict>
 		<key>Description</key>
-		<string>Downloads the current release version of the ReportMate macOS client and imports into Munki. Upstream publishes the package unsigned: run with -k PKG=/path/to/signed.pkg to import a package you signed and notarized yourself. The item requires the Munki item osquery, so that osquery is installed first; the client's installer installs its own copy of osquery only when it finds none.</string>
+		<string>Imports a ReportMate macOS client package into Munki. Only accepts the custom build ReportMateClientMac.pkg.recipe produces: build with that recipe, sign and notarize its output, then run this recipe with -k PKG=/path/to/the/signed/package. Requires the Munki item osquery, since this build does not install osquery itself.</string>
 		<key>Identifier</key>
 		<string>com.github.serrc-techops.munki.ReportMateClientMac</string>
 		<key>Input</key>
@@ -39,7 +39,7 @@
 				<key>unattended_uninstall</key>
 				<true/>
 				<key>notes</key>
-				<string>Updated via AutoPkg. Upstream publishes the package unsigned; import a signed and notarized copy with the PKG override. The installer replaces /usr/local/munki/postflight with a wrapper that runs the previous postflight and then ReportMate.</string>
+				<string>Updated via AutoPkg from the custom build (ReportMateClientMac.pkg.recipe), signed and notarized, and imported with the PKG override. This build does not install osquery itself, so a Mac without the required osquery Munki item gets ReportMate but no osquery-based module data until Munki installs it.</string>
 			</dict>
 		</dict>
 		<key>MinimumVersion</key>
@@ -48,6 +48,15 @@
 		<string>com.github.serrc-techops.download.ReportMateClientMac</string>
 		<key>Process</key>
 		<array>
+			<dict>
+				<key>Arguments</key>
+				<dict>
+					<key>pkg_path</key>
+					<string>%pathname%</string>
+				</dict>
+				<key>Processor</key>
+				<string>ReportMatePostinstallChecker</string>
+			</dict>
 			<dict>
 				<key>Arguments</key>
 				<dict>
