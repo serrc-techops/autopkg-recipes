@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Description</key>
+	<string>Stub recipe. It does nothing. It carries the identifier that lets other recipes name the processors in this folder: com.github.serrc-techops.SharedProcessors/PcmanImporter, /ChecksumVerifier and /GitHubAssetDigest.</string>
+	<key>Identifier</key>
+	<string>com.github.serrc-techops.SharedProcessors</string>
+	<key>Input</key>
+	<dict/>
+	<key>MinimumVersion</key>
+	<string>1.0.0</string>
+	<key>Process</key>
+	<array/>
+</dict>
+</plist>

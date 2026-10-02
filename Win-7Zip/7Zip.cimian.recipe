@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>Hands the downloaded 7-Zip installer to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.cimian.7Zip</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>7Zip</string>
+            <key>PCMAN_TEMPLATE</key>
+            <string>7zip</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>ParentRecipe</key>
+        <string>com.github.serrc-techops.download.7Zip-Win</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/PcmanImporter</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>pcman_template</key>
+                    <string>%PCMAN_TEMPLATE%</string>
+                    <key>pcman_version</key>
+                    <string>%version%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>
