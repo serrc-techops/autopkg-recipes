@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>This download is NOT verified yet: Google publishes no hash for the file, and a check of the signature is not built, so nothing proves that the file is what Google published. The shared importer therefore refuses a real run of the cimian recipe unless the override sets pcman_allow_unverified to true. Downloads the current Google Chrome enterprise installer for Windows (the 64-bit MSI that Google serves at a fixed address), kept under the file name of the address. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. It is written for the MSI, so the shared GoogleChrome-Win64 recipe (a download that needs 7z and builds its command from a fixed path) is not its parent.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.GoogleChromeEnterpriseX64-Win</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>GoogleChrome</string>
+            <key>DOWNLOAD_URL</key>
+            <string>https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>URLDownloader</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>url</key>
+                    <string>%DOWNLOAD_URL%</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+        </array>
+    </dict>
+</plist>

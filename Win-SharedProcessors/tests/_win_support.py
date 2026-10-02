@@ -10,6 +10,7 @@ A real AutoPkg install, when present, is used instead.
 Nothing here touches the network, the repository tree or a real package
 repository. Every file is made in a temporary folder.
 """
+import hashlib
 import importlib
 import json
 import os
@@ -59,6 +60,13 @@ import GitHubAssetDigest as digest  # noqa: E402
 import PcmanImporter as importer  # noqa: E402
 
 ProcessorError = sys.modules["autopkglib"].ProcessorError
+
+def sha256_hex(path):
+    """The SHA-256 of a file, by hashlib directly (not by a function of the
+    processors, so that a test does not trust the code that it tests)."""
+    with open(path, "rb") as handle:
+        return hashlib.sha256(handle.read()).hexdigest()
+
 
 # Variables that the interpreter or the system may add to a child's
 # environment by itself. They are not passed on by the processor.
@@ -236,8 +244,13 @@ class ToolTestCase(unittest.TestCase):
         return os.path.exists(os.path.join(self.root, "record.json"))
 
     def env(self, installer=None, **overrides):
-        """A complete input set for a real run of an .exe."""
+        """A complete input set for a real run of an .exe. The download counts as
+        verified (checksum_verified is true and checksum_sha256 is the real hash
+        of the file), as after a ChecksumVerifier step. A test of an unverified
+        download passes checksum_verified=None; a test of another hash passes
+        checksum_sha256."""
         env = {
+            "checksum_verified": True,
             "pathname": installer or self.exe,
             "pcman_template": "Example-App",
             "pcman_version": "2.5.0",
@@ -246,4 +259,11 @@ class ToolTestCase(unittest.TestCase):
             "pcman_path": self.msi_bin,
         }
         env.update(overrides)
+        if "checksum_sha256" not in overrides:
+            # The real hash of the file that is named in the end (none when it
+            # does not exist: a test of that case).
+            try:
+                env["checksum_sha256"] = sha256_hex(env["pathname"])
+            except OSError:
+                pass
         return {key: value for key, value in env.items() if value is not None}

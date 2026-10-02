@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>Hands the downloaded Zabbix Agent 2 installer to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. The recipe gives no version label: the package tool takes the MSI's own ProductVersion (four numbers, such as 7.0.31.2400), and a label of three numbers would be refused. This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.cimian.ZabbixAgent2</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>ZabbixAgent2</string>
+            <key>PCMAN_TEMPLATE</key>
+            <string>zabbix-agent2</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>ParentRecipe</key>
+        <string>com.github.serrc-techops.download.ZabbixAgent2-Win</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/PcmanImporter</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>pcman_template</key>
+                    <string>%PCMAN_TEMPLATE%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

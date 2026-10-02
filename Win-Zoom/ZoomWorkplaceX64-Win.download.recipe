@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>This download is NOT verified yet: Zoom publishes no hash for the file, and a check of the signature is not built, so nothing proves that the file is what Zoom published. The shared importer therefore refuses a real run of the cimian recipe unless the override sets pcman_allow_unverified to true. Downloads the current Zoom Workplace installer for Windows (the 64-bit MSI that Zoom serves at a fixed address) under a file name of its own, because the address has a query string. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. The shared Penn State recipe Zoom64-Win.download is not the parent: it would add a version step that this flow does not need, and a parent outside this repository changes without us.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.ZoomWorkplaceX64-Win</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>Zoom</string>
+            <key>DOWNLOAD_URL</key>
+            <string>https://zoom.us/client/latest/ZoomInstallerFull.msi?archType=x64</string>
+            <key>DOWNLOAD_FILENAME</key>
+            <string>ZoomInstallerFull-x64.msi</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>URLDownloader</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>url</key>
+                    <string>%DOWNLOAD_URL%</string>
+                    <key>filename</key>
+                    <string>%DOWNLOAD_FILENAME%</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+        </array>
+    </dict>
+</plist>

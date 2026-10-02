@@ -19,6 +19,25 @@ that runs it.
 The processor never passes --force, --allow-duplicate, --allow-product-change
 or --allow-version-label, and has no input that could.
 
+A download that no step verified is not published silently. A download counts
+as verified when checksum_verified is true (ChecksumVerifier sets it) AND
+checksum_sha256 (ChecksumVerifier outputs it: the hash of the file it checked)
+is a SHA-256 that equals the hash of the file about to be imported. This
+processor hashes that file itself, once. A boolean alone is not enough: it could
+be set by hand, and a step could have checked another file than the one that is
+imported. A real run of a download that does not count is refused before the
+tool starts, unless pcman_allow_unverified is true in the override. Then it goes
+on, prints a WARNING at every verbosity, and the summary says "published, NOT
+verified". A dry run of such a download prints a WARNING too.
+
+A checksum_sha256 that is a SHA-256 but is not the hash of the file is a
+different case: the file that was verified is not the file that is imported. It
+stops the run, in a dry run too, and pcman_allow_unverified does not override it.
+
+signature_verified does not count (no step sets it). A later signature step
+must output the hash of the file it checked under a named key, and this guard
+must then accept that key in the same way.
+
 What is passed on from the tool's output: the lines that begin with ERROR:
 (when the run failed) and the lines that begin with WARNING: or NOTE: (when it
 did not). The rest is never shown: a dry run prints the text of the pkginfo,
@@ -34,6 +53,7 @@ processes are killed before the temporary folder is removed.
 Exit codes of the tool: 0 published or finished (or a dry run), 3 nothing new
 (not an error), anything else stops the recipe.
 """
+import hashlib
 import json
 import os
 import re
@@ -48,6 +68,8 @@ __all__ = [
     "PcmanImporter",
     "build_command",
     "child_environment",
+    "normalize_sha256",
+    "sha256_of_file",
     "FORBIDDEN_FLAGS",
 ]
 
@@ -121,6 +143,30 @@ MAX_LINE_CHARS = 1500
 ALWAYS_SHOWN = 0
 # The result text in the summary of a dry run.
 DRY_RUN_SUMMARY_RESULT = "dry run, nothing written"
+# The same for a download that no step verified.
+DRY_RUN_UNVERIFIED_SUMMARY_RESULT = "dry run, nothing written, NOT verified"
+PUBLISHED_UNVERIFIED_SUMMARY_RESULT = "published, NOT verified"
+# What counts as a verified download: the first is true, and the second is the
+# SHA-256 of the file that is imported. ChecksumVerifier sets both.
+VERIFIED_FLAG_VARIABLE = "checksum_verified"
+VERIFIED_HASH_VARIABLE = "checksum_sha256"
+# Why a download does not count, for the messages. Nothing else is named: a
+# signature step does not exist yet.
+UNVERIFIED_REASON = (
+    "no step of the recipe set checksum_verified together with the "
+    "checksum_sha256 of this file"
+)
+
+# The same rules as ChecksumVerifier. A processor does not depend on a sibling
+# file being importable when AutoPkg loads it, so this is a second copy: a test
+# keeps the two equal.
+HASH_PREFIX = "sha256:"
+HEX_DIGITS = 64
+HASH_PATTERN = re.compile(r"[0-9a-f]{%d}" % HEX_DIGITS)
+READ_BLOCK_BYTES = 1024 * 1024
+# How much of a hash an error message shows: enough to compare by eye.
+SHOWN_HEAD_CHARS = 8
+SHOWN_TAIL_CHARS = 8
 
 TRUE_WORDS = ("true", "yes", "1")
 FALSE_WORDS = ("false", "no", "0")
@@ -156,6 +202,63 @@ def parse_timeout(value):
             % (MIN_TIMEOUT_SECONDS, MAX_TIMEOUT_SECONDS, seconds)
         )
     return seconds
+
+
+def shorten(text):
+    """Head and tail of a long value, so that a message stays short."""
+    if len(text) <= SHOWN_HEAD_CHARS + SHOWN_TAIL_CHARS + 3:
+        return text
+    return "%s...%s" % (text[:SHOWN_HEAD_CHARS], text[-SHOWN_TAIL_CHARS:])
+
+
+def normalize_sha256(value):
+    """The 64 lower-case hex digits in `value`, or None when it is not a
+    SHA-256 (not text, empty, wrong length, not hex). Upper case, white space
+    around it and the prefix "sha256:" are accepted, as ChecksumVerifier does."""
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if text[: len(HASH_PREFIX)].lower() == HASH_PREFIX:
+        text = text[len(HASH_PREFIX):].strip()
+    text = text.lower()
+    if not HASH_PATTERN.fullmatch(text):
+        return None
+    return text
+
+
+def sha256_of_file(path):
+    """SHA-256 of a file, as lower-case hex, read in blocks."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(READ_BLOCK_BYTES), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def check_verification(env, installer):
+    """True when the download counts as verified: checksum_verified is exactly
+    true (a boolean; text does not count) and checksum_sha256 is the SHA-256 of
+    `installer`. False when checksum_verified is not true, or when
+    checksum_sha256 is missing or is not a SHA-256. A checksum_sha256 that is a
+    SHA-256 of another file is an error: the file that was verified is not the
+    file that is imported. The file is hashed once, and only when the flag is
+    true."""
+    if env.get(VERIFIED_FLAG_VARIABLE) is not True:
+        return False
+    claimed = normalize_sha256(env.get(VERIFIED_HASH_VARIABLE))
+    if claimed is None:
+        return False
+    try:
+        actual = sha256_of_file(installer)
+    except OSError as err:
+        raise ProcessorError("Could not read %s: %s" % (installer, err))
+    if claimed != actual:
+        raise ProcessorError(
+            "The file to import is not the file whose checksum was verified: "
+            "%s is %s, but %s has the SHA-256 %s. Nothing was published."
+            % (VERIFIED_HASH_VARIABLE, shorten(claimed), os.path.basename(installer), shorten(actual))
+        )
+    return True
 
 
 def raw_text(value):
@@ -321,6 +424,18 @@ class PcmanImporter(Processor):
                 "nothing. A real run needs the explicit value false."
             ),
         },
+        "pcman_allow_unverified": {
+            "required": False,
+            "default": False,
+            "description": (
+                "False (the default): a real run of a download that no step "
+                "verified (checksum_verified is not true, or checksum_sha256 is "
+                "missing) is refused. True: it goes on, with a WARNING, and the "
+                "summary says 'published, NOT verified'. It does not override a "
+                "checksum_sha256 that is not the hash of the file: that always "
+                "stops the run. Set in an override, never in a recipe."
+            ),
+        },
         "pcman_timeout": {
             "required": False,
             "default": DEFAULT_TIMEOUT_SECONDS,
@@ -429,6 +544,9 @@ class PcmanImporter(Processor):
             )
 
         dry_run = parse_bool(self.env.get("pcman_dry_run", True), "pcman_dry_run")
+        allow_unverified = parse_bool(
+            self.env.get("pcman_allow_unverified", False), "pcman_allow_unverified"
+        )
         timeout = parse_timeout(self.env.get("pcman_timeout", DEFAULT_TIMEOUT_SECONDS))
         path_value = text_or_empty(self.env.get("pcman_path")) or DEFAULT_CHILD_PATH
 
@@ -438,6 +556,15 @@ class PcmanImporter(Processor):
                 "Install msitools, or set pcman_path." % path_value
             )
 
+        # The last check: it reads the whole installer, once.
+        verified = check_verification(self.env, installer)
+        if not dry_run and not verified and not allow_unverified:
+            raise ProcessorError(
+                "The download was not verified: %s. Nothing was published. "
+                "Publish by hand after checking the file, or set "
+                "pcman_allow_unverified to true in the override." % UNVERIFIED_REASON
+            )
+
         return {
             "installer": installer,
             "template": template,
@@ -445,6 +572,7 @@ class PcmanImporter(Processor):
             "root": root,
             "python": python,
             "dry_run": dry_run,
+            "verified": verified,
             "timeout": timeout,
             "path": path_value,
         }
@@ -647,6 +775,14 @@ class PcmanImporter(Processor):
             )
             data["result"] = DRY_RUN_SUMMARY_RESULT
             summary_text = "Dry run: the package tool wrote nothing (pcman_dry_run is on):"
+            if not settings["verified"]:
+                self.output(
+                    "WARNING: the download was NOT verified: %s. A real run is refused "
+                    "unless pcman_allow_unverified is true in the override."
+                    % UNVERIFIED_REASON,
+                    verbose_level=ALWAYS_SHOWN,
+                )
+                data["result"] = DRY_RUN_UNVERIFIED_SUMMARY_RESULT
         else:
             self.output(
                 "Published %s %s." % (field("name"), field("version")),
@@ -654,6 +790,13 @@ class PcmanImporter(Processor):
             )
             data["result"] = kind
             summary_text = "The following versions were published by the package tool:"
+            if not settings["verified"]:
+                self.output(
+                    "WARNING: published WITHOUT a verified download: %s, and "
+                    "pcman_allow_unverified is true." % UNVERIFIED_REASON,
+                    verbose_level=ALWAYS_SHOWN,
+                )
+                data["result"] = PUBLISHED_UNVERIFIED_SUMMARY_RESULT
         # No path of the repository in the summary: reports are mailed. The
         # paths are the outputs pcman_pkginfo_path and pcman_installer_path.
         self.env["pcman_importer_summary_result"] = {

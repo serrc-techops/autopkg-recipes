@@ -6,6 +6,8 @@ list, its whole environment, what its standard input looked like. The real
 package tool is tested in test_importer_real_tool.py.
 """
 import builtins
+import hashlib
+import inspect
 import os
 import time
 import unittest
@@ -15,10 +17,12 @@ from _win_support import (
     ADDED_BY_THE_SYSTEM,
     ProcessorError,
     ToolTestCase,
+    checksum,
     importer,
     new_processor,
     result_file_content,
     run_processor,
+    sha256_hex,
 )
 
 PCMAN = importer.PcmanImporter
@@ -87,8 +91,18 @@ class CommandLineTests(ToolTestCase):
     def test_there_is_no_input_that_could_carry_a_forbidden_flag(self):
         for name in PCMAN.input_variables:
             self.assertNotIn("force", name)
-            self.assertNotIn("allow", name)
+            self.assertNotIn("allow_duplicate", name)
+            self.assertNotIn("allow_product", name)
+            self.assertNotIn("allow_version", name)
             self.assertNotIn("duplicate", name)
+
+    def test_the_only_input_that_allows_anything_is_the_unverified_one(self):
+        """An input whose name suggests a way around a check (pcman_allow_anything,
+        pcman_allow_changes) must not appear without this test being changed."""
+        allowing = [name for name in PCMAN.input_variables if "allow" in name]
+        self.assertEqual(allowing, ["pcman_allow_unverified"])
+        begins = [name for name in PCMAN.input_variables if name.startswith("pcman_allow_")]
+        self.assertEqual(begins, ["pcman_allow_unverified"])
 
     def test_a_template_or_version_that_looks_like_a_flag_is_refused_and_nothing_runs(self):
         for key, value in (
@@ -189,6 +203,408 @@ class DryRunTests(ToolTestCase):
     def test_a_dry_run_that_answers_published_is_an_error(self):
         with self.assertRaises(ProcessorError):
             run_processor(PCMAN, self.env(pcman_dry_run=True))
+
+
+class UnverifiedDownloadTests(ToolTestCase):
+    """A download that no step verified is not published silently."""
+
+    def verified(self, **overrides):
+        return self.env(**overrides)
+
+    def unverified(self, **overrides):
+        return self.env(checksum_verified=None, **overrides)
+
+    def refused_message(self, env):
+        with self.assertRaises(ProcessorError) as caught:
+            run_processor(PCMAN, env)
+        self.assertFalse(self.was_run(), "the tool must not start")
+        return str(caught.exception)
+
+    def always_shown(self, processor, start):
+        return [m for level, m in processor.message_levels if level == importer.ALWAYS_SHOWN and m.startswith(start)]
+
+    # ---- the declaration
+
+    def test_the_variables_that_count_are_the_flag_and_the_hash_of_the_checksum_step(self):
+        self.assertEqual(importer.VERIFIED_FLAG_VARIABLE, "checksum_verified")
+        self.assertEqual(importer.VERIFIED_HASH_VARIABLE, "checksum_sha256")
+        # The names are those that ChecksumVerifier outputs.
+        self.assertIn(importer.VERIFIED_FLAG_VARIABLE, checksum.ChecksumVerifier.output_variables)
+        self.assertIn(importer.VERIFIED_HASH_VARIABLE, checksum.ChecksumVerifier.output_variables)
+        self.assertFalse(hasattr(importer, "VERIFIED_VARIABLES"))
+
+    def test_the_new_input_is_optional_and_false_by_default(self):
+        flags = PCMAN.input_variables["pcman_allow_unverified"]
+        self.assertIs(flags["required"], False)
+        self.assertIs(flags["default"], False)
+
+    # ---- a real run
+
+    def test_a_real_run_of_an_unverified_download_is_refused_before_the_tool_starts(self):
+        message = self.refused_message(self.unverified())
+        self.assertIn("not verified", message)
+        self.assertIn("pcman_allow_unverified", message)
+        self.assertIn("Publish by hand after checking the file", message)
+
+    def test_a_refused_run_sets_no_output(self):
+        processor, _ = new_processor(PCMAN, self.unverified())
+        with self.assertRaises(ProcessorError):
+            processor.main()
+        for name in PCMAN.output_variables:
+            self.assertNotIn(name, processor.env)
+
+    def test_only_a_boolean_true_counts_as_verified(self):
+        for value in (False, None, "true", "True", 1, "", 0, "yes", ["x"]):
+            with self.subTest(value=value):
+                env = self.env()  # the hash is the real one
+                env["checksum_verified"] = value
+                self.refused_message(env)
+
+    def test_the_flag_with_the_hash_of_the_file_is_enough_and_nothing_is_warned(self):
+        processor, _ = run_processor(PCMAN, self.verified())
+        self.assertIs(processor.env["pcman_repo_changed"], True)
+        self.assertEqual(self.always_shown(processor, "WARNING:"), [])
+        self.assertEqual(processor.env["pcman_importer_summary_result"]["data"]["result"], "published")
+
+    def test_a_signature_flag_does_not_count_alone_or_with_the_hash(self):
+        """No signature step exists that outputs what it verified."""
+        for hashed in (False, True):
+            with self.subTest(with_the_hash=hashed):
+                env = self.unverified()
+                env["signature_verified"] = True
+                if not hashed:
+                    env.pop("checksum_sha256")
+                self.refused_message(env)
+        self.assertNotIn("signature_verified", PCMAN.input_variables)
+        self.assertNotIn("signature_verified", inspect.getsource(importer.check_verification))
+
+    def test_the_hash_without_the_flag_does_not_count(self):
+        for flag in (None, False, "true"):
+            with self.subTest(flag=flag):
+                self.refused_message(self.env(checksum_verified=flag))
+
+    def test_the_default_is_a_refusal_whatever_the_false_spelling(self):
+        for value in (False, "false", "no", "0", " False "):
+            with self.subTest(value=value):
+                self.refused_message(self.unverified(pcman_allow_unverified=value))
+
+    # ---- allowed by the override
+
+    def test_with_the_allowance_the_run_goes_on_and_says_so_at_every_verbosity(self):
+        for value in (True, "true", "True", "yes", "1", " true "):
+            with self.subTest(value=value):
+                self.behave()
+                processor, _ = run_processor(PCMAN, self.unverified(pcman_allow_unverified=value))
+                self.assertIs(processor.env["pcman_repo_changed"], True)
+                warnings = self.always_shown(processor, "WARNING:")
+                self.assertEqual(len(warnings), 1)
+                self.assertIn("published WITHOUT a verified download", warnings[0])
+
+    def test_with_the_allowance_the_summary_row_says_not_verified(self):
+        processor, _ = run_processor(PCMAN, self.unverified(pcman_allow_unverified=True))
+        data = processor.env["pcman_importer_summary_result"]["data"]
+        self.assertEqual(data["result"], "published, NOT verified")
+        self.assertEqual(data["result"], importer.PUBLISHED_UNVERIFIED_SUMMARY_RESULT)
+        self.assertEqual(set(data), {"name", "version", "catalogs", "result"})
+
+    def test_an_earlier_publish_that_is_finished_also_says_not_verified(self):
+        self.behave(result=result_file_content("finished-earlier-publish"))
+        processor, _ = run_processor(PCMAN, self.unverified(pcman_allow_unverified=True))
+        self.assertEqual(len(self.always_shown(processor, "WARNING: published WITHOUT")), 1)
+        self.assertEqual(
+            processor.env["pcman_importer_summary_result"]["data"]["result"], "published, NOT verified"
+        )
+
+    def test_the_allowance_does_nothing_for_a_verified_download(self):
+        processor, _ = run_processor(PCMAN, self.verified(pcman_allow_unverified=True))
+        self.assertEqual(self.always_shown(processor, "WARNING:"), [])
+        self.assertEqual(processor.env["pcman_importer_summary_result"]["data"]["result"], "published")
+
+    def test_nothing_new_is_not_called_a_publish_even_when_unverified(self):
+        self.behave(exit=3, result=result_file_content("nothing-new"))
+        processor, _ = run_processor(PCMAN, self.unverified(pcman_allow_unverified=True))
+        self.assertEqual(self.always_shown(processor, "WARNING:"), [])
+        self.assertEqual(len(self.always_shown(processor, "Nothing new")), 1)
+        self.assertIs(processor.env["pcman_repo_changed"], False)
+
+    def test_the_allowance_is_read_strictly_even_for_a_verified_download(self):
+        for value in ("maybe", "off", "n", "f", "", "2", 2, "on", "false;", "0.0", None):
+            env = self.verified()
+            env["pcman_allow_unverified"] = value
+            with self.subTest(value=value):
+                self.refused_message(env)
+
+    def test_the_allowance_has_no_effect_on_the_command_line_of_the_tool(self):
+        run_processor(PCMAN, self.unverified(pcman_allow_unverified=True))
+        argv = self.record()["argv"]
+        self.assertNotIn("pcman_allow_unverified", " ".join(argv))
+        for flag in importer.FORBIDDEN_FLAGS:
+            self.assertNotIn(flag, argv)
+        self.assertNotIn("--dry-run", argv)
+
+    # ---- a dry run
+
+    def test_a_dry_run_of_an_unverified_download_warns_and_the_summary_says_so(self):
+        for allow in (None, False, True):
+            with self.subTest(allow=allow):
+                self.behave(result=result_file_content("dry-run"))
+                processor, _ = run_processor(PCMAN, self.unverified(pcman_dry_run=True, pcman_allow_unverified=allow))
+                warnings = self.always_shown(processor, "WARNING: the download was NOT verified")
+                self.assertEqual(len(warnings), 1)
+                self.assertIn("pcman_allow_unverified", warnings[0])
+                data = processor.env["pcman_importer_summary_result"]["data"]
+                self.assertEqual(data["result"], "dry run, nothing written, NOT verified")
+                self.assertIs(processor.env["pcman_repo_changed"], False)
+                self.assertIn("--dry-run", self.record()["argv"])
+
+    def test_the_dry_run_of_the_default_is_a_dry_run_and_not_a_refusal(self):
+        self.behave(result=result_file_content("dry-run"))
+        processor, _ = run_processor(PCMAN, self.unverified(pcman_dry_run=None))
+        self.assertEqual(processor.env["pcman_result"], "dry-run")
+
+    def test_a_dry_run_of_a_verified_download_has_the_old_summary_and_one_warning(self):
+        self.behave(result=result_file_content("dry-run"))
+        processor, _ = run_processor(PCMAN, self.verified(pcman_dry_run=True))
+        self.assertEqual(len(self.always_shown(processor, "WARNING:")), 1)
+        self.assertEqual(
+            processor.env["pcman_importer_summary_result"]["data"]["result"], importer.DRY_RUN_SUMMARY_RESULT
+        )
+
+    # ---- the chain with the real ChecksumVerifier
+
+    def test_the_checksum_verifier_makes_a_real_run_possible_and_a_failed_one_does_not(self):
+        import hashlib
+        with open(self.exe, "rb") as handle:
+            digest = hashlib.sha256(handle.read()).hexdigest()
+        run = {"pathname": self.exe, "expected_sha256": digest}
+        verifier, _ = run_processor(checksum.ChecksumVerifier, run)
+        env = self.unverified()
+        env.pop("checksum_sha256")
+        env.update({k: v for k, v in verifier.env.items() if k.startswith("checksum_")})
+        self.assertEqual(env["checksum_sha256"], digest)
+        processor, _ = run_processor(PCMAN, env)
+        self.assertIs(processor.env["pcman_repo_changed"], True)
+        self.assertEqual(self.always_shown(processor, "WARNING:"), [])
+        # A wrong hash stops the verifier and sets nothing.
+        bad, _ = new_processor(checksum.ChecksumVerifier, {"pathname": self.exe, "expected_sha256": "0" * 64})
+        with self.assertRaises(ProcessorError):
+            bad.main()
+        self.assertNotIn("checksum_verified", bad.env)
+
+
+class VerifiedFileTests(ToolTestCase):
+    """The verified download is tied to the file that is imported: the importer
+    hashes that file and compares it with checksum_sha256."""
+
+    def swapped(self, **overrides):
+        """checksum_verified and the hash of one file, another file to import."""
+        other = self.make_installer("Other App-9.9.9.exe")
+        with open(other, "wb") as handle:
+            handle.write(b"a different file")
+        env = self.env(**overrides)
+        env["pathname"] = other
+        return env
+
+    def refused_message(self, env):
+        with self.assertRaises(ProcessorError) as caught:
+            run_processor(PCMAN, env)
+        self.assertFalse(self.was_run(), "the tool must not start")
+        return str(caught.exception)
+
+    def always_shown(self, processor, start):
+        return [m for level, m in processor.message_levels if level == importer.ALWAYS_SHOWN and m.startswith(start)]
+
+    # ---- another file than the verified one
+
+    def test_a_swapped_file_is_refused_before_the_tool_starts(self):
+        env = self.swapped()
+        verified, imported = env["checksum_sha256"], sha256_hex(env["pathname"])
+        message = self.refused_message(env)
+        self.assertIn("not the file whose checksum was verified", message)
+        self.assertIn("Other App-9.9.9.exe", message)
+        # both hashes, shortened: head and tail, never the whole value
+        for value in (verified, imported):
+            self.assertIn("%s...%s" % (value[:8], value[-8:]), message)
+            self.assertNotIn(value, message)
+
+    def test_a_swapped_file_is_an_error_in_a_dry_run_too(self):
+        message = self.refused_message(self.swapped(pcman_dry_run=True))
+        self.assertIn("not the file whose checksum was verified", message)
+
+    def test_the_default_dry_run_checks_the_file_too(self):
+        self.refused_message(self.swapped(pcman_dry_run=None))
+
+    def test_the_allowance_does_not_override_a_swapped_file(self):
+        for dry in (False, True):
+            with self.subTest(dry_run=dry):
+                message = self.refused_message(self.swapped(pcman_allow_unverified=True, pcman_dry_run=dry))
+                self.assertIn("not the file whose checksum was verified", message)
+
+    def test_a_file_that_was_rewritten_after_the_check_is_refused(self):
+        env = self.env()
+        with open(self.exe, "wb") as handle:
+            handle.write(b"the same path, other content")
+        self.refused_message(env)
+
+    def test_a_swapped_file_sets_no_output(self):
+        processor, _ = new_processor(PCMAN, self.swapped())
+        with self.assertRaises(ProcessorError):
+            processor.main()
+        for name in PCMAN.output_variables:
+            self.assertNotIn(name, processor.env)
+
+    def test_the_hash_of_another_file_in_upper_case_or_with_a_prefix_is_still_a_mismatch(self):
+        other = hashlib.sha256(b"another file").hexdigest()
+        for value in (other.upper(), "sha256:" + other, " SHA256:" + other.upper() + " "):
+            with self.subTest(value=value[:20]):
+                self.refused_message(self.env(checksum_sha256=value))
+
+    # ---- a boolean without the hash of the file
+
+    def test_a_flag_without_a_matching_hash_is_not_verified_on_a_real_run(self):
+        not_a_hash = (
+            "", "   ", "sha256:", "0" * 63, "0" * 65, "g" * 64, "md5:" + "0" * 64, "0" * 64 + " file.exe",
+            1, True, ["0" * 64], b"0" * 64,
+        )
+        for value in not_a_hash:
+            with self.subTest(value=repr(value)[:30]):
+                message = self.refused_message(self.env(checksum_sha256=value))
+                self.assertIn("The download was not verified", message)
+                self.assertIn("pcman_allow_unverified", message)
+
+    def test_a_flag_without_any_hash_is_not_verified_on_a_real_run(self):
+        env = self.env()
+        env.pop("checksum_sha256")
+        message = self.refused_message(env)
+        self.assertIn("The download was not verified", message)
+        self.assertIn("checksum_sha256", message)
+
+    def test_a_flag_without_a_matching_hash_warns_on_a_dry_run(self):
+        for hash_value in (None, "", "0" * 63, 7):
+            with self.subTest(value=repr(hash_value)):
+                self.behave(result=result_file_content("dry-run"))
+                env = self.env(pcman_dry_run=True, checksum_sha256=hash_value)
+                if hash_value is None:
+                    env.pop("checksum_sha256", None)
+                processor, _ = run_processor(PCMAN, env)
+                warnings = self.always_shown(processor, "WARNING: the download was NOT verified")
+                self.assertEqual(len(warnings), 1)
+                data = processor.env["pcman_importer_summary_result"]["data"]
+                self.assertEqual(data["result"], "dry run, nothing written, NOT verified")
+
+    def test_a_flag_without_a_matching_hash_is_published_with_the_allowance_and_marked(self):
+        env = self.env(pcman_allow_unverified=True)
+        env.pop("checksum_sha256")
+        processor, _ = run_processor(PCMAN, env)
+        self.assertEqual(len(self.always_shown(processor, "WARNING: published WITHOUT")), 1)
+        self.assertEqual(
+            processor.env["pcman_importer_summary_result"]["data"]["result"], "published, NOT verified"
+        )
+
+    # ---- the hash of the file counts
+
+    def test_a_faked_flag_with_the_right_hash_counts_as_verified(self):
+        """A pinned hash that whoever wrote the override chose: the README says so."""
+        env = {
+            "checksum_verified": True,
+            "checksum_sha256": sha256_hex(self.exe),
+            "pathname": self.exe,
+            "pcman_template": "Example-App",
+            "pcman_version": "2.5.0",
+            "pcman_root": self.root,
+            "pcman_dry_run": False,
+            "pcman_path": self.msi_bin,
+        }
+        processor, _ = run_processor(PCMAN, env)
+        self.assertIs(processor.env["pcman_repo_changed"], True)
+        self.assertEqual(self.always_shown(processor, "WARNING:"), [])
+
+    def test_the_hash_in_upper_case_with_a_prefix_or_blanks_is_normalised_like_the_verifier(self):
+        real = sha256_hex(self.exe)
+        for value in (real.upper(), "sha256:" + real, "SHA256:" + real.upper(), "  " + real + "\n", "sha256: " + real):
+            with self.subTest(value=value[:20]):
+                self.behave()
+                processor, _ = run_processor(PCMAN, self.env(checksum_sha256=value))
+                self.assertEqual(self.always_shown(processor, "WARNING:"), [])
+                data = processor.env["pcman_importer_summary_result"]["data"]
+                self.assertEqual(data["result"], "published")
+
+    def test_the_verified_dry_run_has_one_warning_only(self):
+        self.behave(result=result_file_content("dry-run"))
+        processor, _ = run_processor(PCMAN, self.env(pcman_dry_run=True))
+        self.assertEqual(len(self.always_shown(processor, "WARNING:")), 1)
+
+    def test_the_real_chain_with_the_checksum_verifier_counts_as_verified(self):
+        verifier, _ = run_processor(
+            checksum.ChecksumVerifier, {"pathname": self.exe, "expected_sha256": sha256_hex(self.exe).upper()}
+        )
+        env = self.env(checksum_verified=None, checksum_sha256=None)
+        env.update({k: v for k, v in verifier.env.items() if k.startswith("checksum_")})
+        processor, _ = run_processor(PCMAN, env)
+        self.assertEqual(self.always_shown(processor, "WARNING:"), [])
+        self.assertEqual(processor.env["pcman_importer_summary_result"]["data"]["result"], "published")
+
+    def test_the_real_chain_then_a_second_file_is_refused(self):
+        """Verify file A, hand over file B (the hole that this guard closes)."""
+        verifier, _ = run_processor(checksum.ChecksumVerifier, {"pathname": self.exe, "expected_sha256": sha256_hex(self.exe)})
+        env = self.swapped(checksum_verified=None, checksum_sha256=None)
+        env.update({k: v for k, v in verifier.env.items() if k.startswith("checksum_")})
+        message = self.refused_message(env)
+        self.assertIn("not the file whose checksum was verified", message)
+
+    # ---- the file is hashed once, and only when the flag is true
+
+    def test_the_file_is_hashed_once_per_run(self):
+        for dry in (False, True):
+            with self.subTest(dry_run=dry):
+                self.behave(result=result_file_content("dry-run") if dry else result_file_content())
+                with mock.patch.object(importer, "sha256_of_file", wraps=importer.sha256_of_file) as spy:
+                    run_processor(PCMAN, self.env(pcman_dry_run=dry))
+                self.assertEqual(spy.call_count, 1)
+                self.assertEqual(spy.call_args[0][0], self.exe)
+
+    def test_a_file_is_not_read_for_a_hash_when_the_flag_is_not_true(self):
+        with mock.patch.object(importer, "sha256_of_file", wraps=importer.sha256_of_file) as spy:
+            self.refused_message(self.env(checksum_verified=None))
+        self.assertEqual(spy.call_count, 0)
+
+    def test_a_file_that_cannot_be_read_is_an_error_and_the_tool_does_not_start(self):
+        with mock.patch.object(importer, "sha256_of_file", side_effect=OSError("denied")):
+            message = self.refused_message(self.env())
+        self.assertIn("Could not read", message)
+
+    # ---- the copy of the verifier's rules
+
+    def test_the_hash_rules_equal_those_of_the_checksum_verifier(self):
+        real = sha256_hex(self.exe)
+        values = (
+            real, real.upper(), "sha256:" + real, "SHA256:" + real, " sha256: " + real.upper() + " ", "", " ",
+            "sha256:", "0" * 63, "0" * 65, "g" * 64, "md5:" + real, real + " file", None, 5, True, b"x", [real],
+        )
+        for value in values:
+            with self.subTest(value=repr(value)[:30]):
+                try:
+                    expected = checksum.normalize_expected_sha256(value)
+                except ValueError:
+                    expected = None
+                self.assertEqual(importer.normalize_sha256(value), expected)
+
+    def test_the_two_hash_functions_give_the_same_result_over_several_blocks(self):
+        path = os.path.join(self.downloads, "big.exe")
+        size = importer.READ_BLOCK_BYTES * 2 + 12345
+        with open(path, "wb") as handle:
+            handle.write(os.urandom(size))
+        self.assertEqual(importer.sha256_of_file(path), checksum.sha256_of_file(path))
+        self.assertEqual(importer.sha256_of_file(path), sha256_hex(path))
+        self.assertEqual(importer.sha256_of_file(self.exe), sha256_hex(self.exe))
+
+    def test_the_constants_and_the_shortening_equal_those_of_the_checksum_verifier(self):
+        for name in ("HASH_PREFIX", "HEX_DIGITS", "READ_BLOCK_BYTES", "SHOWN_HEAD_CHARS", "SHOWN_TAIL_CHARS"):
+            with self.subTest(name=name):
+                self.assertEqual(getattr(importer, name), getattr(checksum, name))
+        self.assertEqual(importer.HASH_PATTERN.pattern, checksum.HASH_PATTERN.pattern)
+        for text in ("short", "a" * 19, "a" * 20, "0123456789abcdef" * 4):
+            self.assertEqual(importer.shorten(text), checksum.shorten(text))
 
 
 class ExitCodeTests(ToolTestCase):

@@ -6,6 +6,7 @@ processors is compared with what that processor declares (see
 """
 import os
 import plistlib
+import re
 import subprocess
 import sys
 import unittest
@@ -215,12 +216,65 @@ class ReadmeTests(unittest.TestCase):
         for match in runs:
             self.assertNotIn("com.github.", match.group(1))
 
-    def test_every_run_is_by_path_of_the_override(self):
-        runs = list(self.re.finditer(r"autopkg run ([^`\n]*?\.recipe)", self.raw))
-        self.assertEqual(len(runs), 3)  # the dry run, the real run, nothing else
-        for match in runs:
-            self.assertEqual(match.group(1), "<the Windows overrides folder>/7Zip.cimian.recipe")
-        self.assertEqual(len(self.re.findall(r"autopkg run ", self.raw)), 3)
+    def operator_commands(self):
+        """The lines of an operator step that run autopkg: indented four spaces or more."""
+        pattern = re.compile(r"^ {4,}(autopkg (?:run|verify-trust-info|update-trust-info)\b.*)$", re.M)
+        return [match.group(1) for match in pattern.finditer(self.raw)]
+
+    def test_every_run_and_every_trust_command_carries_the_override_dir_and_the_path(self):
+        """An override outside AutoPkg's configured override folders loses its trust check
+        unless the folder is named on the command line (AutoPkg 2.9.0)."""
+        commands = self.operator_commands()
+        self.assertEqual(len([c for c in commands if c.startswith("autopkg run")]), 3)
+        self.assertEqual(len([c for c in commands if c.startswith("autopkg verify-trust-info")]), 2)
+        self.assertEqual(len([c for c in commands if c.startswith("autopkg update-trust-info")]), 1)
+        for command in commands:
+            with self.subTest(command=command):
+                self.assertRegex(
+                    command,
+                    r"^autopkg (run|verify-trust-info|update-trust-info)( -vv)? "
+                    r"--override-dir=<the Windows overrides folder> "
+                    r"<the Windows overrides folder>/7Zip\.cimian\.recipe$",
+                )
+
+    def test_no_autopkg_command_line_is_missed_by_the_indent_rule(self):
+        """An operator's command that is not indented four spaces (or is indented
+        less) must still be counted: every line that begins with an autopkg
+        command is one of the lines checked above, and `autopkg run ` occurs
+        three times in the whole file."""
+        pattern = r"^[ \t]*autopkg (?:run|verify-trust-info|update-trust-info)\b"
+        at_line_start = re.findall(pattern, self.raw, re.M)
+        self.assertEqual(len(at_line_start), len(self.operator_commands()))
+        self.assertEqual(len(re.findall(r"autopkg run ", self.raw)), 3)
+
+    def test_no_prose_line_shows_a_full_command_without_the_option(self):
+        for match in re.finditer(r"`(autopkg (?:run|verify-trust-info|update-trust-info)[^`]*<[^`]*)`", self.raw):
+            self.assertIn("--override-dir=", match.group(1))
+
+    def test_the_name_check_and_the_parent_check_are_in_step_b(self):
+        step = self.raw[self.raw.index("## b."):self.raw.index("## c.")]
+        self.assertIn("First check that no other recipe has the same name.", step)
+        self.assertIn("autopkg list-recipes | grep -i 7Zip-Win", step)
+        self.assertIn("autopkg list-recipes | grep -i 7Zip.cimian", step)
+        self.assertIn("`ParentRecipe`: it must be `com.github.serrc-techops.download.7Zip-Win`",
+                      re.sub(r"\s+", " ", step))
+        self.assertLess(step.index("list-recipes"), step.index("autopkg make-override"))
+
+    def test_the_readme_states_no_hash(self):
+        """A README that states a SHA-256 (64 hex digits) could be taken for a check."""
+        self.assertIsNone(re.search(r"(?i)\b[0-9a-f]{64}\b", self.raw))
+
+    def test_a_bold_paragraph_says_why_and_what_to_do_when_the_warning_appears(self):
+        self.assertIn("## Run every override with `--override-dir`", self.raw)
+        i = self.raw.index("## Run every override with `--override-dir`")
+        paragraph = re.sub(r"\s+", " ", self.raw[i:i + 2500])
+        for needle in ("**Give `--override-dir=<the Windows overrides folder>` to every `autopkg run`",
+                       "skips the trust check with one warning line", "is missing trust info",
+                       "a changed processor is not caught", "If that line ever appears in a run of an override, stop: the run was not checked.**",
+                       "`FAIL_RECIPES_WITHOUT_TRUST_INFO`", "not set on the build machine today",
+                       "change how the Mac recipes run", "owner's decision"):
+            self.assertIn(needle, paragraph)
+        self.assertLess(i, self.raw.index("## a."))
 
     def test_the_steps_of_the_rehearsal_are_there(self):
         for needle in ("rehearsed", "NOT yet run",
@@ -232,6 +286,51 @@ class ReadmeTests(unittest.TestCase):
     def test_the_status_line_is_at_the_top(self):
         self.assertLess(self.raw.index("Rehearsed on 2026-10-01"), self.raw.index("## a."))
         self.assertIn("`pcman catalogs` was NOT rehearsed", self.text)
+        for needle in ("a dry run, a publish", "a trust failure (a changed processor)", "a missing repository",
+                       "NOT yet run against the real share", "carries `--override-dir`"):
+            self.assertIn(needle, self.text)
+
+
+class ChainTests(_win_support.ToolTestCase):
+    """The chain of this program counts as verified for the importer: the real
+    ChecksumVerifier hashes the file, and the importer hashes it again and
+    compares. The stand-in package tool is used; nothing else is run."""
+
+    def chain_env(self, installer):
+        """What the steps of the two recipes leave in the run, with the
+        arguments of the recipe's own PcmanImporter step."""
+        run = {"pathname": installer, "expected_sha256": _win_support.sha256_hex(installer)}
+        verifier, _ = _win_support.run_processor(_win_support.checksum.ChecksumVerifier, run)
+        values = {"%pathname%": installer, "%PCMAN_TEMPLATE%": load(CIMIAN)["Input"]["PCMAN_TEMPLATE"],
+                  "%version%": "26.03"}
+        env = {"pathname": installer, "pcman_root": self.root, "pcman_dry_run": False,
+               "pcman_path": self.msi_bin}
+        env.update({k: v for k, v in verifier.env.items() if k.startswith("checksum_")})
+        steps = [step for step in load(CIMIAN)["Process"] if step["Processor"].endswith("/PcmanImporter")]
+        self.assertEqual(len(steps), 1)
+        for name, value in steps[0]["Arguments"].items():
+            env[name] = values.get(value, value)
+        return env
+
+    def test_the_chain_counts_as_verified_and_nothing_is_warned(self):
+        env = self.chain_env(self.exe)
+        self.assertEqual(env["checksum_sha256"], _win_support.sha256_hex(self.exe))
+        processor, _ = _win_support.run_processor(_win_support.importer.PcmanImporter, env)
+        self.assertIs(processor.env["pcman_repo_changed"], True)
+        warnings = [m for level, m in processor.message_levels if m.startswith("WARNING:")]
+        self.assertEqual(warnings, [])
+        self.assertEqual(processor.env["pcman_importer_summary_result"]["data"]["result"], "published")
+
+    def test_the_chain_is_refused_for_another_file(self):
+        env = self.chain_env(self.exe)
+        other = os.path.join(self.downloads, "other.exe")
+        with open(other, "wb") as handle:
+            handle.write(b"not the file that was verified")
+        env["pathname"] = other
+        with self.assertRaises(_win_support.ProcessorError) as caught:
+            _win_support.run_processor(_win_support.importer.PcmanImporter, env)
+        self.assertIn("not the file whose checksum was verified", str(caught.exception))
+        self.assertFalse(self.was_run())
 
 
 if __name__ == "__main__":

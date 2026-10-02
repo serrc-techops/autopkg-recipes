@@ -22,7 +22,7 @@ import subprocess
 import tempfile
 import unittest
 
-from _win_support import ProcessorError, importer, run_processor
+from _win_support import ProcessorError, importer, run_processor, sha256_hex
 
 TOOL_SOURCE = os.environ.get("PCMAN_TOOL_SOURCE", "")
 TOOL_PYTHON = os.environ.get("PCMAN_TOOL_PYTHON", "")
@@ -116,6 +116,8 @@ class RealToolTests(unittest.TestCase):
 
     def env(self, installer, **overrides):
         env = {
+            "checksum_verified": True,  # as after a ChecksumVerifier step ...
+            "checksum_sha256": sha256_hex(installer),  # ... which also gives the hash
             "pathname": installer,
             "pcman_template": "Example-App",
             "pcman_version": "2.0",
@@ -167,6 +169,42 @@ class RealToolTests(unittest.TestCase):
         self.assertIn("2.0", pkginfo)
         summary = env["pcman_importer_summary_result"]
         self.assertEqual(summary["data"]["version"], "2.0")
+
+    def test_an_unverified_download_is_refused_in_a_real_run_and_writes_nothing(self):
+        self.make_exe_template()
+        before = self.repository_files()
+        second = self.installer("Example App-2.0.exe", b"MZ second version")
+        with self.assertRaises(ProcessorError) as caught:
+            run_processor(PCMAN, self.env(second, checksum_verified=None))
+        self.assertIn("not verified", str(caught.exception))
+        self.assertEqual(self.repository_files(), before)
+
+    def test_a_file_other_than_the_verified_one_is_refused_and_writes_nothing(self):
+        self.make_exe_template()
+        before = self.repository_files()
+        verified = self.installer("Example App-2.0.exe", b"MZ second version")
+        other = self.installer("Example App-2.1.exe", b"MZ a file that nobody checked")
+        for dry_run in (False, None):
+            with self.subTest(dry_run=dry_run):
+                env = self.env(verified, pcman_dry_run=dry_run, pcman_allow_unverified=True)
+                env["pathname"] = other
+                with self.assertRaises(ProcessorError) as caught:
+                    run_processor(PCMAN, env)
+                self.assertIn("not the file whose checksum was verified", str(caught.exception))
+                self.assertEqual(self.repository_files(), before)
+
+    def test_an_unverified_download_with_the_allowance_is_published_and_marked(self):
+        self.make_exe_template()
+        second = self.installer("Example App-2.0.exe", b"MZ second version")
+        processor, messages = run_processor(
+            PCMAN, self.env(second, checksum_verified=None, pcman_allow_unverified=True)
+        )
+        self.assertEqual(processor.env["pcman_result"], "published")
+        self.assertTrue(os.path.isfile(processor.env["pcman_pkginfo_path"]))
+        self.assertEqual(
+            processor.env["pcman_importer_summary_result"]["data"]["result"], "published, NOT verified"
+        )
+        self.assertTrue(any("published WITHOUT a verified download" in m for m in messages))
 
     def test_the_second_run_says_nothing_new(self):
         self.make_exe_template()

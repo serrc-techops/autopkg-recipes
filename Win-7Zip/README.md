@@ -3,9 +3,13 @@
 The first Windows recipe pair: 7-Zip, the 64-bit `.exe`.
 
 **Status.** Rehearsed on 2026-10-01 with AutoPkg 2.9.0 and the real installer in
-a scratch repository (a folder with `pkgs/` and `pkgsinfo/`). NOT yet run against
-the real share. `pcman catalogs` was NOT rehearsed. The lines quoted below are
-those that the rehearsal printed; spacing of the tables may differ.
+a scratch repository (a folder with `pkgs/` and `pkgsinfo/`): a dry run, a publish,
+"Nothing new", a trust failure (a changed processor) and a missing repository. NOT
+yet run against the real share. `pcman catalogs` was NOT rehearsed. The lines quoted
+below are those that the rehearsal printed; spacing of the tables may differ. (In the
+rehearsal the scratch overrides folder was one of AutoPkg's override folders. On the
+build machine the Windows overrides folder is not, so every override command here
+carries `--override-dir`: see the next paragraph.)
 
 | Recipe | Identifier | What it does |
 | --- | --- | --- |
@@ -19,6 +23,12 @@ import that failed is tried again at the next run. The processors are in
 
 Below, `pcman` stands for
 `<the package tool's folder>/.venv/bin/python3 <the package tool's folder>/bin/pcman`.
+
+## Run every override with `--override-dir`
+
+**Give `--override-dir=<the Windows overrides folder>` to every `autopkg run`, `autopkg verify-trust-info` and `autopkg update-trust-info`, together with the override's path. Without it AutoPkg does not treat the file as an override: it skips the trust check with one warning line (`... is missing trust info ... Proceeding...`) and runs the recipe, and a changed processor is not caught. If that line ever appears in a run of an override, stop: the run was not checked.** (Seen with AutoPkg 2.9.0 on 2026-10-01: `verify-trust-info` without the option said "No trust information present" for an override that has it.)
+
+As an alternative the operator may set the AutoPkg preference `FAIL_RECIPES_WITHOUT_TRUST_INFO` to true: then any recipe without verified trust information fails. It is not set on the build machine today, and it would also change how the Mac recipes run, so it is the owner's decision.
 
 ## a. What must exist first
 
@@ -58,6 +68,15 @@ Below, `pcman` stands for
 
 ## b. Make the override INTO THE WINDOWS OVERRIDES FOLDER
 
+First check that no other recipe has the same name. AutoPkg takes the first match
+by name and says nothing about the others:
+
+    autopkg list-recipes | grep -i 7Zip-Win
+    autopkg list-recipes | grep -i 7Zip.cimian
+
+Each name must be listed once, from this repository. (Not run: the lines of the
+output are not known.) Then make the override:
+
     autopkg make-override --override-dir=<the Windows overrides folder> 7Zip.cimian
 
 **Why: without `--override-dir` the override lands in AutoPkg's normal overrides
@@ -65,13 +84,15 @@ folder, and a nightly script that runs every override there would run it too.**
 The command takes the recipe's name, `7Zip.cimian`, not a path. It writes
 `<the Windows overrides folder>/7Zip.cimian.recipe` with the identifier
 `local.cimian.7Zip` and the trust information of the two recipes and the three
-processors.
+processors. **Open the written file and read
+`ParentRecipe`: it must be `com.github.serrc-techops.download.7Zip-Win`.** Another value
+means that AutoPkg found another recipe of the same name. (No collision is known: the shared recipe `7zip-Win64.download` has another name.)
 
 ## c. First try: a dry run
 
-Run the override BY PATH:
+Run the override BY PATH and with `--override-dir` (see above):
 
-    autopkg run <the Windows overrides folder>/7Zip.cimian.recipe
+    autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/7Zip.cimian.recipe
 
 **Why by path:** the recipe's name or identifier
 (`com.github.serrc-techops.cimian.7Zip`) runs the recipe itself, not the
@@ -95,7 +116,7 @@ instead. That is correct.
 
     /usr/libexec/PlistBuddy -c 'Add :Input:pcman_dry_run bool false' \
         <the Windows overrides folder>/7Zip.cimian.recipe
-    autopkg verify-trust-info <the Windows overrides folder>/7Zip.cimian.recipe
+    autopkg verify-trust-info --override-dir=<the Windows overrides folder> <the Windows overrides folder>/7Zip.cimian.recipe
 
 The trust check still reports OK: a change of the `Input` does not break trust.
 Do not use `-k pcman_dry_run=false` instead: on the command line it applies to
@@ -105,7 +126,7 @@ every recipe of that run.
 
 1. The real run, by path again:
 
-       autopkg run <the Windows overrides folder>/7Zip.cimian.recipe
+       autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/7Zip.cimian.recipe
 
    Expected: `Published 7zip 26.03.` and the table
 
@@ -125,7 +146,7 @@ every recipe of that run.
 
 4. The second run, by path again:
 
-       autopkg run <the Windows overrides folder>/7Zip.cimian.recipe
+       autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/7Zip.cimian.recipe
 
    It prints `Nothing new: 7zip 26.03 is in the repository already. Nothing was
    written.` and `Nothing downloaded, packaged or imported.`
@@ -138,8 +159,8 @@ The run fails and publishes nothing:
 
 Look at what changed, then accept it. Never do this automatically:
 
-    autopkg verify-trust-info -vv <the Windows overrides folder>/7Zip.cimian.recipe
-    autopkg update-trust-info <the Windows overrides folder>/7Zip.cimian.recipe
+    autopkg verify-trust-info -vv --override-dir=<the Windows overrides folder> <the Windows overrides folder>/7Zip.cimian.recipe
+    autopkg update-trust-info --override-dir=<the Windows overrides folder> <the Windows overrides folder>/7Zip.cimian.recipe
 
 ## g. A share that is not mounted
 

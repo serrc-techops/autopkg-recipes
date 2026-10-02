@@ -43,6 +43,42 @@ does not look like a run that had nothing to do. `pcman_repo_changed` is false.
 A real run needs `pcman_dry_run` set to `false` (see "Switching on a real run").
 The line "Nothing new: ..." is also printed at any verbosity.
 
+**A download that no step verified is refused.** A download counts as verified
+only when two things hold: `checksum_verified` is a boolean `true` (`ChecksumVerifier`
+sets it), and `checksum_sha256` (`ChecksumVerifier` outputs it: the hash of the file it
+checked) is a SHA-256 that equals the hash of the file about to be imported.
+`PcmanImporter` hashes that file itself, once, in blocks. The hash is read like `ChecksumVerifier` reads an expected value: 64 hex
+digits, any letter case, with or without the prefix `sha256:`. A **real** run
+(`pcman_dry_run` false) of a download that does not count (the flag is not `true`, or
+`checksum_sha256` is missing or is not a SHA-256) is refused with a `ProcessorError`
+before the tool starts:
+
+    The download was not verified: no step of the recipe set checksum_verified together
+    with the checksum_sha256 of this file. Nothing was published. Publish by hand after
+    checking the file, or set pcman_allow_unverified to true in the override.
+
+With `pcman_allow_unverified` true in the override the run goes on. It prints one
+`WARNING: published WITHOUT a verified download ...` at any verbosity, and the summary
+row's result is `published, NOT verified`. A dry run of an unverified download prints
+a `WARNING: the download was NOT verified ...` and its summary row says
+`dry run, nothing written, NOT verified`. A recipe whose download goes through
+`ChecksumVerifier` is not changed by this.
+
+**A checksum for another file stops the run.** When `checksum_verified` is `true` and
+`checksum_sha256` is a SHA-256 that is NOT the hash of the file to import, the file that
+was verified is not the file that is imported. That is not "unverified": it is a
+`ProcessorError` that shows both hashes shortened, also in a dry run, and
+`pcman_allow_unverified` does not override it.
+
+A boolean `checksum_verified` written into an override's `Input` (or an AutoPkg
+preference) therefore counts only together with the right hash. That is a pinned hash,
+chosen by whoever wrote the override, and the override's trust information does not
+cover its `Input`.
+
+`signature_verified` does not count: no step sets it. A later signature step must output
+the hash of the file it checked under a named key, and this guard must then accept that
+key in the same way, with the same comparison with the file that is imported.
+
 ### Inputs
 
 | Input | Required | Default | Meaning |
@@ -53,6 +89,7 @@ The line "Nothing new: ..." is also printed at any verbosity.
 | `pcman_root` | yes | none | The folder of the package tool. A leading `~` is expanded. Set it as an AutoPkg preference or in an override, never in a recipe |
 | `pcman_python` | no | `<pcman_root>/.venv/bin/python3` | The Python of the tool. AutoPkg's own Python is not used |
 | `pcman_dry_run` | no | `true` | `true`: plan only. `false`: a real run. Only a boolean or the text `false`, `no` or `0` (any letter case) makes a real run; `off`, `n`, `f`, an empty value or a number other than the text `0` is an error |
+| `pcman_allow_unverified` | no | `false` | `true`: a real run of an unverified download goes on, with a WARNING (see above). Parsed like `pcman_dry_run`: only a boolean or the text `true`, `yes`, `1`, `false`, `no`, `0` (any letter case); anything else is an error, also for a verified download. Set it in an override, never in a recipe |
 | `pcman_timeout` | no | 1800 | Seconds to wait for the tool, from 60 to 14400. On a time-out, on Ctrl-C and on a termination of AutoPkg the tool and its child processes are killed |
 | `pcman_path` | no | `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin` | The `PATH` of the tool. For an `.msi`, `msiinfo` must be found here |
 | `pcman_cimian_repo` | no | | Passed to the tool as `PCMAN_CIMIAN_REPO` |
@@ -77,7 +114,7 @@ never prints the environment and never opens the tool's `pcman.yaml`.
 | `pcman_pkginfo_path` | The pkginfo in the repository (planned after a dry run) |
 | `pcman_installer_path` | The installer in the repository (planned after a dry run) |
 | `pcman_repo_changed` | True only when the tool wrote to the repository in this run |
-| `pcman_importer_summary_result` | For AutoPkg's report. Set after a publish (result `published` or `finished-earlier-publish`) and after a dry run (result `dry run, nothing written`). Columns: name, version, catalogs, result. No path: reports are mailed. The paths are the two output variables above |
+| `pcman_importer_summary_result` | For AutoPkg's report. Set after a publish (result `published` or `finished-earlier-publish`; `published, NOT verified` for an unverified download) and after a dry run (result `dry run, nothing written`; `dry run, nothing written, NOT verified` for an unverified download). Columns: name, version, catalogs, result. No path: reports are mailed. The paths are the two output variables above |
 
 ### What the exit codes of the tool become
 
@@ -131,8 +168,8 @@ Hashes the file itself, in blocks, and compares it with the expected value.
 
 | Output | Meaning |
 | --- | --- |
-| `checksum_verified` | True when the hash matched |
-| `checksum_sha256` | The hash of the file |
+| `checksum_verified` | True when the hash matched. `PcmanImporter` reads it, together with `checksum_sha256`: without both, and the hash of the file to import, a real run is refused |
+| `checksum_sha256` | The hash of the file that was checked (lower-case hex). `PcmanImporter` compares it with the hash of the file it imports |
 
 An empty value, a value that is not a SHA-256, a file that cannot be read, or a
 different hash is a `ProcessorError`. The message shows both hashes shortened.
@@ -208,7 +245,8 @@ The names are made up. The first steps (download, version) are the recipe's own.
 ```
 
 `ChecksumVerifier` reads `pathname` and `expected_sha256` from the run's
-variables, so it needs no arguments here. `pcman_root` is not in the recipe.
+variables, so it needs no arguments here. It also sets `checksum_verified` and
+`checksum_sha256`, which `PcmanImporter` needs for a real run. `pcman_root` is not in the recipe.
 
 ## Switching on a real run
 
@@ -220,11 +258,15 @@ lines to expect, is in the README of the product folder (for example
    --override-dir=<the Windows overrides folder> <recipe name>`. Without
    `--override-dir` the override lands in AutoPkg's normal overrides folder, where a
    nightly script may run it.
-2. **Run the override by path**, `autopkg run <the Windows overrides folder>/<recipe
-   name>.recipe`. The recipe's name or identifier runs the recipe itself, which
+2. **Run the override by path, with `--override-dir`**, `autopkg run
+   --override-dir=<the Windows overrides folder> <the Windows overrides folder>/<recipe
+   name>.recipe`. Without `--override-dir` AutoPkg does not treat the file as an
+   override and skips the trust check with one warning line (`is missing trust info
+   ... Proceeding...`): if that line appears, stop, the run was not checked. The recipe's name or identifier runs the recipe itself, which
    stays a dry run. A dry run prints a `WARNING: DRY RUN.` line at any verbosity
    and gives a summary row with the result `dry run, nothing written`.
-3. **A real run is one key in the override's `Input`:**
+3. **A real run is one key in the override's `Input` (for a download that a step
+   verified):**
 
 ```xml
 <key>pcman_dry_run</key>
@@ -252,8 +294,8 @@ The download must have a file name that ends in `.msi` or `.exe`. If the vendor'
 URL has none, set `filename` for `URLDownloader` in the download recipe.
 
 When a processor or a recipe changes, the override fails with "Failed local trust
-verification" until a person has looked (`autopkg verify-trust-info -vv <override>`)
-and accepted it (`autopkg update-trust-info <override>`).
+verification" until a person has looked (`autopkg verify-trust-info -vv --override-dir=<the Windows overrides folder> <override>`)
+and accepted it (`autopkg update-trust-info --override-dir=<the Windows overrides folder> <override>`).
 
 ## Tests
 

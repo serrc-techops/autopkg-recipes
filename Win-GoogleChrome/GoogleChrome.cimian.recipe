@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>This import is NOT verified yet: the download has no hard check (no vendor hash, no signature check). A real run is refused by the shared importer until a verification step exists, unless the override sets pcman_allow_unverified to true (the run then publishes with a WARNING, and the report says published, NOT verified). Hands the downloaded Google Chrome installer to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. The recipe gives no version label: the package tool takes the MSI's own ProductVersion (four numbers, the browser's own version). It refuses an MSI whose upgrade code differs from the template's, and a label that is not the MSI's own version. This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.cimian.GoogleChrome</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>GoogleChrome</string>
+            <key>PCMAN_TEMPLATE</key>
+            <string>googlechrome</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>ParentRecipe</key>
+        <string>com.github.serrc-techops.download.GoogleChromeEnterpriseX64-Win</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/PcmanImporter</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>pcman_template</key>
+                    <string>%PCMAN_TEMPLATE%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>
