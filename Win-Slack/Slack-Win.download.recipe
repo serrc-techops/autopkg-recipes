@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>This download is NOT verified yet: Slack publishes no hash for the file, and a check of the signature is not built, so nothing proves that the file is what Slack published. The shared importer therefore refuses a real run of the cimian recipe unless the override sets pcman_allow_unverified to true. First reads the newest version from Slack's release notes page for Windows (the first match of the pattern on the page), then downloads the per-machine Slack installer for Windows (the 64-bit MSI) from the address that has this version in it; the download is refused when a redirect leads to anything but https (curl_opts --proto-redir =https), because with no hash to check the transfer has only TLS to protect it. The page's layout, the pattern and the address were NOT fetched by the writer and this recipe was NOT rehearsed: the first run on the build machine is the check of them. The recipe never stops on an unchanged download, so a failed import is tried again at the next run.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.Slack-Win</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>Slack</string>
+            <key>RELEASE_NOTES_URL</key>
+            <string>https://slack.com/release-notes/windows</string>
+            <key>VERSION_PATTERN</key>
+            <string>Slack\s+(?P&lt;version&gt;[0-9]+\.[0-9]+\.[0-9]+)</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>URLTextSearcher</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>url</key>
+                    <string>%RELEASE_NOTES_URL%</string>
+                    <key>re_pattern</key>
+                    <string>%VERSION_PATTERN%</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>URLDownloader</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>url</key>
+                    <string>https://downloads.slack-edge.com/desktop-releases/windows/x64/%version%/slack-standalone-%version%.0.msi</string>
+                    <key>curl_opts</key>
+                    <array>
+                        <string>--proto-redir</string>
+                        <string>=https</string>
+                    </array>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+        </array>
+    </dict>
+</plist>

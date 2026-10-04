@@ -156,7 +156,8 @@ class FetchTests(unittest.TestCase):
         self.assertIn("accept", headers)
 
     def test_an_http_error_is_an_error_with_the_status(self):
-        error = urllib.error.HTTPError(URL, 404, "Not Found", {}, None)
+        # A real answer has a body. Without one, closing the error raised a KeyError on Python 3.9.
+        error = urllib.error.HTTPError(URL, 404, "Not Found", {}, io.BytesIO(b'{"message": "Not Found"}'))
         with self.assertRaises(ProcessorError) as caught:
             self.fetch(side_effect=error)
         self.assertIn("GitHub answered 404", str(caught.exception))

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>Hands the downloaded VLC installer (an MSI) to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. The recipe gives no version label: for an MSI the package tool takes the MSI's own ProductVersion, and a label from the recipe would be a second source of the version. The template removes the EXE edition of VLC; that is the item's business, not this recipe's. This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false. This recipe has not been run by anyone yet.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.cimian.VLC</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>VLC</string>
+            <key>PCMAN_TEMPLATE</key>
+            <string>vlc</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>ParentRecipe</key>
+        <string>com.github.serrc-techops.download.VLC-Win</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/PcmanImporter</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>pcman_template</key>
+                    <string>%PCMAN_TEMPLATE%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

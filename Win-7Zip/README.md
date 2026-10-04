@@ -6,7 +6,9 @@ The first Windows recipe pair: 7-Zip, the 64-bit `.exe`.
 a scratch repository (a folder with `pkgs/` and `pkgsinfo/`): a dry run, a publish,
 "Nothing new", a trust failure (a changed processor) and a missing repository. NOT
 yet run against the real share. `pcman catalogs` was NOT rehearsed. The lines quoted
-below are those that the rehearsal printed; spacing of the tables may differ. (In the
+below are those that the rehearsal printed; spacing of the tables may differ. After the
+rehearsal the pre-release switch moved from the step into the `Input` (2026-10-04): that
+form was checked against AutoPkg 2.9.0's source and not run on the build machine. (In the
 rehearsal the scratch overrides folder was one of AutoPkg's override folders. On the
 build machine the Windows overrides folder is not, so every override command here
 carries `--override-dir`: see the next paragraph.)
@@ -20,6 +22,20 @@ The shared 7zip-Win64 download recipe is not the parent: its pattern and file
 name are for the `.msi`. Neither recipe stops on an unchanged download, so an
 import that failed is tried again at the next run. The processors are in
 `../Win-SharedProcessors/` (see its README).
+
+**Pre-releases.** The download recipe takes the newest release that GitHub does not
+flag as a pre-release. The switch is the key `include_prereleases` in the recipe's
+`Input`, a boolean that is `false`; `make-override` copies it into the override. To take
+pre-releases as well, set it to true in the override, never in the recipe:
+
+    /usr/libexec/PlistBuddy -c 'Set :Input:include_prereleases true' \
+        <the Windows overrides folder>/7Zip.cimian.recipe
+
+(For an override that was made before this key existed, use
+`Add :Input:include_prereleases bool true` instead.) Keep it a boolean: AutoPkg only
+tests whether the value is empty, so the text `false` would count as true. The recipe's
+step does not set it, because AutoPkg applies the arguments of a step after the
+override's `Input`, and they would beat it.
 
 Below, `pcman` stands for
 `<the package tool's folder>/.venv/bin/python3 <the package tool's folder>/bin/pcman`.

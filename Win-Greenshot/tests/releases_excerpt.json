@@ -1,0 +1,95 @@
+{
+  "_note": "Names, sizes and whether GitHub records a digest, read from the public release list of greenshot/greenshot on 2026-10-04 (the newest 12 releases, newest first). Not the whole record; no digest value is kept.",
+  "releases": [
+    {
+      "tag_name": "v1.4.289-g7bee683e93", "name": "Greenshot 1.4.289-g7bee683e93 (continuous build)", "prerelease": true, "published_at": "2026-10-04T22:03:34Z",
+      "assets": [
+        {"name": "Greenshot-INSTALLER-1.4.289-g7bee683e93-UNSTABLE-UNSIGNED.exe", "size": 6823358, "digest_recorded": true},
+        {"name": "Greenshot-Light-INSTALLER-1.4.289-g7bee683e93-UNSTABLE-UNSIGNED.exe", "size": 6047333, "digest_recorded": true},
+        {"name": "Greenshot-Light-PORTABLE-1.4.289-g7bee683e93-UNSTABLE-UNSIGNED.zip", "size": 5625011, "digest_recorded": true},
+        {"name": "Greenshot-MCP-1.4.289-g7bee683e93-win-x64.zip", "size": 4817497, "digest_recorded": true},
+        {"name": "Greenshot-PORTABLE-1.4.289-g7bee683e93-UNSTABLE-UNSIGNED.zip", "size": 6919316, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "v1.4.284-gea6e246e6c", "name": "Greenshot 1.4.284-gea6e246e6c (continuous build)", "prerelease": true, "published_at": "2026-10-02T21:56:46Z",
+      "assets": [
+        {"name": "Greenshot-INSTALLER-1.4.284-gea6e246e6c-UNSTABLE-UNSIGNED.exe", "size": 6803512, "digest_recorded": true},
+        {"name": "Greenshot-Light-INSTALLER-1.4.284-gea6e246e6c-UNSTABLE-UNSIGNED.exe", "size": 6032272, "digest_recorded": true},
+        {"name": "Greenshot-Light-PORTABLE-1.4.284-gea6e246e6c-UNSTABLE-UNSIGNED.zip", "size": 5594979, "digest_recorded": true},
+        {"name": "Greenshot-MCP-1.4.284-gea6e246e6c-win-x64.zip", "size": 4817492, "digest_recorded": true},
+        {"name": "Greenshot-PORTABLE-1.4.284-gea6e246e6c-UNSTABLE-UNSIGNED.zip", "size": 6921256, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "v1.3.319", "name": "Greenshot 1.3.319 (continuous build)", "prerelease": true, "published_at": "2026-09-16T05:44:04Z",
+      "assets": [
+        {"name": "Greenshot-INSTALLER-1.3.319-UNSTABLE-UNSIGNED.exe", "size": 3942039, "digest_recorded": true},
+        {"name": "Greenshot-PORTABLE-1.3.319-UNSTABLE-UNSIGNED.zip", "size": 3776849, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "v1.3.315", "name": "Greenshot 1.3.315", "prerelease": false, "published_at": "2026-03-20T09:58:31Z",
+      "assets": [
+        {"name": "Greenshot-INSTALLER-1.3.315-RELEASE.exe", "size": 3967064, "digest_recorded": true},
+        {"name": "Greenshot-PORTABLE-1.3.315-RELEASE.zip", "size": 3722113, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "v1.3.314", "name": "Greenshot 1.3.314 (continuous build)", "prerelease": true, "published_at": "2026-03-20T08:27:28Z",
+      "assets": [
+        {"name": "Greenshot-INSTALLER-1.3.314-UNSTABLE-UNSIGNED.exe", "size": 3940253, "digest_recorded": true},
+        {"name": "Greenshot-PORTABLE-1.3.314-UNSTABLE-UNSIGNED.zip", "size": 3713452, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "v1.3.313", "name": "Greenshot 1.3.313 (continuous build)", "prerelease": true, "published_at": "2026-02-15T20:45:26Z",
+      "assets": [
+        {"name": "Greenshot-INSTALLER-1.3.313-UNSTABLE-UNSIGNED.exe", "size": 3939118, "digest_recorded": true},
+        {"name": "Greenshot-PORTABLE-1.3.313-UNSTABLE-UNSIGNED.zip", "size": 3713413, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "v1.3.312", "name": "Greenshot 1.3.312", "prerelease": false, "published_at": "2026-01-07T13:07:53Z",
+      "assets": [
+        {"name": "Greenshot-INSTALLER-1.3.312-RELEASE.exe", "size": 3967504, "digest_recorded": true},
+        {"name": "Greenshot-PORTABLE-1.3.312-RELEASE.zip", "size": 3721675, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "v1.3.311", "name": "Greenshot 1.3.311", "prerelease": false, "published_at": "2026-01-07T11:15:49Z",
+      "assets": [
+        {"name": "Greenshot-INSTALLER-1.3.311-RELEASE.exe", "size": 3967216, "digest_recorded": true},
+        {"name": "Greenshot-PORTABLE-1.3.311-RELEASE.zip", "size": 3721672, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "v1.3.310", "name": "Greenshot 1.3.310 (continuous build)", "prerelease": true, "published_at": "2026-01-05T16:59:29Z",
+      "assets": [
+        {"name": "Greenshot-INSTALLER-1.3.310-UNSTABLE-UNSIGNED.exe", "size": 3939838, "digest_recorded": true},
+        {"name": "Greenshot-PORTABLE-1.3.310-UNSTABLE-UNSIGNED.zip", "size": 3712539, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "v1.4.16-gb7a9a76f9c", "name": "Greenshot 1.4.16-gb7a9a76f9c (continuous build)", "prerelease": true, "published_at": "2025-12-23T21:57:04Z",
+      "assets": [
+        {"name": "Greenshot-INSTALLER-1.4.16-gb7a9a76f9c-UNSTABLE-UNSIGNED.exe", "size": 3939325, "digest_recorded": true},
+        {"name": "Greenshot-PORTABLE-1.4.16-gb7a9a76f9c-UNSTABLE-UNSIGNED.zip", "size": 3713036, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "v1.4.12-g7044847df9", "name": "Greenshot 1.4.12-g7044847df9 (continuous build)", "prerelease": true, "published_at": "2025-12-23T21:33:53Z",
+      "assets": [
+        {"name": "Greenshot-INSTALLER-1.4.12-g7044847df9-UNSTABLE-UNSIGNED.exe", "size": 3939091, "digest_recorded": true},
+        {"name": "Greenshot-PORTABLE-1.4.12-g7044847df9-UNSTABLE-UNSIGNED.zip", "size": 3713046, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "v1.4.11-gc002e5b78b", "name": "Greenshot 1.4.11-gc002e5b78b (continuous build)", "prerelease": true, "published_at": "2025-12-23T21:28:55Z",
+      "assets": [
+        {"name": "Greenshot-INSTALLER-1.4.11-gc002e5b78b-UNSTABLE-UNSIGNED.exe", "size": 3939236, "digest_recorded": true},
+        {"name": "Greenshot-PORTABLE-1.4.11-gc002e5b78b-UNSTABLE-UNSIGNED.zip", "size": 3712928, "digest_recorded": true}
+      ]
+    }
+  ]
+}

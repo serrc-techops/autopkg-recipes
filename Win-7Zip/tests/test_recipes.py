@@ -86,8 +86,34 @@ class RecipeFileTests(unittest.TestCase):
         args = load(DOWNLOAD)["Process"][0]["Arguments"]
         self.assertEqual(args["github_repo"], "ip7z/7zip")
         self.assertEqual(args["asset_regex"], "%SEARCH_PATTERN%")
-        self.assertIs(args["include_prereleases"], False)
+        self.assertNotIn("include_prereleases", args)
         self.assertEqual(load(DOWNLOAD)["Input"]["SEARCH_PATTERN"], r"7z[0-9]+-x64\.exe")
+
+    def test_pre_releases_are_a_switch_of_the_input_that_an_override_can_change(self):
+        """AutoPkg 2.9.0 puts the Input of the recipe and of the override into the run first and
+        injects the Arguments of each step after them (`autopkglib/__init__.py`:
+        `process_cli_overrides`, then `Processor.inject`), so a value in the Arguments would beat
+        the override. The switch is therefore a key of the Input, with the name of the provider's
+        own input variable. The provider reads it from the run and tests its truth
+        (`GitHubReleasesInfoProvider.py`, `select_asset`), so the text `false` counts as true and
+        the value is a boolean. A `%variable%` that holds a boolean stops the whole run with a
+        TypeError (`update_data` in `autopkglib/__init__.py`, where only a KeyError is caught), so
+        no step names the key; the last loop of this test keeps every such reference away from the
+        booleans of the Input."""
+        recipe = load(DOWNLOAD)
+        self.assertIs(recipe["Input"]["include_prereleases"], False)
+        arguments = recipe["Process"][0]["Arguments"]
+        self.assertNotIn("include_prereleases", arguments)
+        for override_input, wanted in (({}, False), ({"include_prereleases": True}, True)):
+            run = dict(recipe["Input"])  # the recipe's Input
+            run.update(override_input)  # then the override's Input
+            run.update(arguments)  # then the Arguments of the step
+            self.assertIs(run["include_prereleases"], wanted)
+        for step in recipe["Process"]:
+            for key, value in step.get("Arguments", {}).items():
+                match = re.fullmatch(r"%([A-Za-z_]+)%", value) if isinstance(value, str) else None
+                if match:
+                    self.assertNotIsInstance(recipe["Input"].get(match.group(1)), bool, key)
 
     def test_the_default_pattern_matches_the_exe_and_not_the_others(self):
         import re
@@ -260,6 +286,19 @@ class ReadmeTests(unittest.TestCase):
                       re.sub(r"\s+", " ", step))
         self.assertLess(step.index("list-recipes"), step.index("autopkg make-override"))
 
+    def test_the_readme_says_how_to_take_pre_releases_and_that_the_switch_is_a_boolean(self):
+        start = self.text.index("**Pre-releases.**")
+        paragraph = self.text[start:self.text.index("Below, `pcman` stands for")]
+        for needle in ("the key `include_prereleases` in the recipe's `Input`, a boolean that is `false`",
+                       "`make-override` copies it into the override", "never in the recipe",
+                       "Set :Input:include_prereleases true",
+                       "<the Windows overrides folder>/7Zip.cimian.recipe",
+                       "`Add :Input:include_prereleases bool true`",
+                       "Keep it a boolean", "the text `false` would count as true",
+                       "applies the arguments of a step after the override's `Input`"):
+            self.assertIn(needle, paragraph)
+        self.assertLess(self.raw.index("**Pre-releases.**"), self.raw.index("## a."))
+
     def test_the_readme_states_no_hash(self):
         """A README that states a SHA-256 (64 hex digits) could be taken for a check."""
         self.assertIsNone(re.search(r"(?i)\b[0-9a-f]{64}\b", self.raw))
@@ -287,7 +326,9 @@ class ReadmeTests(unittest.TestCase):
         self.assertLess(self.raw.index("Rehearsed on 2026-10-01"), self.raw.index("## a."))
         self.assertIn("`pcman catalogs` was NOT rehearsed", self.text)
         for needle in ("a dry run, a publish", "a trust failure (a changed processor)", "a missing repository",
-                       "NOT yet run against the real share", "carries `--override-dir`"):
+                       "NOT yet run against the real share", "carries `--override-dir`",
+                       "After the rehearsal the pre-release switch moved from the step into the `Input` (2026-10-04)",
+                       "checked against AutoPkg 2.9.0's source and not run on the build machine"):
             self.assertIn(needle, self.text)
 
 

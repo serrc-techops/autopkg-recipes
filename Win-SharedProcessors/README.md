@@ -1,6 +1,6 @@
 # Win-SharedProcessors
 
-Three AutoPkg processors for Windows installers, and the stub recipe that lets
+Four AutoPkg processors for Windows installers, and the stub recipe that lets
 other recipes use them.
 
 AutoPkg looks only one folder below a search directory. So the processors, the
@@ -12,6 +12,7 @@ processor like this: `com.github.serrc-techops.SharedProcessors/<Processor>`.
 | `PcmanImporter.py` | Hands a downloaded `.msi` or `.exe` to the package tool (`pcman`). The last step of a recipe |
 | `ChecksumVerifier.py` | Stops the recipe when a file does not have the SHA-256 that its publisher gives |
 | `GitHubAssetDigest.py` | Reads the SHA-256 that GitHub records for a release asset |
+| `WindowsExeVersion.py` | Reads the version of a downloaded `.exe` from the file itself, for the version label that the package tool needs |
 | `SharedProcessors.recipe` | Stub. Carries the identifier `com.github.serrc-techops.SharedProcessors`. Does nothing |
 | `tests/` | Tests. They need no AutoPkg and no network |
 
@@ -194,6 +195,105 @@ A failed request, an answer that is not JSON, a record without a `digest`, or a
 digest that is not a SHA-256 is a `ProcessorError`. The file and the hash come
 from the same place: this check shows that the file is what GitHub holds.
 
+## WindowsExeVersion
+
+Several Windows installers are `.exe` files at a fixed address, with no version in
+the address and no hash from the vendor. The package tool needs `--version <label>`
+for an `.exe` (`PcmanImporter` input `pcman_version`), and the label must be the
+`ProductVersion` that a person reads in the file's properties. This processor reads
+it from the downloaded file, in Python, with no other program. It writes nothing
+and uses no network.
+
+**What it reads.** The file is a PE file. The processor reads the DOS header and the
+PE header, the optional header (PE32 and PE32+) with its data directories, and the
+section table. It follows the resource directory (root, type `RT_VERSION`, the first
+name, the first language) to the data entry, and reads that one block: the
+`VS_VERSIONINFO` structure. In it are the fixed file information (`VS_FIXEDFILEINFO`,
+four numbers for the file version and four for the product version) and the strings
+of the first `StringTable` (`FileVersion`, `ProductVersion`, `ProductName`, and
+others). The blocks are walked by their own length and by the padding to four bytes,
+never by fixed offsets. A string ends at its first null character and is stripped of
+white space.
+
+Only what is needed is read: the headers, the section table, the resource directory
+and the one version block. The whole file is never read (an installer can be hundreds
+of megabytes). A version block of more than 1 MiB is an error.
+
+| Input | Required | Default | Meaning |
+| --- | --- | --- | --- |
+| `pathname` | yes | | The downloaded `.exe` |
+| `set_version` | no | `true` | `true`: set `version` (see below). `false`: leave `version` as it is. Parsed like `pcman_dry_run`: only a boolean or the text `true`, `yes`, `1`, `false`, `no`, `0` (any letter case); anything else is an error |
+
+| Output | Meaning |
+| --- | --- |
+| `exe_product_version` | The `ProductVersion` string of the first string table, as written (for example `4.33`, `14.44.35211.0`, `26.03`). An empty string when the table has none |
+| `exe_file_version` | The `FileVersion` string of the same table. An empty string when the table has none |
+| `exe_product_version_numbers` | The product version of the fixed file information: four numbers joined by dots (for a file of 14, 44, 35211 and 0: `14.44.35211.0`) |
+| `exe_file_version_numbers` | The file version of the fixed file information, the same way |
+| `exe_product_name` | The `ProductName` string, or an empty string |
+| `version` | Only when `set_version` is true. See "Which one `version` takes" |
+
+**Which one `version` takes.** The `ProductVersion` string when it is made of numbers
+and dots only (`[0-9]+(.[0-9]+)*`, ASCII digits, nothing stripped or cut: `4.33`,
+`26.03` and `14.44.35211.0` qualify, `4.33 (x64)`, `v4.33` and an empty string do
+not). Otherwise the numbers of the fixed file information, `exe_product_version_numbers`.
+The string is preferred because it is what a person sees in the file's properties
+and what the vendor means; the numbers are the fallback because they are always
+four numbers and always numeric. The step prints which one was taken. A recipe then
+passes it on: `pcman_version` is `%version%`. A recipe that wants the string as it is
+reads `exe_product_version` and sets `set_version` to false.
+
+When the string is not numeric (for example `4.33 (x64)`), the label is the four
+numbers and has four parts, which may not look like what the vendor prints. The package
+tool compares labels with its own rules, so check the first run's plan (a dry run
+prints it).
+
+**A label of zeros is never passed on.** When the label that this rule picks has no
+digit other than zero, the processor stops with a `ProcessorError` and sets nothing
+(`version` keeps what it had). That is the case when the string is made of zeros (`0`,
+`0.0`), and when the string is text and the four numbers of the fixed file information
+are zeros. The second case is real: an installer built with no version set carries zeros
+in the numbers, and one built with a text version (a .NET "informational version" such as
+`10.0.7-servicing.26217.108+<commit>`) carries that text in the string. The message names
+the label, where it came from, the `ProductVersion` and `FileVersion` strings (cut at 60
+characters) and the file version numbers. The processor does not try the other value or
+the `FileVersion` instead, because choosing between them would be a guess. Read the file's
+properties on a Windows PC and import by hand with a label that a person has read:
+`pcman import <file> --template <item> --version <the label>`. With `set_version` false no
+label is chosen, so nothing is refused.
+
+**Errors** (`ProcessorError`, with the reason and the file's name, never a guess):
+
+- `pathname` is not a file, or cannot be read.
+- The file is not a PE file (no `MZ`, no `PE` signature, an optional header that is
+  neither PE32 nor PE32+, a PE header outside the file, no sections or more than 96).
+- The file has no resource directory (no entry, or an address of zero, or fewer than
+  three data directories).
+- The file has no `RT_VERSION` resource, or the resource tree is not built as
+  expected (the type or the first name is not a directory, the first language is not
+  a data entry, a directory has no entry or more than 4096).
+- A read would leave the file, or an address is not in any section's raw data (a
+  truncated file).
+- The version block is larger than 1 MiB, does not start with `VS_VERSION_INFO`, has
+  no fixed file information, or has a wrong signature (`0xFEEF04BD`) there.
+- The block walk runs out of bounds: a block longer than its parent, shorter than its
+  own header, a key without an end, or bytes that are not zero after the last child.
+- A string is not valid UTF-16, or a string table has a key that is not eight hex
+  digits.
+- There is no `StringFileInfo` with a string table, or the first table has neither a
+  `ProductVersion` nor a `FileVersion`.
+- The label that `version` would get has no digit other than zero (see "A label of zeros
+  is never passed on"). Only when `set_version` is true.
+
+A string whose declared length goes past its block is cut at the block's end. That is
+the one place where the walk is not strict: some tools write the length in bytes
+instead of characters, and the text still ends at its null character.
+
+**What the version proves.** Nothing about the file's origin. It is data in the file,
+and whoever made the file chose it. It only gives the label that the package tool and
+the client compare. It does not replace a check of the download (`ChecksumVerifier`,
+a vendor signature, or the pinned address of the vendor).
+
 ## An example: the last steps of a recipe
 
 The names are made up. The first steps (download, version) are the recipe's own.
@@ -311,6 +411,16 @@ The tests that run the real package tool are skipped unless these are set:
     python3 -m unittest discover -s tests -t tests -p 'test_importer_real_tool.py'
 
 They copy the tool's code to a temporary folder and use a temporary repository.
+
+The tests of `WindowsExeVersion` build a small PE file in a temporary folder; no real
+`.exe` is in this repository. One more test reads real files and is skipped unless a
+folder is named:
+
+    WIN_EXE_SAMPLES=<folder> python3 -m unittest discover -s tests -t tests -p 'test_exe_version.py'
+
+For each `<name>.exe` in the folder that has a `<name>.expected` beside it, the
+processor's outputs must equal the lines of that file (`exe_product_version=...`,
+`exe_product_version_numbers=...`, any of the output names).
 
 ## What must never be in this repository
 

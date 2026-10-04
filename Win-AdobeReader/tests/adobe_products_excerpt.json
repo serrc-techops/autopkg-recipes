@@ -1,0 +1,26 @@
+{
+  "_written_by_hand": "written by hand after the real answer of 2026-10-02, not saved from the real server; the other keys are cut",
+  "products": {
+    "reader": [
+      {
+        "displayName": "Reader 2026.002.21931 English for Windows (Recommended)",
+        "fileSize": 748.0,
+        "version": "26.002.21931"
+      }
+    ],
+    "dcPro": [
+      {
+        "displayName": "AcrobatProDC",
+        "fileSize": 1194.0,
+        "version": "25.001.20693"
+      }
+    ]
+  },
+  "addons": [
+    {
+      "displayName": "An add-on",
+      "fileSize": 4.02,
+      "code": "abc"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>This download is NOT verified yet: Adobe publishes no hash for the installer, and a check of the signature is not built, so nothing proves that the file is what Adobe published. The shared importer therefore refuses a real run of the cimian recipe unless the override sets pcman_allow_unverified to true. Reads the current Adobe Acrobat Reader version from the public products file that Adobe's own download page calls, by this folder's own processor (AdobeReaderInfoProvider), builds the address of the installer from it by the scheme that Adobe's download server was seen to use (the 32-bit installer, English or all languages), downloads it, and then reads the version that the installer file itself carries (WindowsExeVersion), which replaces the version of the products file. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. The products file and the installer's address scheme were read on 2026-10-02; the recipe was NOT run with AutoPkg.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.AdobeReader-Win</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>AdobeReader</string>
+            <key>ADOBE_LANGUAGE</key>
+            <string>en_US</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>AdobeReaderInfoProvider</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>adobe_language</key>
+                    <string>%ADOBE_LANGUAGE%</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>URLDownloader</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/WindowsExeVersion</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

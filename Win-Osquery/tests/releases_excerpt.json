@@ -1,0 +1,137 @@
+{
+  "_note": "Names, sizes and whether GitHub records a digest, read from the public release list of osquery/osquery on 2026-10-04 (the newest 6 releases, newest first). Not the whole record; no digest value is kept.",
+  "releases": [
+    {
+      "tag_name": "5.23.1", "prerelease": false, "published_at": "2026-06-24T14:57:05Z",
+      "assets": [
+        {"name": "osquery-5.23.1-1.linux.aarch64.rpm", "size": 30945997, "digest_recorded": true},
+        {"name": "osquery-5.23.1-1.linux.x86_64.rpm", "size": 32889073, "digest_recorded": true},
+        {"name": "osquery-5.23.1.msi", "size": 19984384, "digest_recorded": true},
+        {"name": "osquery-5.23.1.pkg", "size": 25917400, "digest_recorded": true},
+        {"name": "osquery-5.23.1.windows_arm64.zip", "size": 13634280, "digest_recorded": true},
+        {"name": "osquery-5.23.1.windows_x86_64.zip", "size": 18950597, "digest_recorded": true},
+        {"name": "osquery-5.23.1_1.linux_aarch64.tar.gz", "size": 84067295, "digest_recorded": true},
+        {"name": "osquery-5.23.1_1.linux_x86_64.tar.gz", "size": 84455039, "digest_recorded": true},
+        {"name": "osquery-5.23.1_1.macos_arm64.tar.gz", "size": 25893999, "digest_recorded": true},
+        {"name": "osquery-dbgsym_5.23.1-1.linux_amd64.deb", "size": 51392456, "digest_recorded": true},
+        {"name": "osquery-dbgsym_5.23.1-1.linux_arm64.deb", "size": 53049964, "digest_recorded": true},
+        {"name": "osquery-debuginfo-5.23.1-1.linux.aarch64.rpm", "size": 52925306, "digest_recorded": true},
+        {"name": "osquery-debuginfo-5.23.1-1.linux.x86_64.rpm", "size": 51283287, "digest_recorded": true},
+        {"name": "osquery.5.23.1.nupkg", "size": 19469296, "digest_recorded": true},
+        {"name": "osqueryd-macos-bare-5.23.1.tar.gz", "size": 25571024, "digest_recorded": true},
+        {"name": "osquery_5.23.1-1.linux_amd64.deb", "size": 33037000, "digest_recorded": true},
+        {"name": "osquery_5.23.1-1.linux_arm64.deb", "size": 30999764, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "5.23.0", "prerelease": false, "published_at": "2026-04-25T20:33:09Z",
+      "assets": [
+        {"name": "osquery-5.23.0-1.linux.aarch64.rpm", "size": 30944829, "digest_recorded": true},
+        {"name": "osquery-5.23.0-1.linux.x86_64.rpm", "size": 32888331, "digest_recorded": true},
+        {"name": "osquery-5.23.0.msi", "size": 19980288, "digest_recorded": true},
+        {"name": "osquery-5.23.0.pkg", "size": 25916996, "digest_recorded": true},
+        {"name": "osquery-5.23.0.windows_arm64.zip", "size": 13634616, "digest_recorded": true},
+        {"name": "osquery-5.23.0.windows_x86_64.zip", "size": 18949569, "digest_recorded": true},
+        {"name": "osquery-5.23.0_1.linux_aarch64.tar.gz", "size": 84072170, "digest_recorded": true},
+        {"name": "osquery-5.23.0_1.linux_x86_64.tar.gz", "size": 84456190, "digest_recorded": true},
+        {"name": "osquery-5.23.0_1.macos_arm64.tar.gz", "size": 25894075, "digest_recorded": true},
+        {"name": "osquery-dbgsym_5.23.0-1.linux_amd64.deb", "size": 51401650, "digest_recorded": true},
+        {"name": "osquery-dbgsym_5.23.0-1.linux_arm64.deb", "size": 53053242, "digest_recorded": true},
+        {"name": "osquery-debuginfo-5.23.0-1.linux.aarch64.rpm", "size": 52928193, "digest_recorded": true},
+        {"name": "osquery-debuginfo-5.23.0-1.linux.x86_64.rpm", "size": 51279862, "digest_recorded": true},
+        {"name": "osquery.5.23.0.nupkg", "size": 19467646, "digest_recorded": true},
+        {"name": "osqueryd-macos-bare-5.23.0.tar.gz", "size": 25570142, "digest_recorded": true},
+        {"name": "osquery_5.23.0-1.linux_amd64.deb", "size": 33036496, "digest_recorded": true},
+        {"name": "osquery_5.23.0-1.linux_arm64.deb", "size": 30999326, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "5.22.1", "prerelease": false, "published_at": "2026-02-25T20:13:37Z",
+      "assets": [
+        {"name": "osquery-5.22.1-1.linux.aarch64.rpm", "size": 30935027, "digest_recorded": true},
+        {"name": "osquery-5.22.1-1.linux.x86_64.rpm", "size": 32878362, "digest_recorded": true},
+        {"name": "osquery-5.22.1.msi", "size": 19918848, "digest_recorded": true},
+        {"name": "osquery-5.22.1.pkg", "size": 25894370, "digest_recorded": true},
+        {"name": "osquery-5.22.1.windows_arm64.zip", "size": 13569371, "digest_recorded": true},
+        {"name": "osquery-5.22.1.windows_x86_64.zip", "size": 18892764, "digest_recorded": true},
+        {"name": "osquery-5.22.1_1.linux_aarch64.tar.gz", "size": 83819059, "digest_recorded": true},
+        {"name": "osquery-5.22.1_1.linux_x86_64.tar.gz", "size": 84216434, "digest_recorded": true},
+        {"name": "osquery-5.22.1_1.macos_arm64.tar.gz", "size": 25869040, "digest_recorded": true},
+        {"name": "osquery-dbgsym_5.22.1-1.linux_amd64.deb", "size": 51170710, "digest_recorded": true},
+        {"name": "osquery-dbgsym_5.22.1-1.linux_arm64.deb", "size": 52822248, "digest_recorded": true},
+        {"name": "osquery-debuginfo-5.22.1-1.linux.aarch64.rpm", "size": 52714165, "digest_recorded": true},
+        {"name": "osquery-debuginfo-5.22.1-1.linux.x86_64.rpm", "size": 51065890, "digest_recorded": true},
+        {"name": "osquery.5.22.1.nupkg", "size": 19398148, "digest_recorded": true},
+        {"name": "osqueryd-macos-bare-5.22.1.tar.gz", "size": 25547682, "digest_recorded": true},
+        {"name": "osquery_5.22.1-1.linux_amd64.deb", "size": 33024490, "digest_recorded": true},
+        {"name": "osquery_5.22.1-1.linux_arm64.deb", "size": 30982546, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "5.21.0", "prerelease": false, "published_at": "2025-12-18T00:24:16Z",
+      "assets": [
+        {"name": "osquery-5.21.0-1.linux.aarch64.rpm", "size": 28335466, "digest_recorded": true},
+        {"name": "osquery-5.21.0-1.linux.x86_64.rpm", "size": 30285700, "digest_recorded": true},
+        {"name": "osquery-5.21.0.msi", "size": 19619840, "digest_recorded": true},
+        {"name": "osquery-5.21.0.pkg", "size": 25538198, "digest_recorded": true},
+        {"name": "osquery-5.21.0.windows_arm64.zip", "size": 13295168, "digest_recorded": true},
+        {"name": "osquery-5.21.0.windows_x86_64.zip", "size": 18598730, "digest_recorded": true},
+        {"name": "osquery-5.21.0_1.linux_aarch64.tar.gz", "size": 79433037, "digest_recorded": true},
+        {"name": "osquery-5.21.0_1.linux_x86_64.tar.gz", "size": 80100019, "digest_recorded": true},
+        {"name": "osquery-5.21.0_1.macos_arm64.tar.gz", "size": 25515681, "digest_recorded": true},
+        {"name": "osquery-dbgsym_5.21.0-1.linux_amd64.deb", "size": 49656820, "digest_recorded": true},
+        {"name": "osquery-dbgsym_5.21.0-1.linux_arm64.deb", "size": 51036238, "digest_recorded": true},
+        {"name": "osquery-debuginfo-5.21.0-1.linux.aarch64.rpm", "size": 50962321, "digest_recorded": true},
+        {"name": "osquery-debuginfo-5.21.0-1.linux.x86_64.rpm", "size": 49587718, "digest_recorded": true},
+        {"name": "osquery.5.21.0.nupkg", "size": 19103710, "digest_recorded": true},
+        {"name": "osqueryd-macos-bare-5.21.0.tar.gz", "size": 25195737, "digest_recorded": true},
+        {"name": "osquery_5.21.0-1.linux_amd64.deb", "size": 30417700, "digest_recorded": true},
+        {"name": "osquery_5.21.0-1.linux_arm64.deb", "size": 28378930, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "5.20.0", "prerelease": false, "published_at": "2025-10-23T16:12:07Z",
+      "assets": [
+        {"name": "osquery-5.20.0-1.linux.aarch64.rpm", "size": 28333148, "digest_recorded": true},
+        {"name": "osquery-5.20.0-1.linux.x86_64.rpm", "size": 30282713, "digest_recorded": true},
+        {"name": "osquery-5.20.0.msi", "size": 19619840, "digest_recorded": true},
+        {"name": "osquery-5.20.0.pkg", "size": 25513582, "digest_recorded": true},
+        {"name": "osquery-5.20.0.windows_arm64.zip", "size": 13302556, "digest_recorded": true},
+        {"name": "osquery-5.20.0.windows_x86_64.zip", "size": 18604598, "digest_recorded": true},
+        {"name": "osquery-5.20.0_1.linux_aarch64.tar.gz", "size": 79409139, "digest_recorded": true},
+        {"name": "osquery-5.20.0_1.linux_x86_64.tar.gz", "size": 80091844, "digest_recorded": true},
+        {"name": "osquery-5.20.0_1.macos_arm64.tar.gz", "size": 25486544, "digest_recorded": true},
+        {"name": "osquery-dbgsym_5.20.0-1.linux_amd64.deb", "size": 49646878, "digest_recorded": true},
+        {"name": "osquery-dbgsym_5.20.0-1.linux_arm64.deb", "size": 51015146, "digest_recorded": true},
+        {"name": "osquery-debuginfo-5.20.0-1.linux.aarch64.rpm", "size": 50954342, "digest_recorded": true},
+        {"name": "osquery-debuginfo-5.20.0-1.linux.x86_64.rpm", "size": 49571188, "digest_recorded": true},
+        {"name": "osquery.5.20.0.nupkg", "size": 19104287, "digest_recorded": true},
+        {"name": "osqueryd-macos-bare-5.20.0.tar.gz", "size": 25168279, "digest_recorded": true},
+        {"name": "osquery_5.20.0-1.linux_amd64.deb", "size": 30415992, "digest_recorded": true},
+        {"name": "osquery_5.20.0-1.linux_arm64.deb", "size": 28375890, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "5.19.0", "prerelease": false, "published_at": "2025-08-13T19:35:24Z",
+      "assets": [
+        {"name": "osquery-5.19.0-1.linux.aarch64.rpm", "size": 28328044, "digest_recorded": true},
+        {"name": "osquery-5.19.0-1.linux.x86_64.rpm", "size": 30277681, "digest_recorded": true},
+        {"name": "osquery-5.19.0.msi", "size": 19611648, "digest_recorded": true},
+        {"name": "osquery-5.19.0.pkg", "size": 25507645, "digest_recorded": true},
+        {"name": "osquery-5.19.0.windows_arm64.zip", "size": 13290575, "digest_recorded": true},
+        {"name": "osquery-5.19.0.windows_x86_64.zip", "size": 18591226, "digest_recorded": true},
+        {"name": "osquery-5.19.0_1.linux_aarch64.tar.gz", "size": 79411346, "digest_recorded": true},
+        {"name": "osquery-5.19.0_1.linux_x86_64.tar.gz", "size": 80081307, "digest_recorded": true},
+        {"name": "osquery-5.19.0_1.macos_arm64.tar.gz", "size": 25481419, "digest_recorded": true},
+        {"name": "osquery-dbgsym_5.19.0-1.linux_amd64.deb", "size": 49649158, "digest_recorded": true},
+        {"name": "osquery-dbgsym_5.19.0-1.linux_arm64.deb", "size": 51016534, "digest_recorded": true},
+        {"name": "osquery-debuginfo-5.19.0-1.linux.aarch64.rpm", "size": 50947878, "digest_recorded": true},
+        {"name": "osquery-debuginfo-5.19.0-1.linux.x86_64.rpm", "size": 49568281, "digest_recorded": true},
+        {"name": "osquery.5.19.0.nupkg", "size": 19096896, "digest_recorded": true},
+        {"name": "osqueryd-macos-bare-5.19.0.tar.gz", "size": 25158496, "digest_recorded": true},
+        {"name": "osquery_5.19.0-1.linux_amd64.deb", "size": 30412878, "digest_recorded": true},
+        {"name": "osquery_5.19.0-1.linux_arm64.deb", "size": 28373304, "digest_recorded": true}
+      ]
+    }
+  ]
+}

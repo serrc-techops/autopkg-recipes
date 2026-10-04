@@ -53,7 +53,7 @@ class PublicRepositoryTests(unittest.TestCase):
         self.assertTrue(recipe["MinimumVersion"])
 
     def test_each_processor_file_has_a_class_of_the_same_name(self):
-        for name in ("PcmanImporter", "ChecksumVerifier", "GitHubAssetDigest"):
+        for name in ("PcmanImporter", "ChecksumVerifier", "GitHubAssetDigest", "WindowsExeVersion"):
             with open(os.path.join(PROCESSOR_DIR, name + ".py"), "r", encoding="utf-8") as handle:
                 self.assertIn("class %s(Processor):" % name, handle.read())
 

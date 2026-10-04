@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>Downloads the current Inkscape for Windows (the 64-bit MSI) from the publisher's media server and checks it against the SHA-256 that the publisher's hash file gives for exactly that file. The current release is found by its own processor (InkscapeInfoProvider, in this folder), because no shared recipe reads these pages: it reads the redirect of the project's current-release address (without following it), then the download page of that release, then the gallery page of the file, and then the hash file. The file is stored under the name inkscape-&lt;version&gt;-x64.msi, so that the cached file has a stable name. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. The layout of the four answers and of the addresses was read from the publisher's servers on 2026-10-02 (the redirect, the two pages, the hash file, and the download's own headers); the recipe was NOT run with AutoPkg.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.Inkscape-Win</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>Inkscape</string>
+            <key>INKSCAPE_ARCHITECTURE</key>
+            <string>64-bit</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>InkscapeInfoProvider</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>inkscape_architecture</key>
+                    <string>%INKSCAPE_ARCHITECTURE%</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>URLDownloader</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>filename</key>
+                    <string>inkscape-%version%-x64.msi</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/ChecksumVerifier</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>expected_sha256</key>
+                    <string>%expected_sha256%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

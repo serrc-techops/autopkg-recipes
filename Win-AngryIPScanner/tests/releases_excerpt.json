@@ -1,0 +1,65 @@
+{
+  "_note": "Names, sizes and whether GitHub records a digest, read from the public release list of angryip/ipscan on 2026-10-04 (the newest 4 releases, newest first). Not the whole record; no digest value is kept.",
+  "releases": [
+    {
+      "tag_name": "3.10.0", "prerelease": false, "published_at": "2026-08-31T19:50:34Z",
+      "assets": [
+        {"name": "ipscan-3.10.0-1.x86_64.rpm", "size": 2121553, "digest_recorded": true},
+        {"name": "ipscan-3.10.0-any.jar", "size": 909762, "digest_recorded": true},
+        {"name": "ipscan-3.10.0-linux64.jar", "size": 2214157, "digest_recorded": true},
+        {"name": "ipscan-3.10.0-macArm64.zip", "size": 28282963, "digest_recorded": true},
+        {"name": "ipscan-3.10.0-macX86.zip", "size": 29879844, "digest_recorded": true},
+        {"name": "ipscan-3.10.0-setup.exe", "size": 24912120, "digest_recorded": true},
+        {"name": "ipscan-3.10.0-win.exe", "size": 3009741, "digest_recorded": true},
+        {"name": "ipscan_3.10.0_all.deb", "size": 873636, "digest_recorded": true},
+        {"name": "ipscan_3.10.0_amd64.deb", "size": 2091284, "digest_recorded": true},
+        {"name": "README", "size": 850, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "3.9.3", "prerelease": false, "published_at": "2025-11-10T22:06:57Z",
+      "assets": [
+        {"name": "ipscan-3.9.3-1.x86_64.rpm", "size": 2087713, "digest_recorded": true},
+        {"name": "ipscan-3.9.3-setup.exe", "size": 22162953, "digest_recorded": true},
+        {"name": "ipscan-any-3.9.3.jar", "size": 903574, "digest_recorded": true},
+        {"name": "ipscan-linux64-3.9.3.jar", "size": 2176455, "digest_recorded": true},
+        {"name": "ipscan-macArm64-3.9.3.zip", "size": 22062189, "digest_recorded": true},
+        {"name": "ipscan-macX86-3.9.3.zip", "size": 22558962, "digest_recorded": true},
+        {"name": "ipscan-win64-3.9.3.exe", "size": 3064425, "digest_recorded": true},
+        {"name": "ipscan_3.9.3_all.deb", "size": 867692, "digest_recorded": true},
+        {"name": "ipscan_3.9.3_amd64.deb", "size": 2057896, "digest_recorded": true},
+        {"name": "README", "size": 769, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "3.9.2", "prerelease": false, "published_at": "2025-08-19T12:25:33Z",
+      "assets": [
+        {"name": "ipscan-3.9.2-1.x86_64.rpm", "size": 1945164, "digest_recorded": true},
+        {"name": "ipscan-3.9.2-setup.exe", "size": 19398921, "digest_recorded": true},
+        {"name": "ipscan-any-3.9.2.jar", "size": 906770, "digest_recorded": true},
+        {"name": "ipscan-linux64-3.9.2.jar", "size": 2028506, "digest_recorded": true},
+        {"name": "ipscan-macArm64-3.9.2.zip", "size": 19247305, "digest_recorded": true},
+        {"name": "ipscan-macX86-3.9.2.zip", "size": 19587596, "digest_recorded": true},
+        {"name": "ipscan-win64-3.9.2.exe", "size": 2917973, "digest_recorded": true},
+        {"name": "ipscan_3.9.2_all.deb", "size": 869740, "digest_recorded": true},
+        {"name": "ipscan_3.9.2_amd64.deb", "size": 1916908, "digest_recorded": true},
+        {"name": "README", "size": 178, "digest_recorded": true}
+      ]
+    },
+    {
+      "tag_name": "3.9.1", "prerelease": false, "published_at": "2023-02-11T17:16:29Z",
+      "assets": [
+        {"name": "ipscan-3.9.1-1.x86_64.rpm", "size": 1748589, "digest_recorded": false},
+        {"name": "ipscan-3.9.1-setup.exe", "size": 18422312, "digest_recorded": false},
+        {"name": "ipscan-any-3.9.1.jar", "size": 852894, "digest_recorded": false},
+        {"name": "ipscan-linux64-3.9.1.jar", "size": 1819182, "digest_recorded": false},
+        {"name": "ipscan-macArm64-3.9.1.zip", "size": 18236259, "digest_recorded": false},
+        {"name": "ipscan-macX86-3.9.1.zip", "size": 18726717, "digest_recorded": false},
+        {"name": "ipscan-win64-3.9.1.exe", "size": 2528029, "digest_recorded": false},
+        {"name": "ipscan_3.9.1_all.deb", "size": 815324, "digest_recorded": false},
+        {"name": "ipscan_3.9.1_amd64.deb", "size": 1721080, "digest_recorded": false},
+        {"name": "README", "size": 173, "digest_recorded": false}
+      ]
+    }
+  ]
+}

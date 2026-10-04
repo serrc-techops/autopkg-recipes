@@ -1,0 +1,25 @@
+[
+  {
+    "_written_by_hand": "written by hand after the real answer of 2026-10-02, with made-up digits for the checksums",
+    "release_name": "jdk8u504-b01",
+    "version": {
+      "semver": "8.0.504+1"
+    },
+    "binary": {
+      "os": "windows",
+      "architecture": "x64",
+      "image_type": "jre",
+      "installer": {
+        "name": "OpenJDK8U-jre_x64_windows_hotspot_8u504b01.msi",
+        "size": 32010240,
+        "link": "https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u504-b01/OpenJDK8U-jre_x64_windows_hotspot_8u504b01.msi",
+        "checksum": "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+      },
+      "package": {
+        "name": "OpenJDK8U-jre_x64_windows_hotspot_8u504b01.zip",
+        "link": "https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u504-b01/OpenJDK8U-jre_x64_windows_hotspot_8u504b01.zip",
+        "checksum": "fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321"
+      }
+    }
+  }
+]

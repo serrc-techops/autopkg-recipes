@@ -1,0 +1,3 @@
+# Compiled Python files. Running the tests of the Windows folders makes them.
+__pycache__/
+*.pyc

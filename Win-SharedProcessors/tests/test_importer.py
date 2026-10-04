@@ -872,6 +872,9 @@ class EnvironmentTests(ToolTestCase):
         return self.record()["env"]
 
     def test_only_path_home_and_the_named_variables_reach_the_tool(self):
+        # A folder of the test's own: an interpreter that keeps its bytecode
+        # cache under HOME would otherwise make folders beside the tests.
+        home = os.path.join(self.tmp, "home")
         planted = {
             "PLANTED_SECRET": PLANTED,
             "AWS_SECRET_ACCESS_KEY": PLANTED,
@@ -880,14 +883,14 @@ class EnvironmentTests(ToolTestCase):
             "PCMAN_CONFIG": "/example/config.yaml",
             "PCMAN_CIMIAN_CATALOGS": "Testing",
             "PCMAN_STATE_DIR": "/example/state",
-            "HOME": "/example/home",
+            "HOME": home,
         }
         seen = own_variables(self.run_with_environment(planted))
         self.assertEqual(
             seen,
             {
                 "PATH": self.msi_bin,
-                "HOME": "/example/home",
+                "HOME": home,
                 "PCMAN_CIMIAN_REPO": "/example/repo",
                 "PCMAN_CONFIG": "/example/config.yaml",
                 "PCMAN_CIMIAN_CATALOGS": "Testing",

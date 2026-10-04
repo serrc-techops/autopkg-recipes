@@ -1,4 +1,4 @@
-"""Shared test support: import the three processors with or without a real
+"""Shared test support: import the four processors with or without a real
 AutoPkg install, and build stand-ins for the package tool.
 
 The processor modules import `from autopkglib import Processor,
@@ -58,6 +58,7 @@ _install_autopkglib_stub()
 import ChecksumVerifier as checksum  # noqa: E402
 import GitHubAssetDigest as digest  # noqa: E402
 import PcmanImporter as importer  # noqa: E402
+import WindowsExeVersion as exe_version  # noqa: E402
 
 ProcessorError = sys.modules["autopkglib"].ProcessorError
 

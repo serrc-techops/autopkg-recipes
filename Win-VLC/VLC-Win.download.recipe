@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>Downloads the current release of VLC media player for Windows (the MSI, 64-bit) from the vendor's own download server and checks it against the SHA-256 that the vendor's hash file gives for the file. The release is read from the links of the server's directory index of the current release, and the file and its hash are both taken from the folder of that release, so that they name one release. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. It has its own processor (VideoLANVlcInfoProvider, in this folder) because no shared recipe reads a directory index. The index and the hash file are read from the publisher's own server (download.videolan.org), because the other host redirects them to a mirror; the MSI itself is redirected to a mirror and is checked against the publisher's hash. The layout of the server was read on 2026-10-02; this recipe has not been run with AutoPkg yet.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.VLC-Win</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>VLC</string>
+            <key>VLC_ARCHITECTURE</key>
+            <string>win64</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>VideoLANVlcInfoProvider</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>vlc_architecture</key>
+                    <string>%VLC_ARCHITECTURE%</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>URLDownloader</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/ChecksumVerifier</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>expected_sha256</key>
+                    <string>%expected_sha256%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

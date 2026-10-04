@@ -1,0 +1,262 @@
+# Win-GCPW
+
+A Windows recipe pair: Google Credential Provider for Windows (GCPW), the 64-bit enterprise `.msi`.
+
+**Status. NOT rehearsed with AutoPkg. Some facts of the source were fetched by the writer on 2026-10-02: no run of AutoPkg was made, and nothing was written to a repository. Read from Google's server on that day: (1) `https://dl.google.com/credentialprovider/gcpwstandaloneenterprise64.msi` answered 200 with no redirect, 47382528 bytes, last modified 2026-10-02 08:45 GMT; (2) the 32-bit file beside it, `gcpwstandaloneenterprise.msi`, is 25264128 bytes; the recipe takes the 64-bit file only, kept under the file name of the address. NOT established: the name of the template item (an item with the GCPW installer may exist already, and its name is not known to the writer: `gcpw` in the recipe is a PLACEHOLDER, see step a.3 for how to find the real name and how to set it in the override); that Google publishes no hash for this file and that no signature check exists for it (the writer knows of none); that the file's own ProductVersion and upgrade code are those of the item that exists already, if there is one; that Google's server answers the questions that AutoPkg asks about a changed file (a last-modified date was seen, nothing else was looked at); the silent install of the MSI and the arguments that the package tool writes for it; `pcman catalogs`; any run with AutoPkg. The first run on the build Mac is the check of everything that is NOT established. When it fails, STOP: nothing was written (a run that fails before the import writes nothing). Read the real address in a browser, correct the recipe, and only then look at the trust information. Never accept new trust information first to make a failure go away.**
+
+**Not verified. The download is NOT verified: Google publishes no hash for the file, and a check of the signature is not built. Because of this the shared importer REFUSES a real run of this recipe (nothing is published) unless the override sets `pcman_allow_unverified` to true. Do not set it before the signature check exists. Until then run the dry run only, and import by hand after a person has checked the file: `pcman import <file> --template gcpw` (no `--version` for an MSI; use the real item name when it is not `gcpw`). A real run of this recipe has NOT been run by anyone, not against a share and not on a PC, and neither has a dry run. `pcman catalogs` was NOT run either. The Windows overrides folder is not one of AutoPkg's override folders, so every override command here carries `--override-dir`: see the paragraph below.**
+
+| Recipe | Identifier | What it does |
+| --- | --- | --- |
+| `GCPW-Win.download.recipe` | `com.github.serrc-techops.download.GCPW-Win` | Downloads the Google Credential Provider for Windows enterprise installer that Google serves at a fixed address (the 64-bit MSI), kept under the file name of the address. It has no hard check |
+| `GCPW.cimian.recipe` | `com.github.serrc-techops.cimian.GCPW` | Parent: the download recipe. Hands the file to the package tool (`pcman`), which publishes it as a new version of the template item, or says that nothing is new |
+
+Why this installer is imported: items that configure GCPW need the installer
+item, and this pair imports it with a dry run, a trust check and a record.
+
+Neither recipe stops on an unchanged download, so an import that failed is tried
+again at the next run. The processor is in `../Win-SharedProcessors/` (see its
+README).
+
+Below, `pcman` stands for
+`<the package tool's folder>/.venv/bin/python3 <the package tool's folder>/bin/pcman`.
+
+## What protects, and what does not
+
+Nothing proves that the downloaded file is what Google published: there is no vendor
+hash, and a signature check is not built. The shared importer knows this: no step of
+the recipe sets `checksum_verified` with the hash of the file, so a real run is refused
+before the package tool starts. Two checks of the package tool remain. They do not
+replace a verification.
+
+- **The same product.** The package tool refuses an MSI whose upgrade code
+  differs from the template's. So another product cannot be published under the
+  name of this template.
+- **The label.** The recipe gives no version label. For an MSI the package tool
+  takes the MSI's own ProductVersion and refuses a label that is not the MSI's
+  own version.
+
+An MSI of the right product with other content (a changed file of the vendor, or a
+changed download on the way) would pass both checks.
+
+## Run every override with `--override-dir`
+
+**Give `--override-dir=<the Windows overrides folder>` to every `autopkg run`, `autopkg verify-trust-info` and `autopkg update-trust-info`, together with the override's path. Without it AutoPkg does not treat the file as an override: it skips the trust check with one warning line (`... is missing trust info ... Proceeding...`) and runs the recipe, and a changed processor is not caught. If that line ever appears in a run of an override, stop: the run was not checked.** (Seen with AutoPkg 2.9.0 on 2026-10-01: `verify-trust-info` without the option said "No trust information present" for an override that has it.)
+
+As an alternative the operator may set the AutoPkg preference `FAIL_RECIPES_WITHOUT_TRUST_INFO` to true: then any recipe without verified trust information fails. It is not set on the build machine today, and it would also change how the Mac recipes run, so it is the owner's decision.
+
+## a. What must exist first
+
+1. **The recipe repository is added to AutoPkg**, so that its folders are in
+   AutoPkg's search directories:
+
+       autopkg repo-add <the URL of the recipe repository>
+
+   `make-override` (step b) takes a recipe NAME and refuses a path.
+
+2. **The settings of the processor, as AutoPkg preferences.** One line each:
+
+       defaults write com.github.autopkg pcman_root -string "<the package tool's folder>"
+       defaults write com.github.autopkg pcman_python -string "<the package tool's Python>"
+
+   `pcman_python` is only needed when it is not `<the package tool's folder>/.venv/bin/python3`.
+   Write the values as strings. The repository is not a setting here: the package
+   tool's own configuration says where it is. The repository must be reachable
+   (the share mounted). For an MSI the package tool needs `msiinfo` (the processor
+   looks for it in its default `PATH`, which has the Homebrew folders).
+
+3. **The template item.** An item whose installer is the GCPW MSI may exist already
+   (imported by hand, say). Its name is not in this recipe: `gcpw` in the recipe is a
+   PLACEHOLDER. Find the real name first:
+   run `pcman versions <a name>` for the candidates, or look in the repository
+   for the item whose pkginfo has the GCPW MSI as its installer. If it exists, do
+   not make a second item: set its name in the override (step b). Only when no such item exists, make the template by a first import, so that
+   its pkginfo and installer are in the repository. The template keeps the name of
+   the item that it replaces. The command, with a real MSI:
+
+       pcman import <path of the MSI> --name gcpw \
+           --display-name "Google Credential Provider for Windows" --category <the category of the item> \
+           --developer "Google" --description "<one line about the item>" \
+           --directory <the folder of the item> --architectures x64 --no-prompt --build
+
+   There is no `--version`: the package tool takes the MSI's own version. The
+   install arguments are not given: the package tool knows the arguments of an MSI
+   (silent, no restart); read what it wrote into the pkginfo and check it. Add the
+   icon as the package tool's README describes. A person changes the template
+   later; nothing else does. **If the template is made from the installer that is
+   current at the vendor, the first run says "Nothing new" (see step c). To see a
+   dry run that would publish, make the template from an older version.**
+
+## b. Make the override INTO THE WINDOWS OVERRIDES FOLDER
+
+First check that no other recipe has the same name. AutoPkg takes the first match
+by name and says nothing about the others:
+
+    autopkg list-recipes | grep -i GCPW-Win
+    autopkg list-recipes | grep -i GCPW.cimian
+
+Each name must be listed once, from this repository. (Not run: the lines of the
+output are not known.) Then make the override:
+
+    autopkg make-override --override-dir=<the Windows overrides folder> GCPW.cimian
+
+**Why: without `--override-dir` the override lands in AutoPkg's normal overrides
+folder, and a nightly script that runs every override there would run it too.**
+The command takes the recipe's name, `GCPW.cimian`, not a path. Expected: it
+writes `<the Windows overrides folder>/GCPW.cimian.recipe` with the identifier
+`local.cimian.GCPW` and the trust information of the two recipes and of the
+one processor that is not part of AutoPkg itself (`PcmanImporter`). **Open the written file and read
+`ParentRecipe`: it must be `com.github.serrc-techops.download.GCPW-Win`.** Another value
+means that AutoPkg found another recipe of the same name.
+
+**The template name.** `PCMAN_TEMPLATE` in the recipe is the placeholder `gcpw`. When the
+real item has another name (step a.3), set it in the override, not in the recipe, and
+check the trust information again (a change of the `Input` does not break trust):
+
+    /usr/libexec/PlistBuddy -c 'Set :Input:PCMAN_TEMPLATE <the name of the item>' \
+        <the Windows overrides folder>/GCPW.cimian.recipe
+    autopkg verify-trust-info --override-dir=<the Windows overrides folder> <the Windows overrides folder>/GCPW.cimian.recipe
+
+`make-override` writes `Input` as the merged inputs of the recipe chain, so `:Input:PCMAN_TEMPLATE` exists in the written override and `Set` is the right command (read in the source of AutoPkg 2.9.0, `make_override`, on 2026-10-02; not run for this recipe).
+A dry run with a template name that is not in the repository stops with the
+line of step g.
+
+## c. First try: a dry run
+
+Run the override BY PATH and with `--override-dir` (see above):
+
+    autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/GCPW.cimian.recipe
+
+**Why by path:** the recipe's name or identifier
+(`com.github.serrc-techops.cimian.GCPW`) runs the recipe itself, not the
+override. The recipe itself never leaves the dry run, so the real run of step e
+would never happen.
+
+Expected, also without `-v`, when the current version is not yet in the
+repository (the lines of the 7-Zip rehearsal, with this program's name; they were
+NOT seen for this recipe, and the version is the MSI's own):
+
+    WARNING: DRY RUN. Nothing was written, because pcman_dry_run is on. ...
+    WARNING: the download was NOT verified: no step of the recipe set checksum_verified together with the checksum_sha256 of this file. ...
+    Dry run: the package tool wrote nothing (pcman_dry_run is on):
+    Name   Version  Catalogs    Result
+    gcpw   <the MSI's own version>  Production  dry run, nothing written, NOT verified
+
+The plan itself is not printed. The repository is unchanged. If the current
+version is in the repository already (the template was made from it), the line is
+`Nothing new: ... is in the repository already. Nothing was written.` instead.
+That is correct.
+
+## d. Switch a real run on (NOT YET: see the second paragraph at the top)
+
+A real run of this recipe is refused. `pcman_dry_run` set to false is not enough:
+
+    The download was not verified: no step of the recipe set checksum_verified together
+    with the checksum_sha256 of this file. Nothing was published. Publish by hand after
+    checking the file, or set pcman_allow_unverified to true in the override.
+
+**The right way for now: import by hand.** A person checks the file first. The command
+is the same for every new version. It uses the template, so it makes no second item:
+
+    pcman import <the file> --template gcpw
+
+Do not add `--version` for an MSI: the package tool takes the MSI's own version. Then
+`pcman catalogs` (step e.3).
+
+**Only after the signature check exists, or when a person has decided to accept an
+unverified download:** the override allows it. Both lines are needed.
+
+    /usr/libexec/PlistBuddy -c 'Add :Input:pcman_dry_run bool false' \
+        <the Windows overrides folder>/GCPW.cimian.recipe
+    /usr/libexec/PlistBuddy -c 'Add :Input:pcman_allow_unverified bool true' \
+        <the Windows overrides folder>/GCPW.cimian.recipe
+    autopkg verify-trust-info --override-dir=<the Windows overrides folder> <the Windows overrides folder>/GCPW.cimian.recipe
+
+A change of the `Input` does not break trust (rehearsed with 7-Zip). Do not use `-k`
+instead: on the command line it applies to every recipe of that run. A run then prints
+`WARNING: published WITHOUT a verified download ...` at any verbosity, and the report's
+row says `published, NOT verified`.
+
+## e. The real run, the catalogs, the second run
+
+1. The real run, by path again:
+
+       autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/GCPW.cimian.recipe
+
+   Only after both lines of step d. Expected: `Published gcpw ...`, the warning
+   `published WITHOUT a verified download`, and the table
+
+       The following versions were published by the package tool:
+       Name   Version  Catalogs    Result
+       gcpw   <the MSI's own version>  Production  published, NOT verified
+
+   The repository then has the MSI under `pkgs/` and its pkginfo under
+   `pkgsinfo/`. The item file of the template is not changed.
+
+2. `pcman versions gcpw` lists the template and the new version.
+
+3. **Build the catalogs: `pcman catalogs`.** Without it no PC sees the new
+   version.
+
+4. The second run, by path again:
+
+       autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/GCPW.cimian.recipe
+
+   Expected: `Nothing new: ... is in the repository already. Nothing was
+   written.` and `Nothing downloaded, packaged or imported.`
+
+## f. When a recipe or a processor changes upstream
+
+The run fails and publishes nothing:
+
+    Failed local trust verification ... contents differ from expected
+
+Look at what changed, then accept it. Never do this automatically:
+
+    autopkg verify-trust-info -vv --override-dir=<the Windows overrides folder> <the Windows overrides folder>/GCPW.cimian.recipe
+    autopkg update-trust-info --override-dir=<the Windows overrides folder> <the Windows overrides folder>/GCPW.cimian.recipe
+
+## g. A share that is not mounted
+
+With an empty folder as the repository the 7-Zip recipe failed (exit code 70)
+with the tool's line:
+
+    the repository does not hold the pkginfo of the template ...: is the share mounted, and was the template built?
+
+Nothing was written. Mount the share, then run again.
+
+## Other facts
+
+- A run prints at any verbosity: the dry-run warning, "Nothing new", "Published",
+  and the tool's NOTE and WARNING lines. `-vv` also prints `pcman_root` and the
+  repository: keep that log private.
+- The 32-bit installer, `gcpwstandaloneenterprise.msi` beside the 64-bit one, is not taken: a PC
+  that needs it is not served by this pair.
+- Google replaces the file at the same address without a new address (the file was
+  last modified on 2026-10-02 when it was read). AutoPkg asks the server whether the
+  file changed; whether this server answers that question is NOT established. If
+  every run downloads the whole file, that is the reason. The package tool decides by
+  the file's hash and the MSI's version.
+- If the address answers "not found" or "access denied", Google moved the file. Read
+  Google's page for GCPW in a browser, then correct the recipe.
+- The file is about 45 MB (47382528 bytes on 2026-10-02). The processor waits 30 minutes
+  by default (`pcman_timeout`), which is a limit for the copy to the share.
+- Whether the MSI's own ProductVersion is the number that Google's pages call the version
+  of GCPW is NOT established. The first dry run shows it.
+- The recipe's `NAME` is `GCPW` and `PCMAN_TEMPLATE` is `gcpw` (a placeholder, see the status line). Change
+  the template name in the override's `Input` (`PCMAN_TEMPLATE`), not in the recipe.
+
+## Tests
+
+From this folder, no AutoPkg and no network needed:
+
+    python3 -m unittest discover -s tests -t tests
+
+They check that both files are property lists, that the Description of both recipes
+and the top of this README say that the download is not verified, that a real run is
+refused, and that nothing was rehearsed and what was fetched, that this README states no hash, that every
+argument is an input that the shared processor declares, that the address is the 64-bit
+enterprise MSI and its file name ends in `.msi`, that no recipe sets
+`pcman_version` for an MSI, that this README has no `make-override` without
+`--override-dir` and runs no recipe by its identifier, and that nothing
+site-specific is in the folder.

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>NOT WORKING (expected). This recipe is expected to stop at its first run and publish nothing; whether it stays in the repository is the owner's decision. The hash file that this recipe's provider reads does not exist on the vendor's server (checked 2026-10-02), so this recipe is expected to fail at the provider and LibreOffice stays a hand import until the provider is changed to read the hash from where the server shows it. Downloads the newest release of LibreOffice for Windows (the 64-bit MSI of the line in LIBREOFFICE_LINE: fresh, the newer of the two lines that The Document Foundation offers, or still, the line below it) from the vendor's download server and checks it against the SHA-256 that the vendor publishes beside the file. The release is found in the server's index of stable releases by comparing the numbers of each version, not by the order of the links. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. It has its own processor (LibreOfficeInfoProvider, in this folder) because no shared recipe reads that index. This recipe was NOT run when it was written. The index was read on 2026-10-02, but the name, path and format of the hash file were not (the server answered 404 for its address), so the first run on the build Mac checks them.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.LibreOffice-Win</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>LibreOffice</string>
+            <key>LIBREOFFICE_LINE</key>
+            <string>fresh</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>LibreOfficeInfoProvider</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>libreoffice_line</key>
+                    <string>%LIBREOFFICE_LINE%</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>URLDownloader</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/ChecksumVerifier</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>expected_sha256</key>
+                    <string>%expected_sha256%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>
