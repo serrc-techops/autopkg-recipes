@@ -243,8 +243,8 @@ output are not known.) Then make the override:
 folder, and a nightly script that runs every override there would run it too.**
 The command takes the recipe's name, `BambuStudio.pcman`, not a path. It writes
 `<the Windows overrides folder>/BambuStudio.pcman.recipe` with the identifier
-`local.pcman.BambuStudio` and the trust information of the two recipes and the four
-processors that are not part of AutoPkg itself (`GitHubAssetDigest`, `ChecksumVerifier`,
+`local.pcman.BambuStudio` and the trust information of the two recipes and the five
+processors that are not part of AutoPkg itself (`GitHubNewestReleaseGuard`, `GitHubAssetDigest`, `ChecksumVerifier`,
 `VersionFromName`, `PcmanImporter`). **Open the written file and read
 `ParentRecipe`: it must be `com.github.serrc-techops.pcman.BambuStudio`**, the identifier of the recipe that the override was made from (AutoPkg writes the identifier of the recipe it found by that name). Another value
 means that AutoPkg found another recipe of the same name.
@@ -269,10 +269,16 @@ dry run, and that is the check working:
 - **No asset matches** (the lines of the provider name the pattern and the release):
   the real asset name is not one that the pattern knows. Read the release's real asset
   list and correct `SEARCH_PATTERN`.
+- **`GitHubNewestReleaseGuard` stops** (its message names the selected release, the newest release and the files
+  of the newest release): the newest release has a file name that the pattern does not take, and the provider
+  went back to an older release. Nothing was written. Correct `SEARCH_PATTERN` in the override's `Input` (this is what
+  happened on 2026-10-04, before the guard existed), or, for a newest release that has no Windows installer on
+  purpose (no file ending in `.msi`, `.exe` or `.msix`), accept exactly that release with `accepted_newest_release` in the override.
+  The guard is new and has not run under AutoPkg.
 - **The run goes on, but with an old release** (the line `Selected asset ... from release ...`
   names a release that is not the newest non-pre-release): the newest one has a name that the
   pattern does not take, and the provider went back to an older one. Stop. This is what
-  happened on 2026-10-04. Correct `SEARCH_PATTERN` before anything is published.
+  happened on 2026-10-04. Correct `SEARCH_PATTERN` before anything is published. The guard now stops this case.
 - **`GitHubAssetDigest` stops with its error** (the record has no digest): GitHub
   recorded none for this asset. Nothing was written. The program is a hand import
   until a release with a digest exists.
@@ -362,8 +368,18 @@ tests show this failure; it was NOT seen on this program.)
   pre-release is not downloaded, unless the override sets `include_prereleases` (see
   "Pre-releases" at the top).
 - AutoPkg's provider takes the first release, newest first, that has a file whose name
-  matches `SEARCH_PATTERN`, however old. When a name changes, the recipe does not stop: it
-  goes back. Read the `Selected asset` line of every dry run (the run is made with `-v`).
+  matches `SEARCH_PATTERN`, however old. When a name changes, the provider does not stop: it
+  goes back. The step `GitHubNewestReleaseGuard`, right after it, now stops the run when the
+  release that the provider selected is not the newest release that is not a pre-release; its
+  message names the newest release and its files. Then correct `SEARCH_PATTERN` in the
+  override's `Input`, or, for a newest release that has no Windows installer file (none ending in
+  `.msi`, `.exe` or `.msix`) on purpose, accept exactly that release with the key
+  `accepted_newest_release` of the override (its tag: offered only for a release without such a file,
+  and not when a release between it and the selected one has one; the run goes on only while that
+  release is the newest, says so in every run, and stops again when a newer one appears; never in the
+  recipe). The guard compares positions in GitHub's list, not versions. It is new and has not run under
+  AutoPkg. It compares releases, not files.
+  Read the `Selected asset` line of every dry run (the run is made with `-v`).
 
 ## Tests
 

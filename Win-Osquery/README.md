@@ -30,6 +30,21 @@ tests whether the value is empty, so the text `false` would count as true. The r
 step does not set it, because AutoPkg applies the arguments of a step after the
 override's `Input`, and they would beat it.
 
+**A newer release without the file.** AutoPkg's provider takes the first release, newest first, that has a file whose
+name matches `SEARCH_PATTERN`, however old, and says nothing when the newest release has none (a vendor's new spelling of the
+name). The download recipe's step `GitHubNewestReleaseGuard`, right after the provider, stops the run in that case: its message
+names the selected release, the newest release and the files of the newest release. Then correct `SEARCH_PATTERN` in the
+override's `Input`. If the newest release has no Windows installer file (none ending in `.msi`, `.exe` or `.msix`) on purpose, for example
+a development build with only a `.zip`, and you have looked at it, accept exactly that release: `/usr/libexec/PlistBuddy -c 'Set :Input:accepted_newest_release <its tag>' <the override>`
+(`Add :Input:accepted_newest_release string <its tag>` for an override that was made before this key existed). The guard offers and honours
+this only for a release without such a file (a release that has one is a renamed installer: correct `SEARCH_PATTERN`), and not when a release
+between it and the selected one has one. The run then goes on with the older release **only while that release is the newest**, says so in every
+run and in AutoPkg's end-of-run table, and stops again when a newer release appears. Never set it in the recipe. The guard compares positions in
+GitHub's list, not versions: for a vendor that publishes two lines of releases side by side, and only then, name the line with the override's
+`release_tag_pattern` (a regular expression matched from the start of the tag; every run names the newer releases that it left out). The guard
+asks GitHub once, without a credential, and has not run under AutoPkg yet. Read the `Selected asset` line of every dry run all the same (run it
+with `-v`): the guard compares releases, the line names the file.
+
 Below, `pcman` stands for
 `<the package tool's folder>/.venv/bin/python3 <the package tool's folder>/bin/pcman`.
 
@@ -204,7 +219,7 @@ output are not known.) Then make the override:
 folder, and a nightly script that runs every override there would run it too.**
 The command takes the recipe's name, `Osquery.pcman`, not a path. It writes
 `<the Windows overrides folder>/Osquery.pcman.recipe` with the identifier
-`local.pcman.Osquery` and the trust information of the two recipes and the three
+`local.pcman.Osquery` and the trust information of the two recipes and the four
 processors. **Open the written file and read
 `ParentRecipe`: it must be `com.github.serrc-techops.pcman.Osquery`**, the identifier of the recipe that the override was made from (AutoPkg writes the identifier of the recipe it found by that name). Another value
 means that AutoPkg found another recipe of the same name.
@@ -234,7 +249,7 @@ is `Nothing new: osquery 5.23.1 is in the repository already. Nothing was writte
 instead. That is correct.
 
 If the run stops before this, with an error from `GitHubReleasesInfoProvider`
-(no matching asset) or from `GitHubAssetDigest` (no digest), the status line at the
+(no matching asset), from `GitHubNewestReleaseGuard` (the provider went back to an older release) or from `GitHubAssetDigest` (no digest), the status line at the
 top applies: nothing was written; read the real release; correct the recipe.
 
 ## d. Switch a real run on

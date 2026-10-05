@@ -58,7 +58,29 @@ release with a matching file. Taking a 1.4 build would need two changes in the o
 changed to a pattern that matches the 1.4 installer and not the `Greenshot-Light-INSTALLER-...`
 file beside it, for example `Greenshot-INSTALLER-[0-9.]+-g[0-9a-f]+-UNSTABLE-UNSIGNED\.exe$`.
 Whether a continuous build with `UNSTABLE-UNSIGNED` in its name goes to the PCs is the
-owner's decision.
+owner's decision. With the guard in the recipe, that run (`include_prereleases` true and the pattern unchanged) **stops**:
+the newest release is then a 1.4 build whose files the pattern does not take, and the message of `GitHubNewestReleaseGuard` says so; before the guard it took
+`v1.3.315` without a word. With the two changes above (the 1.4 pattern and `include_prereleases` true) the guard **still stops whenever a 1.3 release is on top of
+GitHub's list**, because the vendor publishes 1.3 releases between its 1.4 builds: on the list read on 2026-10-04 the top was a 1.3 release from `v1.3.310` (2026-01-05) until `v1.4.284`
+(2026-10-02), so such a run would have stopped for those nine months although the provider took the right 1.4 build. The third change that follows the 1.4 line is
+the override's key `release_tag_pattern` set to `v1\.4\.` (a regular expression matched from the start of the tag): then only a 1.4 release counts as the newest.
+Every run then names the newer releases that the pattern left out (here the 1.3 releases listed above the newest 1.4 build), so that the pattern cannot hide a rename in silence.
+`accepted_newest_release` is not the way out here: every 1.3 release has a Windows installer file, so an acceptance is refused for it.
+
+**A newer release without the file.** AutoPkg's provider takes the first release, newest first, that has a file whose
+name matches `SEARCH_PATTERN`, however old, and says nothing when the newest release has none (a vendor's new spelling of the
+name). The download recipe's step `GitHubNewestReleaseGuard`, right after the provider, stops the run in that case: its message
+names the selected release, the newest release and the files of the newest release. Then correct `SEARCH_PATTERN` in the
+override's `Input`. If the newest release has no Windows installer file (none ending in `.msi`, `.exe` or `.msix`) on purpose, for example
+a development build with only a `.zip`, and you have looked at it, accept exactly that release: `/usr/libexec/PlistBuddy -c 'Set :Input:accepted_newest_release <its tag>' <the override>`
+(`Add :Input:accepted_newest_release string <its tag>` for an override that was made before this key existed). The guard offers and honours
+this only for a release without such a file (a release that has one is a renamed installer: correct `SEARCH_PATTERN`), and not when a release
+between it and the selected one has one. The run then goes on with the older release **only while that release is the newest**, says so in every
+run and in AutoPkg's end-of-run table, and stops again when a newer release appears. Never set it in the recipe. The guard compares positions in
+GitHub's list, not versions: for a vendor that publishes two lines of releases side by side, and only then, name the line with the override's
+`release_tag_pattern` (a regular expression matched from the start of the tag; every run names the newer releases that it left out). The guard
+asks GitHub once, without a credential, and has not run under AutoPkg yet. Read the `Selected asset` line of every dry run all the same (run it
+with `-v`): the guard compares releases, the line names the file.
 
 Below, `pcman` stands for
 `<the package tool's folder>/.venv/bin/python3 <the package tool's folder>/bin/pcman`.
@@ -235,8 +257,8 @@ output are not known.) Then make the override:
 folder, and a nightly script that runs every override there would run it too.**
 The command takes the recipe's name, `Greenshot.pcman`, not a path. It writes
 `<the Windows overrides folder>/Greenshot.pcman.recipe` with the identifier
-`local.pcman.Greenshot` and the trust information of the two recipes and the four
-processors that are not part of AutoPkg itself (`GitHubAssetDigest`, `ChecksumVerifier`,
+`local.pcman.Greenshot` and the trust information of the two recipes and the five
+processors that are not part of AutoPkg itself (`GitHubNewestReleaseGuard`, `GitHubAssetDigest`, `ChecksumVerifier`,
 `WindowsExeVersion`, `PcmanImporter`). **Open the written file and read
 `ParentRecipe`: it must be `com.github.serrc-techops.pcman.Greenshot`**, the identifier of the recipe that the override was made from (AutoPkg writes the identifier of the recipe it found by that name). Another value
 means that AutoPkg found another recipe of the same name. (Whether another recipe of this name exists was NOT checked: the writer had no AutoPkg.)

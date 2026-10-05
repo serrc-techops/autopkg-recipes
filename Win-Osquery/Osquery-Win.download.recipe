@@ -3,7 +3,7 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>Downloads the current release of osquery for Windows (the .msi asset of the newest non-pre-release on GitHub that has a matching file, kept under the asset's own file name) and checks it against the SHA-256 that GitHub records for the asset. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. The pattern for the asset's name and the digest were checked against GitHub's release list on 2026-10-04 (the newest six releases: one .msi each, every asset with a recorded digest); the recipe was NOT run with AutoPkg and the MSI was not opened. Pre-releases are skipped unless the override sets the input include_prereleases to true.</string>
+        <string>Downloads the current release of osquery for Windows (the .msi asset of the newest non-pre-release on GitHub that has a matching file, kept under the asset's own file name) and checks it against the SHA-256 that GitHub records for the asset. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. The pattern for the asset's name and the digest were checked against GitHub's release list on 2026-10-04 (the newest six releases: one .msi each, every asset with a recorded digest); the recipe was NOT run with AutoPkg and the MSI was not opened. Pre-releases are skipped unless the override sets the input include_prereleases to true. The step GitHubNewestReleaseGuard, right after the provider, stops the run when the release that the provider selected is not the newest release (a pre-release is skipped unless include_prereleases is true): it names the newest release and its files. The override's input accepted_newest_release, set to the tag of a newest release that has no Windows installer file (.msi, .exe, .msix) on purpose, lets the run go on only while that release is the newest, and release_tag_pattern names the line of releases to follow for a vendor with two lines (every run names the newer releases that it left out).</string>
         <key>Identifier</key>
         <string>com.github.serrc-techops.download.Osquery-Win</string>
         <key>Input</key>
@@ -12,8 +12,12 @@
             <string>Osquery</string>
             <key>SEARCH_PATTERN</key>
             <string>osquery-[0-9.]+\.msi$</string>
+            <key>accepted_newest_release</key>
+            <string></string>
             <key>include_prereleases</key>
             <false/>
+            <key>release_tag_pattern</key>
+            <string></string>
         </dict>
         <key>MinimumVersion</key>
         <string>1.0.0</string>
@@ -28,6 +32,15 @@
                     <string>osquery/osquery</string>
                     <key>asset_regex</key>
                     <string>%SEARCH_PATTERN%</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/GitHubNewestReleaseGuard</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>github_asset_api_url</key>
+                    <string>%asset_url%</string>
                 </dict>
             </dict>
             <dict>

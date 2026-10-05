@@ -202,7 +202,7 @@ output are not known.) Then make the override:
 folder, and a nightly script that runs every override there would run it too.**
 The command takes the recipe's name, `PDFsam.pcman`, not a path. It writes
 `<the Windows overrides folder>/PDFsam.pcman.recipe` with the identifier
-`local.pcman.PDFsam` and the trust information of the two recipes and the three
+`local.pcman.PDFsam` and the trust information of the two recipes and the four
 processors. **Open the written file and read
 `ParentRecipe`: it must be `com.github.serrc-techops.pcman.PDFsam`**, the identifier of the recipe that the override was made from (AutoPkg writes the identifier of the recipe it found by that name). Another value
 means that AutoPkg found another recipe of the same name.
@@ -314,8 +314,18 @@ Nothing was written there. Expected here too, not run. Mount the share, then run
 - `-p` (a local file instead of the download) fails the checksum, because the
   digest is the one of the GitHub asset.
 - AutoPkg's provider takes the first release, newest first, that has a file whose name
-  matches `SEARCH_PATTERN`, however old. When a name changes, the recipe does not stop: it
-  goes back. Read the `Selected asset` line of every dry run (run it with `-v`).
+  matches `SEARCH_PATTERN`, however old. When a name changes, the provider does not stop: it
+  goes back. The step `GitHubNewestReleaseGuard`, right after it, now stops the run when the
+  release that the provider selected is not the newest release that is not a pre-release; its
+  message names the newest release and its files. Then correct `SEARCH_PATTERN` in the
+  override's `Input`, or, for a newest release that has no Windows installer file (none ending in
+  `.msi`, `.exe` or `.msix`) on purpose, accept exactly that release with the key
+  `accepted_newest_release` of the override (its tag: offered only for a release without such a file,
+  and not when a release between it and the selected one has one; the run goes on only while that
+  release is the newest, says so in every run, and stops again when a newer one appears; never in the
+  recipe). The guard compares positions in GitHub's list, not versions. It is new and has not run under
+  AutoPkg. It compares releases, not files.
+  Read the `Selected asset` line of every dry run (run it with `-v`).
 
 ## Tests
 

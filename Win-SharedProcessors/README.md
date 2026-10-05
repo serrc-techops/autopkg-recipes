@@ -1,6 +1,6 @@
 # Win-SharedProcessors
 
-Five AutoPkg processors for Windows installers, and the stub recipe that lets
+Six AutoPkg processors for Windows installers, and the stub recipe that lets
 other recipes use them. None of them needs the package tool or any other program
 that is not in this repository or in AutoPkg: they work with any Cimian repository.
 (The processor for the owner's own package tool, `pcman`, is in
@@ -15,6 +15,7 @@ processor like this: `com.github.serrc-techops.SharedProcessors/<Processor>`.
 | `CimianImporter.py` | Publishes a downloaded `.msi` or `.exe` as a new version into a Cimian repository. The last step of a recipe. It is to a Cimian repository what AutoPkg's `MunkiImporter` is to a Munki repository |
 | `ChecksumVerifier.py` | Stops the recipe when a file does not have the SHA-256 that its publisher gives |
 | `GitHubAssetDigest.py` | Reads the SHA-256 that GitHub records for a release asset |
+| `GitHubNewestReleaseGuard.py` | Stops the recipe when the release that `GitHubReleasesInfoProvider` selected is not the newest one, so that a vendor's new spelling of a file name cannot send the recipe back to an old release unseen |
 | `WindowsExeVersion.py` | Reads the version of a downloaded `.exe` from the file itself, for the version label that `CimianImporter` needs |
 | `VersionFromName.py` | Reads the version label from the name of a downloaded file and checks its shape, for an `.exe` that has no version resource of its own |
 | `SharedProcessors.recipe` | Stub. Carries the identifier `com.github.serrc-techops.SharedProcessors`. Does nothing |
@@ -451,6 +452,105 @@ A failed request, an answer that is not JSON, a record without a `digest`, or a
 digest that is not a SHA-256 is a `ProcessorError`. The file and the hash come
 from the same place: this check shows that the file is what GitHub holds.
 
+## GitHubNewestReleaseGuard
+
+AutoPkg's `GitHubReleasesInfoProvider` walks the releases of a repository in the order that GitHub lists them (newest first), skips a pre-release unless
+`include_prereleases` is set, skips a release that has no files, and takes the first release that has a file whose name matches `asset_regex`, however old that
+release is (AutoPkg 2.9.0, `GitHubReleasesInfoProvider.py:173-201`, `select_asset`). The provider has no rule for drafts; GitHub lists them only for people with push
+access to the repository (its documentation, not re-read on 2026-10-04), and none of the eight lists read anonymously on 2026-10-04 held one. When a
+vendor changes the spelling of a file name the provider goes back to the last release with the old spelling and says nothing (see "When a vendor renames a file").
+This processor stops the run in that case. It sits right after the provider and before `URLDownloader`, so nothing is downloaded when it stops, and it also runs in
+the check phase.
+
+**How it learns which release was selected.** The provider keeps the selected release and asset in its own object (`:204-205`) and puts only `url`, `asset_url`,
+`asset_created_at`, `version` and `release_notes` into the run (`:235-255`). `version` is the tag with a leading `v` and dots stripped (`:244-248`), which is not
+enough to find a release. `asset_url` is the API URL of the selected asset and ends with the asset's number (`:238`). The record of an asset has no key that names its
+release (its keys are `browser_download_url`, `content_type`, `created_at`, `digest`, `download_count`, `id`, `label`, `name`, `node_id`, `size`, `state`,
+`updated_at`, `uploader` and `url`), so the asset's record cannot say which release it belongs to. The guard therefore reads the owner, the repository and the asset's
+number from `asset_url` (the repository cannot differ from the provider's), fetches the release list, takes the newest release that the provider could take, and looks
+for the asset's number among the files of that release. Found: the run goes on. Not found: `ProcessorError`.
+
+**The rule for the newest release.** The first release of GitHub's list (the order that the provider walks) that is not a draft, is not a pre-release unless `include_prereleases` is
+true, and, when `release_tag_pattern` is given, has a tag that matches it. **The guard compares positions in the list, not versions.** `include_prereleases` is
+read from the run's variables and tested for truth like the provider tests it (any non-empty value counts, the text
+`false` included; keep it a boolean). It is not passed by a step: a `%variable%` that holds a boolean stops the whole run with a TypeError. A release **without files
+counts**: when the newest release has none, the run stops, and the message says that the release has no files. When a whole page of thirty releases
+is pre-releases, drafts or of another line, the next page is read, up to three pages; when no release can be compared the run stops and says so.
+
+**Two lines of releases side by side.** A vendor that keeps publishing releases of an older line between the releases of a newer one breaks the plain rule in both
+directions, and the provider has no idea of a line either: it takes the first release in the list that has a file matching `asset_regex`. Replayed on the saved list of
+one such vendor (Greenshot, 2026-10-04), a recipe that follows the 1.4 builds (the 1.4 pattern, `include_prereleases` true) took the right 1.4 build every time, and the guard stopped
+it whenever a 1.3 release was on top, from 2026-01-05 until 2026-10-02. In the other direction, a maintenance release of the old line published after the first release of the new line is first in the list; when
+`asset_regex` matches the files of both lines the provider takes the old line and a guard without a pattern passes it unseen. So **a recipe that follows one line says
+so explicitly**: the override's `release_tag_pattern`, a regular expression matched from the start of the tag (`re.match`, like the provider matches `asset_regex`), for example `v1\.4\.`.
+Only a release whose tag matches counts as the newest (the pre-release and draft rules apply inside the line). The pattern does not choose the provider's file: `asset_regex`
+does; the guard only compares. Without the pattern every release is of one line. The provider's own remedy for odd release orders, `sort_by_highest_tag_names`, is not supported (below).
+**A pattern hides the releases it leaves out, so it says which ones, in every run, not only with `-v`**: when releases that would count (not a draft, and passing the pre-release rule) are listed
+above the newest release of the line, one line names the newer ones: `release_tag_pattern '<pattern>' left out <n> newer release(s) of <owner>/<repo>: '<tag>', ... (and <m> more).
+If one of them carries the installer that this recipe should take, the pattern hides a rename.` (at most five tags are named, then how many more). Replayed on the saved list of a vendor whose
+installer was renamed in its newest release, a pattern that follows the old line (`v20\.`) passed the run in silence; now the line names the newer releases it left out. The pattern is for two
+lines of releases, not a cure for a rename: the stop messages say so.
+
+**A newest release that has no installer on purpose.** A development build with only a `.zip` can be the newest release. The guard stops
+the run, and the provider has rightly taken the installer below it. Once somebody has looked at that release, the override's `accepted_newest_release` names its **tag**, as text (the message
+gives the exact `PlistBuddy` command with the tag when the tag has only letters, digits and `._+-`; a tag with another character gets no command, because it comes from GitHub and a shell reads it,
+and the message says to copy the tag exactly as the vendor's release page writes it). The guard still asks GitHub. **An acceptance is offered, and honoured, only for a release without a Windows
+installer file**, a file whose name ends in `.msi`, `.exe` or `.msix` (`INSTALLER_EXTENSIONS`, in any letter case): a release that has one is a renamed installer, and the cure is the pattern. For such a
+release the message names the installer files, says so and prints no command; a tag that was accepted while the release held only a `.zip` stops passing when an installer file is added to that release later.
+A release that is only still being filled in passes by itself on the next run. The acceptance also does not cover **a rename below it**: it holds only when no release that lies between the newest one and the selected one
+(a release that would count, in the list) has a Windows installer file either, and the selected release is not listed above the newest (with a tag pattern it can be); otherwise the run stops and the message names
+the releases between, with their files, and says that an acceptance does not cover them. Two releases without an installer in a row are accepted with the tag of the newest one. The run goes on **only
+while that release is the newest**, and it says so in every run, not only with `-v`, in one line, and in AutoPkg's end-of-run table (below): `An older release is taken
+on purpose: the newest release of <owner>/<repo>, '<tag>', has <n> file(s) (<names>) and the override accepts it as the newest (accepted_newest_release); the provider took ...`. When a newer release appears
+(for example the vendor renames its installer in the next release) the tag no longer matches and the run stops again, naming the new release and its files. A tag that is set but not needed (the selected
+release is the newest) is said with `-v`. The input is text: `true` or any non-text value is an error. It replaces a switch of the first version, `allow_older_release`, which turned the whole check off
+and so hid every later rename; a recipe that still sets it is refused with a message.
+
+| Input | Required | Meaning |
+| --- | --- | --- |
+| `github_asset_api_url` | yes | `https://api.github.com/repos/<owner>/<repo>/releases/assets/<id>`, from the provider's output `asset_url`. Any other URL is refused. The repository that is asked about is the one in it |
+| `include_prereleases` | no | Not passed by a step. The recipe's `Input` key of the provider, read from the run |
+| `accepted_newest_release` | no (default empty) | A key of the override's `Input`, never of the recipe. The tag of the newest release that has no Windows installer file on purpose (see above). Empty: no release is accepted |
+| `release_tag_pattern` | no (default empty) | A key of the override's `Input`. A regular expression matched from the start of a tag: only a release whose tag matches can be the newest (see "Two lines of releases"). Empty: every release |
+| `sort_by_highest_tag_names` | no | The provider's input of that name. Not supported: when it is set (any non-empty value) the guard refuses the recipe |
+| `latest_only` | no | The provider's input of that name. Not supported: when it is set the guard refuses the recipe |
+| `url` | no | The provider's download URL. Used only to name the selected release in the message when the list does not hold the asset |
+
+**The provider's `sort_by_highest_tag_names` and `latest_only` are refused.** The first sorts each page by `APLooseVersion` of the tag (`:222-225`), the second asks only for the release that the
+vendor marked as latest (`:148-149`); both change which release the provider takes, so the guard's idea of the newest release (GitHub's order) would differ from the provider's without a word.
+The guard does not model them: a recipe that sets either input stops with a message that says so, whatever else is set, before anything is asked. Remove the input from the override;
+for a vendor with two lines use `release_tag_pattern`. (A fact of AutoPkg 2.9.0, outside the guard: with `latest_only` and no matching asset the provider's loop, `:214-232`, asks again and again,
+because `get_releases` ignores the page in that mode, `:148-151`.)
+
+**The output.** The processor has one output variable, `github_newest_release_guard_summary_result`, set only when a run goes on with something that a person should look at: an older release taken on
+purpose, or newer releases that `release_tag_pattern` left out. AutoPkg collects every variable whose name ends in `_summary_result` (the neighbours: `cimian_importer_summary_result`, `url_downloader_summary_result`)
+into its end-of-run table and its report plist: `summary_text`, `report_fields` (`repository`, `newest_release`, `release_taken`, `reason`) and a `data` dict of text, as AutoPkg's table needs. It holds tags and a reason: no
+secret, no path. The variable is cleared at the start of each run of the processor, so that a result of an earlier recipe is not reported again. With `-v` the processor prints `The selected release '<tag>' of <owner>/<repo> is the newest release that is not a pre-release.` when it passes;
+the release is written as `'<tag>' (titled '<title>')` when GitHub's title is another text than the tag (4 of the 8 repositories on 2026-10-04), and `whose tag matches '<pattern>'` follows
+when `release_tag_pattern` is set.
+
+**The message of a stop** names the selected release and file, the newest release and **all its files up to thirty** (the new spelling of the installer's name is among
+them), **the releases between the newest and the selected one, with their files** (up to five; a rename below a dev build is seen there), says how the provider chooses, and what to do: correct
+`SEARCH_PATTERN` (the provider's `asset_regex`) in the override; or, only when none of those releases has a Windows installer file, accept the newest release by its tag; or, for two lines of releases and
+only then, name the line with `release_tag_pattern`. When the selected file is **not in the list that was read** the message says that the list may have changed after the provider read it (the guard's request is anonymous and
+the answers to anonymous requests carry `cache-control: public, max-age=60`, so a list may be up to a minute old, which was not established; the provider's request is the machine's own), so that a run should be repeated before anything is changed, or that the release is older than the releases
+that were read. Text that comes from GitHub is shown with printable characters only (a backtick is shown as a single quote, because a message marks its commands with backticks) and cut at 80 characters.
+
+**The request.** One anonymous `GET` of `https://api.github.com/repos/<owner>/<repo>/releases?per_page=30&page=1` with a time limit of 30 seconds and no credential: it
+reads no token file, no preference and no environment variable, so no token reaches the run's variables (AutoPkg writes them into its receipts). The host is fixed in
+the code. A redirect is not followed: it is an error that names the status. An answer is read up to 8 MiB (a page of up to thirty releases was 0.13 to 0.82 MB in the eight
+repositories read on 2026-10-04). A 404 names the repository (it does not exist or is not public; a repository without releases answers 200 with an empty list, which stops the run with its own message). A 403 or 429 with `X-RateLimit-Remaining: 0` (or a `Retry-After`) is said as GitHub's limit for anonymous
+requests, with the time at which it ends; any other status is named. An answer that is not JSON, not a list of releases or too large is an error.
+
+**Requests of a run, and GitHub's limit.** The limit for anonymous requests is 60 an hour for one address (`X-RateLimit-Limit: 60` on every answer of 2026-10-04), and
+every other anonymous use of the address counts. A run of one download recipe asks the guard's one request, `GitHubAssetDigest`'s one (when the recipe has that step), and
+the provider's own (one page of thirty releases, with the machine's token when it has one: the provider reads it itself, from AutoPkg's preference or a file). A run of the
+eight recipes that use the provider makes **8 anonymous requests with the guard and 7 with `GitHubAssetDigest`** (one of the eight has no digest step): 15 anonymous requests,
+where the digest alone made 7, plus the provider's 8 (authenticated with a token, anonymous without one: 23 in all). That counts one override of each product: when a nightly run
+runs both overrides of a product (the generic one and the package tool's), each runs the download recipe's steps and the numbers double (30, and 46 without a token). That fits one run an hour with room. At 15 requests a run, four runs of
+all eight in an hour (for example a dry run and a real run, twice) use the whole limit; at 23 (no token) two runs do, and a third stops on it. A run that stops on the
+limit says so and is run again later. The guard could save its request by passing the digest of the asset on (the list holds each asset's `digest`): that is not built.
+
 ## WindowsExeVersion
 
 Several Windows installers are `.exe` files at a fixed address, with no version in
@@ -602,11 +702,18 @@ finds that version in the repository and says `Nothing new`. The run then ends c
 matches. This happened in the first AutoPkg runs of 2026-10-04 to three recipes whose patterns knew only an old spelling of the name (they took files of January 2026,
 October 2024 and December 2020, and then stopped on a property of those old files).
 
-These recipes have **no guard** against it (none is built; one that compares the selected release with GitHub's `latest` is possible and costs one more request a run).
-What was checked: on 2026-10-04 the release that Angry IP Scanner, Bambu Studio, PDFsam, XCP-ng Center, osquery and Greenshot take is the newest release that is not a
-pre-release (the saved lists of GitHub's release API; for Bambu Studio, PDFsam and XCP-ng Center also GitHub's `latest` of that day). For 7-Zip and OpenSSH only their dry
-runs are known, which showed that the version taken equals the template's, and that does not show that it is the newest. **What the operator compares in a dry run** (run it with `-v`): the
-line `Selected asset ... from release ...` against the vendor's releases page. The release that it names must be the newest one that is not a pre-release. A run that ends in
+The eight download recipes that use the provider now have a **guard**: the step `GitHubNewestReleaseGuard` (its section is above), right after the provider, stops the run when the
+release that the provider selected is not the newest release that is not a pre-release, and names the files of the newest release, so that the new spelling is in the
+message. A newest release that has no Windows installer on purpose is accepted by its tag in the override's `Input` key `accepted_newest_release`, and the run goes on only while that release is the newest.
+The guard is new and has not run under AutoPkg: its tests use made-up lists, and it was run (with no network, as a function) on the saved lists of GitHub's release API of the eight repositories
+of 2026-10-04 by the recipes' own tests. What was checked on 2026-10-04 on the first page of each list (thirty releases, newest first): the release that Angry IP Scanner,
+Bambu Studio, PDFsam, XCP-ng Center, osquery, Greenshot, 7-Zip and OpenSSH take is the newest release that is not a pre-release (for 7-Zip and OpenSSH this is a new reading: before it only their dry runs
+were known; the tags of OpenSSH all say Preview or Beta, and GitHub does not flag them as pre-releases, so its newest release is taken; the lists of Bambu Studio and Greenshot have pre-releases
+on top, which are skipped). For Bambu Studio, PDFsam and XCP-ng Center it was also compared with GitHub's `latest` of that day.
+
+**What the operator still compares in a dry run** (run it with `-v`): the
+line `Selected asset ... from release ...` against the vendor's releases page. The release that it names must be the newest one that is not a pre-release. The guard compares
+the release, not the file: it cannot see a vendor that has moved the installer away from GitHub's releases, or a newest release whose matching file is the wrong one. A run that ends in
 `Nothing new` is not proof that the newest release was taken.
 
 ## An example: the last steps of a recipe
@@ -626,6 +733,15 @@ step reads `<string>%version%</string>`, the label that `WindowsExeVersion` set.
         <string>example-owner/example-app</string>
         <key>asset_regex</key>
         <string>example-app-.*-x64\.msi$</string>
+    </dict>
+</dict>
+<dict>
+    <key>Processor</key>
+    <string>com.github.serrc-techops.SharedProcessors/GitHubNewestReleaseGuard</string>
+    <key>Arguments</key>
+    <dict>
+        <key>github_asset_api_url</key>
+        <string>%asset_url%</string>
     </dict>
 </dict>
 <dict>
@@ -670,6 +786,9 @@ step reads `<string>%version%</string>`, the label that `WindowsExeVersion` set.
     </dict>
 </dict>
 ```
+
+`GitHubNewestReleaseGuard` follows the provider and comes before the download. The recipe's `Input` has the keys `include_prereleases` (false),
+`accepted_newest_release` and `release_tag_pattern` (both empty), so that `make-override` copies them into an override; no step names them.
 
 `ChecksumVerifier` reads `pathname` and `expected_sha256` from the run's variables, so it needs
 no arguments here. It also sets `checksum_verified` and `checksum_sha256`, which `CimianImporter`
@@ -736,6 +855,10 @@ PyYAML, which AutoPkg's own Python has; in a Python without it they are skipped 
 version order, of the declarations and of the missing-PyYAML error still run).
 
 The tests of `VersionFromName` read only names and patterns; they open no file.
+
+The tests of `GitHubNewestReleaseGuard` use made-up lists of releases in the shape of GitHub's answer and replace the function that sends the request; the tests of
+the request replace the lowest function (`open_request`), and a server on the loopback address answers the redirect tests. The recipes' own tests of the eight download
+recipes run the guard on the saved list of each repository (`releases_excerpt.json` of their folders), with AutoPkg 2.9.0's choice written as a function. None uses the network.
 
 The tests of `WindowsExeVersion` build a small PE file in a temporary folder; no real
 `.exe` is in this repository. One more test reads real files and is skipped unless a

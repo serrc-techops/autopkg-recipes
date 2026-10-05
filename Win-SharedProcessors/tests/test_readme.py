@@ -4,7 +4,7 @@ import os
 import re
 import unittest
 
-from _win_support import PROCESSOR_DIR, cimian
+from _win_support import PROCESSOR_DIR, cimian, newest_release
 
 README = os.path.join(PROCESSOR_DIR, "README.md")
 
@@ -160,14 +160,158 @@ class ReadmeTests(unittest.TestCase):
                        "the importer finds that version in the repository and says `Nothing new`",
                        "it stops only when no release of the whole list matches",
                        "(they took files of January 2026, October 2024 and December 2020",
-                       "These recipes have **no guard** against it (none is built;",
-                       "on 2026-10-04 the release that Angry IP Scanner, Bambu Studio, PDFsam, XCP-ng Center, osquery and Greenshot take is the newest release that is not a pre-release",
-                       "For 7-Zip and OpenSSH only their dry runs are known",
-                       "**What the operator compares in a dry run** (run it with `-v`)",
+                       "The eight download recipes that use the provider now have a **guard**: the step `GitHubNewestReleaseGuard`",
+                       "stops the run when the release that the provider selected is not the newest release that is not a pre-release",
+                       "names the files of the newest release, so that the new spelling is in the message",
+                       "is accepted by its tag in the override's `Input` key `accepted_newest_release`, and the run goes on only while that release is the newest",
+                       "The guard is new and has not run under AutoPkg",
+                       "the release that Angry IP Scanner, Bambu Studio, PDFsam, XCP-ng Center, osquery, Greenshot, 7-Zip and OpenSSH take is the newest release that is not a pre-release",
+                       "for 7-Zip and OpenSSH this is a new reading",
+                       "**What the operator still compares in a dry run** (run it with `-v`)",
                        "`Selected asset ... from release ...` against the vendor's releases page",
+                       "The guard compares the release, not the file",
                        "A run that ends in `Nothing new` is not proof that the newest release was taken"):
             self.assertIn(needle, section)
+        for old in ("no guard", "none is built", "only their dry runs are known"):
+            self.assertNotIn(old, section)
         self.assertLess(text.index("## VersionFromName"), start)
+        self.assertLess(text.index("## GitHubNewestReleaseGuard"), text.index("## VersionFromName"))
+
+    def test_the_readme_describes_the_newest_release_guard(self):
+        raw = raw_text()
+        text = normalized_text()
+        self.assertIn("Six AutoPkg processors", text)
+        self.assertIn("| `GitHubNewestReleaseGuard.py` | Stops the recipe when the release that `GitHubReleasesInfoProvider` selected is not the newest one", text)
+        section = text[text.index("## GitHubNewestReleaseGuard"):text.index("## WindowsExeVersion")]
+        for needle in ("`GitHubReleasesInfoProvider.py:173-201`", "(`:204-205`)", "(`:235-255`)", "(`:244-248`)",
+                       "ends with the asset's number (`:238`)",
+                       "The record of an asset has no key that names its release",
+                       "reads the owner, the repository and the asset's number from `asset_url`",
+                       "**The rule for the newest release.**", "A release **without files counts**",
+                       "**The guard compares positions in the list, not versions.**",
+                       "has a tag that matches it",
+                       "the next page is read, up to three pages",
+                       "**Two lines of releases side by side.**",
+                       "a recipe that follows one line says so explicitly**: the override's `release_tag_pattern`",
+                       "matched from the start of the tag (`re.match`, like the provider matches `asset_regex`)",
+                       "a guard without a pattern passes it unseen",
+                       "the guard stopped it whenever a 1.3 release was on top, from 2026-01-05 until 2026-10-02",
+                       "**A newest release that has no installer on purpose.**",
+                       "names its **tag**, as text",
+                       "**only while that release is the newest**",
+                       "in every run, not only with `-v`, in one line",
+                       "An older release is taken on purpose: the newest release of <owner>/<repo>, '<tag>', has <n> file(s)",
+                       "the tag no longer matches and the run stops again, naming the new release and its files",
+                       "A tag that is set but not needed",
+                       "a tag with another character gets no command",
+                       "replaces a switch of the first version, `allow_older_release`, which turned the whole check off",
+                       "**The provider's `sort_by_highest_tag_names` and `latest_only` are refused.**",
+                       "a recipe that sets either input stops with a message that says so, whatever else is set, before anything is asked",
+                       "`:222-225`", "`:148-149`", "`:214-232`",
+                       "`'<tag>' (titled '<title>')`", "`whose tag matches '<pattern>'`",
+                       "is **not in the list that was read**", "`cache-control: public, max-age=60`", "which was not established",
+                       "it does not exist or is not public",
+                       "numbers double (30, and 46 without a token)",
+                       "**The output.** The processor has one output variable, `github_newest_release_guard_summary_result`",
+                       "AutoPkg collects every variable whose name ends in `_summary_result`",
+                       "`summary_text`, `report_fields` (`repository`, `newest_release`, `release_taken`, `reason`)",
+                       "no secret, no path", "The variable is cleared at the start of each run of the processor",
+                       "**An acceptance is offered, and honoured, only for a release without a Windows installer file**",
+                       "`INSTALLER_EXTENSIONS`", "stops passing when an installer file is added to that release later",
+                       "does not cover **a rename below it**",
+                       "Two releases without an installer in a row are accepted with the tag of the newest one",
+                       "and the selected release is not listed above the newest",
+                       "**A pattern hides the releases it leaves out, so it says which ones, in every run, not only with `-v`**",
+                       "passed the run in silence; now the line names the newer releases it left out",
+                       "**the releases between the newest and the selected one, with their files**",
+                       "only when none of those releases has a Windows installer file, accept the newest release by its tag",
+                       "a backtick is shown as a single quote",
+                       "**The message of a stop**", "correct `SEARCH_PATTERN`",
+                       "**The request.**", "reads no token file, no preference and no environment variable",
+                       "A redirect is not followed", "A 404 names the repository",
+                       "`X-RateLimit-Remaining: 0`", "said as GitHub's limit for anonymous requests",
+                       "**Requests of a run, and GitHub's limit.**", "60 an hour for one address",
+                       "**8 anonymous requests with the guard and 7 with `GitHubAssetDigest`**",
+                       "15 anonymous requests", "23 in all", "that is not built"):
+            self.assertIn(needle, section)
+        guard = newest_release
+        self.assertIn("a time limit of %d seconds" % guard.FETCH_TIMEOUT_SECONDS, section)
+        self.assertIn("read up to %d MiB" % (guard.MAX_RESPONSE_BYTES // (1024 * 1024)), section)
+        self.assertIn("?per_page=%d&page=1" % guard.RELEASES_PER_PAGE, section)
+        self.assertIn("a whole page of thirty releases", section)
+        self.assertEqual(guard.RELEASES_PER_PAGE, 30)
+        self.assertEqual(guard.MAX_PAGES, 3)
+        self.assertIn("all its files up to thirty", section)
+        self.assertEqual(guard.MAX_ASSET_NAMES_SHOWN, 30)
+        self.assertIn("cut at %d characters" % guard.MAX_SHOWN_CHARACTERS, section)
+        # every input has a row, with `yes` for a required one and the default where there is one
+        rows = [line for line in raw[raw.index("## GitHubNewestReleaseGuard"):raw.index("## WindowsExeVersion")].splitlines()
+                if line.startswith("| `")]
+        for name, flags in guard.GitHubNewestReleaseGuard.input_variables.items():
+            with self.subTest(input=name):
+                row = [line for line in rows if line.startswith("| `%s` |" % name)]
+                self.assertEqual(len(row), 1)
+                cells = [cell.strip() for cell in row[0].strip("|").split("|")]
+                if flags.get("required"):
+                    self.assertEqual(cells[1], "yes")
+                elif flags.get("default") == "":
+                    self.assertEqual(cells[1], "no (default empty)")
+                elif "default" in flags:
+                    self.assertEqual(cells[1], "no (default `%s`)" % str(flags["default"]).lower())
+                else:
+                    self.assertEqual(cells[1], "no")
+        # the README names the keys of an asset record as they were read on 2026-10-04
+        keys = ("browser_download_url", "content_type", "created_at", "digest", "download_count", "id", "label",
+                "name", "node_id", "size", "state", "updated_at", "uploader", "url")
+        for key in keys:
+            self.assertIn("`%s`" % key, section)
+
+    def test_the_pass_line_and_the_release_label_of_the_readme_are_what_the_code_prints(self):
+        text = normalized_text()
+        guard = newest_release
+        line = "The selected release '<tag>' of <owner>/<repo> is the newest release that is not a pre-release."
+        self.assertEqual(guard.pass_message("<owner>", "<repo>", {"tag_name": "<tag>"}, False), line)
+        self.assertIn("`" + line + "`", text)
+        self.assertEqual(guard.release_label({"tag_name": "<tag>", "name": "<title>"}), "'<tag>' (titled '<title>')")
+        self.assertEqual(guard.release_label({"tag_name": "<tag>", "name": "<tag>"}), "'<tag>'")
+        self.assertIn("`'<tag>' (titled '<title>')`", text)
+        pattern = guard.parse_tag_pattern("<pattern>")
+        self.assertTrue(guard.pass_message("o", "r", {"tag_name": "t"}, False, pattern).endswith(" whose tag matches '<pattern>'."))
+
+    def test_the_readme_names_the_installer_extensions_and_the_skipped_line_of_the_code(self):
+        text = normalized_text()
+        guard = newest_release
+        for extension in guard.INSTALLER_EXTENSIONS:
+            self.assertIn("`%s`" % extension, text)
+        self.assertIn("a file whose name ends in `.msi`, `.exe` or `.msix`", text)
+        pattern = guard.parse_tag_pattern("<pattern>")
+        line = guard.skipped_message("<owner>", "<repo>", pattern, [{"tag_name": "<tag>"}])
+        self.assertTrue(line.startswith("release_tag_pattern '<pattern>' left out 1 newer release of <owner>/<repo>: '<tag>'. "))
+        ending = "If one of them carries the installer that this recipe should take, the pattern hides a rename."
+        self.assertTrue(line.endswith(ending))
+        self.assertIn("release_tag_pattern '<pattern>' left out <n> newer release(s) of <owner>/<repo>: '<tag>', ...", text)
+        self.assertIn(ending, text)
+        self.assertEqual(guard.MAX_SKIPPED_TAGS_SHOWN, 5)
+        self.assertIn("at most five tags are named, then how many more", text)
+        self.assertEqual(guard.MAX_BETWEEN_SHOWN, 5)
+        self.assertIn("(up to five;", text)
+
+    def test_the_accepted_line_of_the_readme_is_the_start_of_what_the_code_prints(self):
+        text = normalized_text()
+        guard = newest_release
+        newest = {"tag_name": "<tag>", "assets": [{"name": "<names>"}]}
+        shown = guard.accepted_message("<owner>", "<repo>", newest, [newest], 1, None)
+        start = "An older release is taken on purpose: the newest release of <owner>/<repo>, '<tag>', has 1 file (<names>) and"
+        self.assertTrue(shown.startswith(start))
+        self.assertIn("An older release is taken on purpose: the newest release of <owner>/<repo>, '<tag>', has <n> file(s) (<names>) and", text)
+
+    def test_the_readme_example_has_the_guard_right_after_the_provider(self):
+        raw = raw_text()
+        example = raw[raw.index("## An example: the last steps of a recipe"):raw.index("## Switching on a real run")]
+        order = [name for name in re.findall(r"<key>Processor</key>\n\s*<string>([^<]*)</string>", example)]
+        self.assertEqual(order[:3], ["GitHubReleasesInfoProvider",
+                                     "com.github.serrc-techops.SharedProcessors/GitHubNewestReleaseGuard",
+                                     "URLDownloader"])
 
     def test_the_readme_names_the_three_part_label_rules_of_the_client(self):
         text = normalized_text()

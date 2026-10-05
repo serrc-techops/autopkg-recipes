@@ -1,0 +1,610 @@
+{
+ "_note": "Names, sizes and whether GitHub records a digest, read from the public release list of PowerShell/Win32-OpenSSH on 2026-10-04 (the newest 10 releases, newest first, in the order that GitHub listed them; every asset is kept). Not the whole record: no release title and no digest value is kept. A version of four numbers or more is written with `_dot_` for each dot (in tags and in names), because the repository's hygiene check takes four numbers joined by dots for an address; the test file puts the dots back.",
+ "releases": [
+  {
+   "tag_name": "10_dot_0_dot_0_dot_0p2-Preview",
+   "prerelease": false,
+   "published_at": "2025-10-27T18:58:57Z",
+   "assets": [
+    {
+     "name": "OpenSSH-ARM.zip",
+     "size": 4800073,
+     "digest_recorded": true
+    },
+    {
+     "name": "OpenSSH-ARM64-v10_dot_0_dot_0_dot_0.msi",
+     "size": 6295552,
+     "digest_recorded": true
+    },
+    {
+     "name": "OpenSSH-ARM64.zip",
+     "size": 5026201,
+     "digest_recorded": true
+    },
+    {
+     "name": "OpenSSH-ARM64_Symbols.zip",
+     "size": 26837393,
+     "digest_recorded": true
+    },
+    {
+     "name": "OpenSSH-ARM_Symbols.zip",
+     "size": 26404604,
+     "digest_recorded": true
+    },
+    {
+     "name": "OpenSSH-Win32-v10_dot_0_dot_0_dot_0.msi",
+     "size": 5865472,
+     "digest_recorded": true
+    },
+    {
+     "name": "OpenSSH-Win32.zip",
+     "size": 4964054,
+     "digest_recorded": true
+    },
+    {
+     "name": "OpenSSH-Win32_Symbols.zip",
+     "size": 29363745,
+     "digest_recorded": true
+    },
+    {
+     "name": "OpenSSH-Win64-v10_dot_0_dot_0_dot_0.msi",
+     "size": 6586368,
+     "digest_recorded": true
+    },
+    {
+     "name": "OpenSSH-Win64.zip",
+     "size": 5704583,
+     "digest_recorded": true
+    },
+    {
+     "name": "OpenSSH-Win64_Symbols.zip",
+     "size": 30354163,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v9_dot_8_dot_3_dot_0p2-Preview",
+   "prerelease": false,
+   "published_at": "2025-04-18T17:51:11Z",
+   "assets": [
+    {
+     "name": "OpenSSH-ARM.zip",
+     "size": 4293448,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64-v9_dot_8_dot_3_dot_0.msi",
+     "size": 5910528,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64.zip",
+     "size": 4480085,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64_Symbols.zip",
+     "size": 24436072,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM_Symbols.zip",
+     "size": 23846587,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32-v9_dot_8_dot_3_dot_0.msi",
+     "size": 5464064,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32.zip",
+     "size": 4443217,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32_Symbols.zip",
+     "size": 26582604,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64-v9_dot_8_dot_3_dot_0.msi",
+     "size": 6103040,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64.zip",
+     "size": 5100076,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64_Symbols.zip",
+     "size": 27301387,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v9_dot_8_dot_2_dot_0p2-Preview",
+   "prerelease": false,
+   "published_at": "2025-04-08T18:18:27Z",
+   "assets": [
+    {
+     "name": "OpenSSH-ARM.zip",
+     "size": 4293437,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64-v9_dot_8_dot_2_dot_0.msi",
+     "size": 5910528,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64.zip",
+     "size": 4479926,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64_Symbols.zip",
+     "size": 24396431,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM_Symbols.zip",
+     "size": 23762854,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32-v9_dot_8_dot_2_dot_0.msi",
+     "size": 5464064,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32.zip",
+     "size": 4443317,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32_Symbols.zip",
+     "size": 26690037,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64-v9_dot_8_dot_2_dot_0.msi",
+     "size": 6103040,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64.zip",
+     "size": 5099848,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64_Symbols.zip",
+     "size": 27546062,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v9_dot_8_dot_1_dot_0p1-Preview",
+   "prerelease": false,
+   "published_at": "2024-10-10T19:23:24Z",
+   "assets": [
+    {
+     "name": "OpenSSH-ARM.zip",
+     "size": 4299089,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64-v9_dot_8_dot_1_dot_0.msi",
+     "size": 5787648,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64.zip",
+     "size": 4349701,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64_Symbols.zip",
+     "size": 23406184,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM_Symbols.zip",
+     "size": 23823050,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32-v9_dot_8_dot_1_dot_0.msi",
+     "size": 5439488,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32.zip",
+     "size": 4414284,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32_Symbols.zip",
+     "size": 26029554,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64-v9_dot_8_dot_1_dot_0.msi",
+     "size": 6098944,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64.zip",
+     "size": 5092272,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64_Symbols.zip",
+     "size": 26493895,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v9_dot_8_dot_0_dot_0p1-Preview",
+   "prerelease": false,
+   "published_at": "2024-10-08T17:59:56Z",
+   "assets": [
+    {
+     "name": "OpenSSH-ARM.zip",
+     "size": 4298826,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64-v9_dot_8_dot_0_dot_0.msi",
+     "size": 5283840,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64.zip",
+     "size": 4349328,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64_Symbols.zip",
+     "size": 23621410,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM_Symbols.zip",
+     "size": 23947402,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32-v9_dot_8_dot_0_dot_0.msi",
+     "size": 4927488,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32.zip",
+     "size": 4413517,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32_Symbols.zip",
+     "size": 26054366,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64-v9_dot_8_dot_0_dot_0.msi",
+     "size": 5496832,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64.zip",
+     "size": 5090972,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64_Symbols.zip",
+     "size": 26518413,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v9_dot_5_dot_0_dot_0p1-Beta",
+   "prerelease": false,
+   "published_at": "2023-12-18T16:57:34Z",
+   "assets": [
+    {
+     "name": "OpenSSH-ARM.zip",
+     "size": 4074966,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64-v9_dot_5_dot_0_dot_0.msi",
+     "size": 5365760,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64.zip",
+     "size": 4090699,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64_Symbols.zip",
+     "size": 20378059,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM_Symbols.zip",
+     "size": 20569866,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32-v9_dot_5_dot_0_dot_0.msi",
+     "size": 5091328,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32.zip",
+     "size": 4184892,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32_Symbols.zip",
+     "size": 22481420,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64-v9_dot_5_dot_0_dot_0.msi",
+     "size": 5742592,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64.zip",
+     "size": 4856219,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64_Symbols.zip",
+     "size": 22113446,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v9_dot_4_dot_0_dot_0p1-Beta",
+   "prerelease": false,
+   "published_at": "2023-10-10T20:43:15Z",
+   "assets": [
+    {
+     "name": "OpenSSH-ARM.zip",
+     "size": 4098979,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64-v9_dot_4_dot_0_dot_0.msi",
+     "size": 5410816,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64.zip",
+     "size": 4133584,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64_Symbols.zip",
+     "size": 20291448,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM_Symbols.zip",
+     "size": 20808497,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32-v9_dot_4_dot_0_dot_0.msi",
+     "size": 5124096,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32.zip",
+     "size": 4217372,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32_Symbols.zip",
+     "size": 22331955,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64-v9_dot_4_dot_0_dot_0.msi",
+     "size": 5787648,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64.zip",
+     "size": 4900051,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64_Symbols.zip",
+     "size": 21888471,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v9_dot_2_dot_2_dot_0p1-Beta",
+   "prerelease": false,
+   "published_at": "2023-04-17T17:15:10Z",
+   "assets": [
+    {
+     "name": "OpenSSH-ARM.zip",
+     "size": 3821254,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64-v9_dot_2_dot_2_dot_0.msi",
+     "size": 5283840,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64.zip",
+     "size": 3999755,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64_Symbols.zip",
+     "size": 20990577,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM_Symbols.zip",
+     "size": 21003985,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32-v9_dot_2_dot_2_dot_0.msi",
+     "size": 4784128,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32.zip",
+     "size": 3874516,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32_Symbols.zip",
+     "size": 20410290,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64-v9_dot_2_dot_2_dot_0.msi",
+     "size": 5357568,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64.zip",
+     "size": 4452797,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64_Symbols.zip",
+     "size": 20470121,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v9_dot_2_dot_0_dot_0p1-Beta",
+   "prerelease": false,
+   "published_at": "2023-02-21T17:44:46Z",
+   "assets": [
+    {
+     "name": "OpenSSH-ARM.zip",
+     "size": 3811862,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64-v9_dot_2_dot_0_dot_0.msi",
+     "size": 5275648,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64.zip",
+     "size": 3988462,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64_Symbols.zip",
+     "size": 21027587,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM_Symbols.zip",
+     "size": 21028506,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32-v9_dot_2_dot_0_dot_0.msi",
+     "size": 4771840,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32.zip",
+     "size": 3859738,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32_Symbols.zip",
+     "size": 20438669,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64-v9_dot_2_dot_0_dot_0.msi",
+     "size": 5345280,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64.zip",
+     "size": 4444835,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64_Symbols.zip",
+     "size": 20572222,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v9_dot_1_dot_0_dot_0p1-Beta",
+   "prerelease": false,
+   "published_at": "2022-12-13T21:03:29Z",
+   "assets": [
+    {
+     "name": "OpenSSH-ARM64.zip",
+     "size": 3956466,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-ARM64_Symbols.zip",
+     "size": 20859222,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32-v9_dot_1_dot_0_dot_0.msi",
+     "size": 4743168,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32.zip",
+     "size": 3827631,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win32_Symbols.zip",
+     "size": 20271487,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64-v9_dot_1_dot_0_dot_0.msi",
+     "size": 5300224,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64.zip",
+     "size": 4397401,
+     "digest_recorded": false
+    },
+    {
+     "name": "OpenSSH-Win64_Symbols.zip",
+     "size": 20405868,
+     "digest_recorded": false
+    }
+   ]
+  }
+ ]
+}

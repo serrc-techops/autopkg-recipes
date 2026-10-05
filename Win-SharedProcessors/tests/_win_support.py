@@ -10,10 +10,13 @@ A real AutoPkg install, when present, is used instead.
 Nothing here touches the network, the repository tree or a real Cimian
 repository. Every file is made in a temporary folder.
 """
+import copy
 import hashlib
 import importlib
+import itertools
 import json
 import os
+import re
 import sys
 import tempfile
 import types
@@ -58,6 +61,7 @@ _install_autopkglib_stub()
 import ChecksumVerifier as checksum  # noqa: E402
 import CimianImporter as cimian  # noqa: E402
 import GitHubAssetDigest as digest  # noqa: E402
+import GitHubNewestReleaseGuard as newest_release  # noqa: E402
 import VersionFromName as version_name  # noqa: E402
 import WindowsExeVersion as exe_version  # noqa: E402
 
@@ -139,6 +143,130 @@ def property_export(version="2.5.0", product_code=PRODUCT_CODE, upgrade_code=UPG
     if upgrade_code:
         rows.append("UpgradeCode\t%s" % upgrade_code)
     return "\n".join(rows) + "\n"
+
+
+# ---- release lists, as GitHub's API shapes them ------------------------------
+
+_asset_ids = itertools.count(5000)
+
+
+def fake_asset(name, owner="example-owner", repo="example-app", tag="v1", asset_id=None):
+    """The record of a release asset, with the keys that the processors read."""
+    if asset_id is None:
+        asset_id = next(_asset_ids)
+    return {
+        "id": asset_id,
+        "name": name,
+        "url": "https://api.github.com/repos/%s/%s/releases/assets/%d" % (owner, repo, asset_id),
+        "browser_download_url": "https://github.com/%s/%s/releases/download/%s/%s" % (owner, repo, tag, name),
+    }
+
+
+def fake_release(tag, names=(), prerelease=False, draft=False, title=None, owner="example-owner", repo="example-app"):
+    """A release record: the tag, the flags, and one asset for each name."""
+    return {
+        "tag_name": tag,
+        "name": tag if title is None else title,
+        "prerelease": prerelease,
+        "draft": draft,
+        "assets": [fake_asset(name, owner, repo, tag) for name in names],
+    }
+
+
+def saved_releases(path):
+    """The names and flags of a saved release list (the file tests/releases_excerpt.json
+    of a recipe folder), newest first. A version of four numbers is saved with `_dot_` for
+    each dot, because the hygiene check takes it for an address: the dots are put back."""
+    with open(path, "r", encoding="utf-8") as handle:
+        return json.loads(handle.read().replace("_dot_", "."))["releases"]
+
+
+def records_from_saved(saved, owner, repo):
+    """Release records in the shape of GitHub's API answer (with made-up asset numbers)
+    for a saved list."""
+    return [
+        fake_release(item["tag_name"], [asset["name"] for asset in item["assets"]],
+                     prerelease=item["prerelease"], title=item.get("name"), owner=owner, repo=repo)
+        for item in saved
+    ]
+
+
+def renamed_in_newest(records, pattern):
+    """A copy of the list in which the vendor has renamed the files that the pattern
+    takes in the newest release that is not a pre-release: their names get a prefix
+    that the pattern does not match (every pattern of the recipes matches from its start)."""
+    changed = copy.deepcopy(records)
+    for release in changed:
+        if release["prerelease"] or release["draft"]:
+            continue
+        for asset in release["assets"]:
+            if re.match(pattern, asset["name"]):
+                asset["name"] = "renamed-" + asset["name"]
+        break
+    return changed
+
+
+def provider_select(releases, pattern, include_prereleases=False):
+    """What AutoPkg 2.9.0's GitHubReleasesInfoProvider selects from these releases
+    (GitHubReleasesInfoProvider.py, select_asset): in the order of the list, a
+    pre-release skipped unless include_prereleases is true (a draft is not skipped),
+    a release without assets skipped, and in a release the first asset whose name
+    the pattern matches from its start (re.match). Returns (release, asset) or None."""
+    for release in releases:
+        if release["prerelease"] and not include_prereleases:
+            continue
+        for asset in release.get("assets") or []:
+            if re.match(pattern, asset["name"]):
+                return release, asset
+    return None
+
+
+def guard_run(repo, pattern, releases, include_prereleases=False, accepted=None, tag_pattern=None, extra=None):
+    """The provider and then the guard, on a made-up list of releases, with no
+    network: the list is the answer of the one fetch (GitHub's first page).
+    `repo` is the provider's github_repo; the releases carry its owner and name in
+    their asset URLs. Returns a dict: `tag` (the release the provider took, or
+    None), `error` (the text of the guard's stop, or None), `asked` (the addresses
+    that were asked), `messages` (what the guard printed, as (level, text)) and, when
+    the guard set it, `summary` (its entry for AutoPkg's end-of-run table)."""
+    selected = provider_select(releases, pattern, include_prereleases)
+    if selected is None:
+        return {"tag": None, "error": None, "asked": [], "messages": []}
+    release, asset = selected
+    asked = []
+
+    def answer(url, what):
+        asked.append(url)
+        return releases
+
+    env = {"github_asset_api_url": asset["url"], "url": asset["browser_download_url"],
+           "include_prereleases": include_prereleases}
+    if accepted is not None:
+        env["accepted_newest_release"] = accepted
+    if tag_pattern is not None:
+        env["release_tag_pattern"] = tag_pattern
+    env.update(extra or {})
+    processor, _ = new_processor(newest_release.GitHubNewestReleaseGuard, env)
+    original = newest_release.fetch_json
+    newest_release.fetch_json = answer
+    try:
+        processor.main()
+        error = None
+    except ProcessorError as err:
+        error = str(err)
+    finally:
+        newest_release.fetch_json = original
+    result = {"tag": release["tag_name"], "error": error, "asked": asked, "messages": processor.message_levels}
+    if newest_release.SUMMARY_KEY in processor.env:
+        result["summary"] = processor.env[newest_release.SUMMARY_KEY]
+    return result
+
+
+def guard_chain(repo, pattern, releases, include_prereleases=False, accepted=None, tag_pattern=None):
+    """`guard_run`, reduced to (tag the provider took or None, error text or None,
+    the addresses that were asked)."""
+    result = guard_run(repo, pattern, releases, include_prereleases, accepted, tag_pattern)
+    return result["tag"], result["error"], result["asked"]
 
 
 def tree_of(root):

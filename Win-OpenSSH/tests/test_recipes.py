@@ -58,7 +58,7 @@ def read(path):
 def processor_classes():
     import importlib
     classes = {}
-    for name in ("PcmanImporter", "CimianImporter", "ChecksumVerifier", "GitHubAssetDigest"):
+    for name in ("PcmanImporter", "CimianImporter", "ChecksumVerifier", "GitHubAssetDigest", "GitHubNewestReleaseGuard"):
         classes[name] = getattr(importlib.import_module(name), name)
     return classes
 
@@ -94,7 +94,8 @@ class RecipeFileTests(unittest.TestCase):
     def test_the_download_steps_in_order(self):
         steps = [step["Processor"] for step in load(DOWNLOAD)["Process"]]
         self.assertEqual(steps, [
-            "GitHubReleasesInfoProvider", "URLDownloader", "EndOfCheckPhase",
+            "GitHubReleasesInfoProvider", SHARED_PREFIX + "GitHubNewestReleaseGuard", "URLDownloader",
+            "EndOfCheckPhase",
             SHARED_PREFIX + "GitHubAssetDigest", SHARED_PREFIX + "ChecksumVerifier",
         ])
 
@@ -243,6 +244,184 @@ class RecipeFileTests(unittest.TestCase):
         self.assertNotIn("ehearsed", cimian)
 
 
+class NewestReleaseGuardTests(unittest.TestCase):
+    """The step that stops the run when AutoPkg's provider has gone back to an older release
+    (../Win-SharedProcessors/GitHubNewestReleaseGuard.py). The list is this folder's saved one
+    (`releases_excerpt.json`: names and flags of the newest releases of the repository, read on
+    2026-10-04) in the shape of GitHub's API answer. The provider's choice is AutoPkg 2.9.0's rule
+    (`_win_support.provider_select`) and the guard's one request is answered by the list. Nothing
+    here uses the network."""
+
+    GUARD = SHARED_PREFIX + "GitHubNewestReleaseGuard"
+    # Where the saved list has the newest release that is not a pre-release.
+    NEWEST_INDEX = 0
+    # The release that the provider goes back to when a vendor renames the file of the newest one.
+    OLDER_INDEX = 1
+
+    def repo(self):
+        return load(DOWNLOAD)["Process"][0]["Arguments"]["github_repo"]
+
+    def pattern(self):
+        return load(DOWNLOAD)["Input"]["SEARCH_PATTERN"]
+
+    def records(self):
+        owner, name = self.repo().split("/")
+        saved = _win_support.saved_releases(os.path.join(TESTS_DIR, "releases_excerpt.json"))
+        return _win_support.records_from_saved(saved, owner, name)
+
+    def asked(self):
+        return ["https://api.github.com/repos/%s/releases?per_page=30&page=1" % self.repo()]
+
+    def test_the_step_comes_right_after_the_provider_and_before_the_download(self):
+        steps = [step["Processor"] for step in load(DOWNLOAD)["Process"]]
+        self.assertEqual(steps[:3], ["GitHubReleasesInfoProvider", self.GUARD, "URLDownloader"])
+        self.assertEqual(steps.count(self.GUARD), 1)
+        self.assertLess(steps.index(self.GUARD), steps.index("EndOfCheckPhase"))
+
+    def test_the_step_passes_the_asset_url_and_nothing_else(self):
+        self.assertEqual(load(DOWNLOAD)["Process"][1]["Arguments"], {"github_asset_api_url": "%asset_url%"})
+
+    def test_only_an_override_can_accept_a_release_or_name_a_line(self):
+        """Like the pre-release switch: keys of the Input that an override can change. A step's Arguments are
+        injected after the override's Input and would beat it, and a `%variable%` that holds a boolean stops
+        the whole run with a TypeError, so no step names them."""
+        recipe = load(DOWNLOAD)
+        self.assertEqual(recipe["Input"]["accepted_newest_release"], "")
+        self.assertEqual(recipe["Input"]["release_tag_pattern"], "")
+        self.assertIs(recipe["Input"]["include_prereleases"], False)
+        self.assertNotIn("allow_older_release", recipe["Input"])
+        for step in recipe["Process"]:
+            for key in ("accepted_newest_release", "release_tag_pattern", "include_prereleases", "allow_older_release",
+                        "sort_by_highest_tag_names", "latest_only"):
+                self.assertNotIn(key, step.get("Arguments", {}))
+            for key, value in step.get("Arguments", {}).items():
+                match = re.fullmatch(r"%([A-Za-z_]+)%", value) if isinstance(value, str) else None
+                if match:
+                    self.assertNotIsInstance(recipe["Input"].get(match.group(1)), bool, key)
+
+    def test_the_saved_list_has_the_newest_release_that_is_not_a_pre_release_where_this_file_says(self):
+        records = self.records()
+        first = [number for number, record in enumerate(records) if not record["prerelease"]][0]
+        self.assertEqual(first, self.NEWEST_INDEX)
+        self.assertTrue(all(record["prerelease"] for record in records[:first]))
+
+    def test_the_guard_lets_the_run_go_on_when_the_provider_takes_the_newest_release(self):
+        records = self.records()
+        tag, error, asked = _win_support.guard_chain(self.repo(), self.pattern(), records)
+        self.assertIsNone(error)
+        self.assertEqual(tag, records[self.NEWEST_INDEX]["tag_name"])
+        self.assertEqual(asked, self.asked())
+
+    def test_a_renamed_file_in_the_newest_release_stops_the_run_where_the_provider_goes_back(self):
+        records = self.records()
+        renamed = _win_support.renamed_in_newest(records, self.pattern())
+        tag, error, asked = _win_support.guard_chain(self.repo(), self.pattern(), renamed)
+        self.assertEqual(tag, records[self.OLDER_INDEX]["tag_name"])
+        self.assertEqual(asked, self.asked())
+        for needle in ("Selected: release '%s'" % tag, "Newest: release '%s'" % records[self.NEWEST_INDEX]["tag_name"],
+                       "renamed-", "SEARCH_PATTERN", "accepted_newest_release", "release_tag_pattern"):
+            self.assertIn(needle, error)
+
+    def dev_build(self, tag="vNext-1"):
+        """A development build on top of the saved list: one zip, no Windows installer file."""
+        owner, name = self.repo().split("/")
+        return _win_support.fake_release(tag, ["dev-build.zip"], owner=owner, repo=name)
+
+    def test_a_dev_build_without_an_installer_is_accepted_by_its_tag_only_while_it_is_the_newest(self):
+        records = self.records()
+        listed = [self.dev_build("vNext-1")] + records
+        tag, error, asked = _win_support.guard_chain(self.repo(), self.pattern(), listed)
+        self.assertEqual(tag, records[self.NEWEST_INDEX]["tag_name"])  # the provider rightly takes the release below it
+        self.assertIn("Newest: release 'vNext-1', with the files: dev-build.zip", error)
+        self.assertIn("'Set :Input:accepted_newest_release vNext-1' <the override>", error)
+        result = _win_support.guard_run(self.repo(), self.pattern(), listed, accepted="vNext-1")
+        self.assertEqual((result["tag"], result["error"]), (tag, None))
+        self.assertEqual(result["asked"], self.asked())  # the guard still asks GitHub's list
+        loud = [text for level, text in result["messages"] if level == 0]
+        self.assertEqual(len(loud), 1)
+        self.assertIn("An older release is taken on purpose", loud[0])
+        self.assertIn("has 1 file (dev-build.zip)", loud[0])
+        data = result["summary"]["data"]
+        self.assertEqual((data["newest_release"], data["release_taken"]), ("vNext-1", tag))
+        # a newer development build on top: the tag that was accepted does not cover it
+        newer = [self.dev_build("vNext-2")] + listed
+        error = _win_support.guard_chain(self.repo(), self.pattern(), newer, accepted="vNext-1")[1]
+        self.assertIn("accepted_newest_release is 'vNext-1', which is not the newest release. ", error)
+
+    def test_a_renamed_installer_cannot_be_accepted_and_no_command_is_offered(self):
+        records = self.records()
+        renamed = _win_support.renamed_in_newest(records, self.pattern())
+        newest = records[self.NEWEST_INDEX]["tag_name"]
+        for accepted in (None, newest):
+            result = _win_support.guard_run(self.repo(), self.pattern(), renamed, accepted=accepted)
+            error = result["error"]
+            self.assertEqual(result["tag"], records[self.OLDER_INDEX]["tag_name"])
+            self.assertIn("has Windows installer files: release '%s'" % newest, error)
+            self.assertIn("That is a renamed installer, not a release without one", error)
+            self.assertNotIn("PlistBuddy", error)
+            self.assertEqual([text for level, text in result["messages"] if level == 0], [])
+            self.assertNotIn("summary", result)
+        self.assertIn("but that release has Windows installer files (", error)
+        self.assertIn("it is no longer accepted", error)
+
+    def test_an_accepted_dev_build_does_not_excuse_a_rename_below_it(self):
+        records = self.records()
+        renamed = _win_support.renamed_in_newest(records, self.pattern())
+        listed = [self.dev_build("vNext-1")] + renamed
+        newest = records[self.NEWEST_INDEX]["tag_name"]
+        result = _win_support.guard_run(self.repo(), self.pattern(), listed, accepted="vNext-1")
+        error = result["error"]
+        self.assertEqual(result["tag"], records[self.OLDER_INDEX]["tag_name"])
+        self.assertIn("Between them in the list: release '%s'" % newest, error)
+        self.assertIn("renamed-", error)
+        self.assertIn("a release between it and the selected one has Windows installer files: an acceptance does not "
+                      "cover a rename below it", error)
+        self.assertNotIn("PlistBuddy", error)
+        self.assertEqual([text for level, text in result["messages"] if level == 0], [])
+
+    def readme(self):
+        with open(os.path.join(RECIPE_DIR, "README.md"), "r", encoding="utf-8") as handle:
+            return re.sub(r"\s+", " ", handle.read())
+
+    def test_the_readme_says_what_the_guard_does_and_what_to_do(self):
+        text = self.readme()
+        for needle in ("**A newer release without the file.**", "stops the run in that case",
+                       "its message names the selected release, the newest release and the files of the newest release",
+                       "Then correct `SEARCH_PATTERN` in the override's `Input`",
+                       "no Windows installer file (none ending in `.msi`, `.exe` or `.msix`) on purpose",
+                       "accept exactly that release: `/usr/libexec/PlistBuddy -c 'Set :Input:accepted_newest_release <its tag>' "
+                       "<the override>`",
+                       "`Add :Input:accepted_newest_release string <its tag>`",
+                       "this only for a release without such a file (a release that has one is a renamed installer: "
+                       "correct `SEARCH_PATTERN`), and not when a release between it and the selected one has one",
+                       "**only while that release is the newest**, says so in every run and in AutoPkg's end-of-run table, "
+                       "and stops again when a newer release appears",
+                       "The guard compares positions in GitHub's list, not versions",
+                       "and only then, name the line with the override's `release_tag_pattern`",
+                       "every run names the newer releases that it left out",
+                       "has not run under AutoPkg yet", "Read the `Selected asset` line of every dry run all the same"):
+            self.assertIn(needle, text)
+        self.assertNotIn("allow_older_release", text)
+
+    def test_the_commands_of_the_readme_are_the_ones_that_the_message_gives(self):
+        set_command = "/usr/libexec/PlistBuddy -c 'Set :Input:accepted_newest_release %s' <the override>"
+        add_command = "Add :Input:accepted_newest_release string %s"
+        advice = _win_support.newest_release.what_to_do({"tag_name": "v1", "assets": [{"name": "v1.zip"}]})
+        self.assertIn(set_command % "v1", advice)
+        self.assertIn(add_command % "v1", advice)
+        text = self.readme()
+        self.assertIn(set_command % "<its tag>", text)
+        self.assertIn(add_command % "<its tag>", text)
+
+    def test_the_readme_counts_the_processors_of_the_trust_information(self):
+        """The override of the package tool's recipe carries the trust information of the processors that are
+        not part of AutoPkg: the README's sentence must name the right number, now that the guard is one."""
+        names = {name for path in (DOWNLOAD, PCMAN) for name, _ in shared_steps(load(path))}
+        self.assertEqual(len(names), 4)
+        self.assertIn("GitHubNewestReleaseGuard", names)
+        self.assertIn('the processors that are not part of AutoPkg itself (`GitHubNewestReleaseGuard`, `GitHubAssetDigest`, `ChecksumVerifier`, `PcmanImporter`)', self.readme())
+
+
 class SharedProcessorTests(unittest.TestCase):
     def test_every_named_shared_processor_is_a_file_of_the_shared_folder(self):
         for path in (DOWNLOAD, PCMAN):
@@ -302,7 +481,8 @@ class HygieneTests(unittest.TestCase):
         names = sorted(os.path.relpath(path, RECIPE_DIR) for path in self.files())
         self.assertEqual(names, sorted([
             "OpenSSHWin64-Win.download.recipe", "OpenSSHWin64.cimian.recipe", "OpenSSHWin64.pcman.recipe", "README.md",
-            os.path.join("tests", "__init__.py"), os.path.join("tests", "test_recipes.py"),
+            os.path.join("tests", "__init__.py"), os.path.join("tests", "releases_excerpt.json"),
+            os.path.join("tests", "test_recipes.py"),
         ]))
 
     def test_no_em_dash_in_the_folder(self):

@@ -1,0 +1,875 @@
+{
+ "_note": "Names, sizes and whether GitHub records a digest, read from the public release list of ip7z/7zip on 2026-10-04 (the newest 10 releases, newest first, in the order that GitHub listed them; every asset is kept). Not the whole record: no release title and no digest value is kept.",
+ "releases": [
+  {
+   "tag_name": "26.03",
+   "prerelease": false,
+   "published_at": "2026-09-04T07:34:42Z",
+   "assets": [
+    {
+     "name": "7z2603-arm.exe",
+     "size": 1666254,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2603-arm64.exe",
+     "size": 1593122,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2603-extra.7z",
+     "size": 1764178,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2603-linux-arm.tar.xz",
+     "size": 1216944,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2603-linux-arm64.tar.xz",
+     "size": 1328620,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2603-linux-x64.tar.xz",
+     "size": 1575072,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2603-linux-x86.tar.xz",
+     "size": 1710256,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2603-mac.tar.xz",
+     "size": 1863192,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2603-src.7z",
+     "size": 1539219,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2603-src.tar.xz",
+     "size": 1552200,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2603-x64.exe",
+     "size": 1661239,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2603-x64.msi",
+     "size": 2007040,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2603.exe",
+     "size": 1360507,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2603.msi",
+     "size": 1572864,
+     "digest_recorded": true
+    },
+    {
+     "name": "7zr.exe",
+     "size": 602624,
+     "digest_recorded": true
+    },
+    {
+     "name": "lzma2603.7z",
+     "size": 1785639,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "26.02",
+   "prerelease": false,
+   "published_at": "2026-06-26T06:10:10Z",
+   "assets": [
+    {
+     "name": "7z2602-arm.exe",
+     "size": 1661739,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2602-arm64.exe",
+     "size": 1590118,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2602-extra.7z",
+     "size": 1758916,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2602-linux-arm.tar.xz",
+     "size": 1215796,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2602-linux-arm64.tar.xz",
+     "size": 1326944,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2602-linux-x64.tar.xz",
+     "size": 1571416,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2602-linux-x86.tar.xz",
+     "size": 1724368,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2602-mac.tar.xz",
+     "size": 1859992,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2602-src.7z",
+     "size": 1530535,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2602-src.tar.xz",
+     "size": 1543480,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2602-x64.exe",
+     "size": 1657896,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2602-x64.msi",
+     "size": 1999872,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2602.exe",
+     "size": 1357836,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2602.msi",
+     "size": 1569792,
+     "digest_recorded": true
+    },
+    {
+     "name": "7zr.exe",
+     "size": 602112,
+     "digest_recorded": true
+    },
+    {
+     "name": "lzma2602.7z",
+     "size": 1780057,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "26.01",
+   "prerelease": false,
+   "published_at": "2026-04-27T16:39:51Z",
+   "assets": [
+    {
+     "name": "7z2601-arm.exe",
+     "size": 1663430,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2601-arm64.exe",
+     "size": 1592021,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2601-extra.7z",
+     "size": 1759805,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2601-linux-arm.tar.xz",
+     "size": 1215608,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2601-linux-arm64.tar.xz",
+     "size": 1326544,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2601-linux-x64.tar.xz",
+     "size": 1572208,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2601-linux-x86.tar.xz",
+     "size": 1727676,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2601-mac.tar.xz",
+     "size": 1860356,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2601-src.7z",
+     "size": 1530276,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2601-src.tar.xz",
+     "size": 1543032,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2601-x64.exe",
+     "size": 1658851,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2601-x64.msi",
+     "size": 2002432,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2601.exe",
+     "size": 1359532,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2601.msi",
+     "size": 1568768,
+     "digest_recorded": true
+    },
+    {
+     "name": "7zr.exe",
+     "size": 602112,
+     "digest_recorded": true
+    },
+    {
+     "name": "lzma2601.7z",
+     "size": 1782428,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "26.00",
+   "prerelease": false,
+   "published_at": "2026-02-12T12:45:13Z",
+   "assets": [
+    {
+     "name": "7z2600-arm.exe",
+     "size": 1659567,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2600-arm64.exe",
+     "size": 1588342,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2600-extra.7z",
+     "size": 1636191,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2600-linux-arm.tar.xz",
+     "size": 1213272,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2600-linux-arm64.tar.xz",
+     "size": 1327300,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2600-linux-x64.tar.xz",
+     "size": 1572504,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2600-linux-x86.tar.xz",
+     "size": 1725492,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2600-mac.tar.xz",
+     "size": 1850044,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2600-src.7z",
+     "size": 1525287,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2600-src.tar.xz",
+     "size": 1538112,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2600-x64.exe",
+     "size": 1655627,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2600-x64.msi",
+     "size": 1999872,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2600.exe",
+     "size": 1355804,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2600.msi",
+     "size": 1566720,
+     "digest_recorded": true
+    },
+    {
+     "name": "7zr.exe",
+     "size": 601088,
+     "digest_recorded": true
+    },
+    {
+     "name": "lzma2600.7z",
+     "size": 1774522,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "25.01",
+   "prerelease": false,
+   "published_at": "2025-08-03T11:18:58Z",
+   "assets": [
+    {
+     "name": "7z2501-arm.exe",
+     "size": 1658315,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2501-arm64.exe",
+     "size": 1588203,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2501-extra.7z",
+     "size": 1636158,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2501-linux-arm.tar.xz",
+     "size": 1212764,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2501-linux-arm64.tar.xz",
+     "size": 1326736,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2501-linux-x64.tar.xz",
+     "size": 1571044,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2501-linux-x86.tar.xz",
+     "size": 1721924,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2501-mac.tar.xz",
+     "size": 1876264,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2501-src.7z",
+     "size": 1520138,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2501-src.tar.xz",
+     "size": 1533240,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2501-x64.exe",
+     "size": 1643509,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2501-x64.msi",
+     "size": 1996800,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2501.exe",
+     "size": 1354330,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2501.msi",
+     "size": 1563648,
+     "digest_recorded": true
+    },
+    {
+     "name": "7zr.exe",
+     "size": 601088,
+     "digest_recorded": true
+    },
+    {
+     "name": "lzma2501.7z",
+     "size": 1773542,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "25.00",
+   "prerelease": false,
+   "published_at": "2025-07-05T14:34:51Z",
+   "assets": [
+    {
+     "name": "7z2500-arm.exe",
+     "size": 1655305,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2500-arm64.exe",
+     "size": 1586028,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2500-extra.7z",
+     "size": 1630545,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2500-linux-arm.tar.xz",
+     "size": 1209480,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2500-linux-arm64.tar.xz",
+     "size": 1316200,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2500-linux-x64.tar.xz",
+     "size": 1568496,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2500-linux-x86.tar.xz",
+     "size": 1721920,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2500-mac.tar.xz",
+     "size": 1872476,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2500-src.7z",
+     "size": 1518060,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2500-src.tar.xz",
+     "size": 1531036,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2500-x64.exe",
+     "size": 1641049,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2500-x64.msi",
+     "size": 1991680,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2500.exe",
+     "size": 1352297,
+     "digest_recorded": true
+    },
+    {
+     "name": "7z2500.msi",
+     "size": 1562112,
+     "digest_recorded": true
+    },
+    {
+     "name": "7zr.exe",
+     "size": 598016,
+     "digest_recorded": true
+    },
+    {
+     "name": "lzma2500.7z",
+     "size": 1767433,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "24.09",
+   "prerelease": false,
+   "published_at": "2024-11-30T10:45:19Z",
+   "assets": [
+    {
+     "name": "7z2409-arm.exe",
+     "size": 1653410,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2409-arm64.exe",
+     "size": 1580077,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2409-extra.7z",
+     "size": 1624377,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2409-linux-arm.tar.xz",
+     "size": 1209256,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2409-linux-arm64.tar.xz",
+     "size": 1324144,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2409-linux-x64.tar.xz",
+     "size": 1565344,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2409-linux-x86.tar.xz",
+     "size": 1718812,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2409-mac.tar.xz",
+     "size": 1867264,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2409-src.7z",
+     "size": 1498342,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2409-src.tar.xz",
+     "size": 1511288,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2409-x64.exe",
+     "size": 1637343,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2409-x64.msi",
+     "size": 1987584,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2409.exe",
+     "size": 1348869,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2409.msi",
+     "size": 1556480,
+     "digest_recorded": false
+    },
+    {
+     "name": "7zr.exe",
+     "size": 593408,
+     "digest_recorded": false
+    },
+    {
+     "name": "lzma2409.7z",
+     "size": 1747679,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "24.08",
+   "prerelease": false,
+   "published_at": "2024-08-12T12:01:23Z",
+   "assets": [
+    {
+     "name": "7z2408-arm.exe",
+     "size": 1638092,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2408-arm64.exe",
+     "size": 1558239,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2408-extra.7z",
+     "size": 1611651,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2408-linux-arm.tar.xz",
+     "size": 1195168,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2408-linux-arm64.tar.xz",
+     "size": 1311308,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2408-linux-x64.tar.xz",
+     "size": 1556956,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2408-linux-x86.tar.xz",
+     "size": 1703480,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2408-mac.tar.xz",
+     "size": 1851588,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2408-src.7z",
+     "size": 1480727,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2408-src.tar.xz",
+     "size": 1493700,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2408-x64.exe",
+     "size": 1624144,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2408-x64.msi",
+     "size": 1971200,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2408.exe",
+     "size": 1333474,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2408.msi",
+     "size": 1539072,
+     "digest_recorded": false
+    },
+    {
+     "name": "7zr.exe",
+     "size": 591360,
+     "digest_recorded": false
+    },
+    {
+     "name": "lzma2408.7z",
+     "size": 1689224,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "24.07",
+   "prerelease": false,
+   "published_at": "2024-06-19T10:45:51Z",
+   "assets": [
+    {
+     "name": "7z2407-arm.exe",
+     "size": 1633909,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2407-arm64.exe",
+     "size": 1555409,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2407-extra.7z",
+     "size": 1610146,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2407-linux-arm.tar.xz",
+     "size": 1194364,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2407-linux-arm64.tar.xz",
+     "size": 1301516,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2407-linux-x64.tar.xz",
+     "size": 1554932,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2407-linux-x86.tar.xz",
+     "size": 1704492,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2407-mac.tar.xz",
+     "size": 1850680,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2407-src.7z",
+     "size": 1475943,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2407-src.tar.xz",
+     "size": 1488556,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2407-x64.exe",
+     "size": 1620576,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2407-x64.msi",
+     "size": 1966592,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2407.exe",
+     "size": 1331365,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2407.msi",
+     "size": 1538560,
+     "digest_recorded": false
+    },
+    {
+     "name": "7zr.exe",
+     "size": 590848,
+     "digest_recorded": false
+    },
+    {
+     "name": "lzma2407.7z",
+     "size": 1685918,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "24.06",
+   "prerelease": false,
+   "published_at": "2024-05-27T07:50:07Z",
+   "assets": [
+    {
+     "name": "7z2406-arm.exe",
+     "size": 1632071,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2406-arm64.exe",
+     "size": 1554939,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2406-extra.7z",
+     "size": 1610111,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2406-linux-arm.tar.xz",
+     "size": 1193748,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2406-linux-arm64.tar.xz",
+     "size": 1293944,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2406-linux-x64.tar.xz",
+     "size": 1551724,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2406-linux-x86.tar.xz",
+     "size": 1704320,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2406-mac.tar.xz",
+     "size": 1849800,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2406-src.7z",
+     "size": 1474061,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2406-src.tar.xz",
+     "size": 1487008,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2406-x64.exe",
+     "size": 1619556,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2406-x64.msi",
+     "size": 1964032,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2406.exe",
+     "size": 1330263,
+     "digest_recorded": false
+    },
+    {
+     "name": "7z2406.msi",
+     "size": 1538560,
+     "digest_recorded": false
+    },
+    {
+     "name": "7zr.exe",
+     "size": 590848,
+     "digest_recorded": false
+    },
+    {
+     "name": "lzma2406.7z",
+     "size": 1685041,
+     "digest_recorded": false
+    }
+   ]
+  }
+ ]
+}

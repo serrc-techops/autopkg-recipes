@@ -3,7 +3,7 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>This download is NOT verified yet: GitHub records no digest for the release's file, the release's text names no hash and no signature, and a check of the signature is not built, so nothing proves that the file is what the project published. The shared importer therefore refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true (pcman_allow_unverified for the package tool's recipe). Downloads the current release of XCP-ng Center for Windows (the .msi asset, named XCP-ng.Center.msi, of the newest non-pre-release on GitHub that has a matching file, kept under the asset's own file name). The release list was read on 2026-10-04: the newest release, v25.04 (published 2025-04-29), has the MSI with no digest, and no release of the list has one. A digest step (GitHubAssetDigest, then ChecksumVerifier) can come back into this recipe when a release has a digest. The first run with AutoPkg 2.9.0, on 2026-10-04, took the installer of release v20.04.01.33 (named like XCP-ng-Center-version.msi), a file of December 2020, under the earlier pattern and stopped for a missing digest: AutoPkg takes the first release that has a matching file however old it is, so a new spelling of the name would send the recipe back to an older release; read the line that names the selected asset and release in the first dry run. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. Pre-releases are skipped unless the override sets the input include_prereleases to true.</string>
+        <string>This download is NOT verified yet: GitHub records no digest for the release's file, the release's text names no hash and no signature, and a check of the signature is not built, so nothing proves that the file is what the project published. The shared importer therefore refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true (pcman_allow_unverified for the package tool's recipe). Downloads the current release of XCP-ng Center for Windows (the .msi asset, named XCP-ng.Center.msi, of the newest non-pre-release on GitHub that has a matching file, kept under the asset's own file name). The release list was read on 2026-10-04: the newest release, v25.04 (published 2025-04-29), has the MSI with no digest, and no release of the list has one. A digest step (GitHubAssetDigest, then ChecksumVerifier) can come back into this recipe when a release has a digest. The first run with AutoPkg 2.9.0, on 2026-10-04, took the installer of release v20.04.01.33 (named like XCP-ng-Center-version.msi), a file of December 2020, under the earlier pattern and stopped for a missing digest: AutoPkg takes the first release that has a matching file however old it is, so a new spelling of the name would send the recipe back to an older release; read the line that names the selected asset and release in the first dry run. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. Pre-releases are skipped unless the override sets the input include_prereleases to true. The step GitHubNewestReleaseGuard, right after the provider, stops the run when the release that the provider selected is not the newest release (a pre-release is skipped unless include_prereleases is true): it names the newest release and its files. The override's input accepted_newest_release, set to the tag of a newest release that has no Windows installer file (.msi, .exe, .msix) on purpose, lets the run go on only while that release is the newest, and release_tag_pattern names the line of releases to follow for a vendor with two lines (every run names the newer releases that it left out).</string>
         <key>Identifier</key>
         <string>com.github.serrc-techops.download.XCPngCenter-Win</string>
         <key>Input</key>
@@ -12,8 +12,12 @@
             <string>XCPngCenter</string>
             <key>SEARCH_PATTERN</key>
             <string>XCP-ng\.Center\.msi$</string>
+            <key>accepted_newest_release</key>
+            <string></string>
             <key>include_prereleases</key>
             <false/>
+            <key>release_tag_pattern</key>
+            <string></string>
         </dict>
         <key>MinimumVersion</key>
         <string>1.0.0</string>
@@ -28,6 +32,15 @@
                     <string>xcp-ng/xenadmin</string>
                     <key>asset_regex</key>
                     <string>%SEARCH_PATTERN%</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/GitHubNewestReleaseGuard</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>github_asset_api_url</key>
+                    <string>%asset_url%</string>
                 </dict>
             </dict>
             <dict>

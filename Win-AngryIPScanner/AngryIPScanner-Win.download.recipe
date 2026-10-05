@@ -3,7 +3,7 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>Downloads the current release of Angry IP Scanner for Windows (the installer .exe asset, named like ipscan-3.10.0-setup.exe, of the newest non-pre-release on GitHub that has a matching file, kept under the asset's own file name), checks it against the SHA-256 that GitHub records for the asset, and takes the version label from the asset's file name: the one group of SEARCH_PATTERN, checked for its shape (two to four numbers joined by dots). The installer has no version resource of its own (the first run with AutoPkg 2.9.0, on 2026-10-04, stopped at WindowsExeVersion for that reason), so the label is the version that the project puts in the name, which is the release's tag in each release read. Whether the installed program reports the same version is NOT established: the first dry run is read as the README says. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. The asset names and the digests were read from GitHub's release list on 2026-10-04 (the newest four releases) and the installer was not opened. Pre-releases are skipped unless the override sets the input include_prereleases to true.</string>
+        <string>Downloads the current release of Angry IP Scanner for Windows (the installer .exe asset, named like ipscan-3.10.0-setup.exe, of the newest non-pre-release on GitHub that has a matching file, kept under the asset's own file name), checks it against the SHA-256 that GitHub records for the asset, and takes the version label from the asset's file name: the one group of SEARCH_PATTERN, checked for its shape (two to four numbers joined by dots). The installer has no version resource of its own (the first run with AutoPkg 2.9.0, on 2026-10-04, stopped at WindowsExeVersion for that reason), so the label is the version that the project puts in the name, which is the release's tag in each release read. Whether the installed program reports the same version is NOT established: the first dry run is read as the README says. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. The asset names and the digests were read from GitHub's release list on 2026-10-04 (the newest four releases) and the installer was not opened. Pre-releases are skipped unless the override sets the input include_prereleases to true. The step GitHubNewestReleaseGuard, right after the provider, stops the run when the release that the provider selected is not the newest release (a pre-release is skipped unless include_prereleases is true): it names the newest release and its files. The override's input accepted_newest_release, set to the tag of a newest release that has no Windows installer file (.msi, .exe, .msix) on purpose, lets the run go on only while that release is the newest, and release_tag_pattern names the line of releases to follow for a vendor with two lines (every run names the newer releases that it left out).</string>
         <key>Identifier</key>
         <string>com.github.serrc-techops.download.AngryIPScanner-Win</string>
         <key>Input</key>
@@ -12,8 +12,12 @@
             <string>AngryIPScanner</string>
             <key>SEARCH_PATTERN</key>
             <string>ipscan-([0-9]+(?:\.[0-9]+)+)-setup\.exe$</string>
+            <key>accepted_newest_release</key>
+            <string></string>
             <key>include_prereleases</key>
             <false/>
+            <key>release_tag_pattern</key>
+            <string></string>
         </dict>
         <key>MinimumVersion</key>
         <string>1.0.0</string>
@@ -28,6 +32,15 @@
                     <string>angryip/ipscan</string>
                     <key>asset_regex</key>
                     <string>%SEARCH_PATTERN%</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/GitHubNewestReleaseGuard</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>github_asset_api_url</key>
+                    <string>%asset_url%</string>
                 </dict>
             </dict>
             <dict>
