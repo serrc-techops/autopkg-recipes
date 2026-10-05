@@ -481,7 +481,7 @@ class ReadmeTests(unittest.TestCase):
     def test_the_status_line_says_what_was_read_and_what_was_not(self):
         self.assertLess(self.raw.index("**Status."), self.raw.index("## a."))
         self.assertLess(self.raw.index("**Status."), self.raw.index("| Recipe |"))
-        self.assertIn("**Status. NOT rehearsed with AutoPkg: nothing in this folder has run with AutoPkg", self.text)
+        self.assertIn("**Status. On 2026-10-04, under AutoPkg 2.9.0, both recipes of this folder", self.text)
         paragraph = self.text[self.text.index("**Status."):self.text.index("| Recipe |")]
         self.assertTrue(paragraph.rstrip().endswith("**"))
         for needle in ("2026-10-04", "read only, no file was downloaded",
@@ -494,9 +494,9 @@ class ReadmeTests(unittest.TestCase):
                        "no arm64 MSI", "AutoPkg 2.9.0 takes the first release", "`select_asset`", "`re.match`",
                        "records a SHA-256 digest for every asset of all six releases", "`GitHubAssetDigest`",
                        "the tag is a plain number", "NOT established", "that the MSI is x64", "nobody opened it",
-                       "ProductVersion and UpgradeCode", "any run with AutoPkg", "which is another program",
-                       "The first run on the build Mac is the check of everything that is NOT established",
-                       "When it fails: stop. Nothing was written.",
+                       "that a newer release has the same UpgradeCode as the template", "the silent switch of the MSI on a PC",
+                       "which is another program", "**each ended clean**",
+                       "When a run fails: stop. Nothing was written.",
                        "correct the recipe, and never the trust information first",
                        "carries `--override-dir`"):
             self.assertIn(needle, paragraph)
@@ -589,6 +589,40 @@ class ChainTests(_pcman_support.ToolTestCase):
 def _text(path):
     with open(path, "r", encoding="utf-8") as handle:
         return handle.read()
+
+
+class CleanRunReadmeTests(unittest.TestCase):
+    """What the README says of the dry run of both recipes on 2026-10-04 (AutoPkg 2.9.0): each ended in "Nothing new"."""
+
+    def setUp(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            self.raw = handle.read()
+        self.text = re.sub(r"\s+", " ", self.raw)
+
+    def test_both_recipes_ran_clean_as_a_dry_run_under_autopkg_2_9_0(self):
+        for needle in ('On 2026-10-04, under AutoPkg 2.9.0, both recipes of this folder (`Osquery.cimian.recipe` and `Osquery.pcman.recipe`) ran as a dry run, the default, against the real repository, whose template had been imported before, and **each ended clean**:', "the package tool's recipe with `PcmanImporter: Nothing new: osquery 5.23.1 is in the repository already.`", 'the generic recipe with `CimianImporter: Nothing new: osquery 5.23.1 is in the repository already (it has this very installer file).`'):
+            self.assertIn(needle, self.text)
+
+    def test_no_real_run_and_no_install_is_claimed(self):
+        self.assertIn("No real run of this program was made that day, and nothing has been installed on a PC.", self.text)
+        for claim in ("was installed on a PC", "a real run published"):
+            self.assertNotIn(claim, self.text)
+
+
+class CatalogsStepReadmeTests(unittest.TestCase):
+    """The step that builds the catalogs says what happened on 2026-10-04 and no longer says "Not rehearsed"."""
+
+    def test_the_catalogs_step_names_the_run_of_2026_10_04(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            text = re.sub(r"\s+", " ", handle.read())
+        i = text.index("3. **Build the catalogs: `pcman catalogs`.**")
+        step = text[i:text.index("4. The second run, by path again:", i)]
+        for needle in ("(On 2026-10-04 `pcman catalogs` ran once for other programs' new items:", "the tool's configured command ran `makecatalogs` on the repository's server",
+                       "wrote the catalogs `All` and `Production`, with exit 0",
+                       "The package tool prints \"nothing to run\" when its catalogs command is not set"):
+            self.assertIn(needle, step)
+        self.assertNotIn("Not rehearsed", step)
+        self.assertNotIn("for no program", step)
 
 
 class CimianRecipeTests(unittest.TestCase):

@@ -2,9 +2,9 @@
 
 A Windows recipe pair: Google Credential Provider for Windows (GCPW), the 64-bit enterprise `.msi`.
 
-**Status. NOT rehearsed with AutoPkg. Some facts of the source were fetched by the writer on 2026-10-02: no run of AutoPkg was made, and nothing was written to a repository. Read from Google's server on that day: (1) `https://dl.google.com/credentialprovider/gcpwstandaloneenterprise64.msi` answered 200 with no redirect, 47382528 bytes, last modified 2026-10-02 08:45 GMT; (2) the 32-bit file beside it, `gcpwstandaloneenterprise.msi`, is 25264128 bytes; the recipe takes the 64-bit file only, kept under the file name of the address. NOT established: the name of the template item (an item with the GCPW installer may exist already, and its name is not known to the writer: `gcpw` in the recipe is a PLACEHOLDER, see step a.3 for how to find the real name and how to set it in the override); that Google publishes no hash for this file and that no signature check exists for it (the writer knows of none); that the file's own ProductVersion and upgrade code are those of the item that exists already, if there is one; that Google's server answers the questions that AutoPkg asks about a changed file (a last-modified date was seen, nothing else was looked at); the silent install of the MSI and the arguments that the package tool writes for it; `pcman catalogs`; any run with AutoPkg. The first run on the build Mac is the check of everything that is NOT established. When it fails, STOP: nothing was written (a run that fails before the import writes nothing). Read the real address in a browser, correct the recipe, and only then look at the trust information. Never accept new trust information first to make a failure go away.**
+**Status. Run on 2026-10-04 under AutoPkg 2.9.0, as follows. No item with the GCPW installer existed in the package tool's repository, so the first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the item `gcpw` (an MSI item, version `150.0.7871.100` read from the MSI, architectures `x64`, no icon because the repository had none for it) in the catalog `Production`; `gcpw` was the right name, and the override needed no change of `PCMAN_TEMPLATE`. The override of `GCPW.pcman` (`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false) then ran for real: the download went through, and the importer REFUSED the run with `The download was not verified: no step of the recipe set checksum_verified together with the checksum_sha256 of this file. Nothing was published. ...` (exit 70), which is what an unverified download must get; `pcman_allow_unverified` was not set. The override downloaded the file again about ten minutes after the first import, and its hash was the imported file's. The hand-import form `pcman import <file> --template gcpw --no-prompt --if-new --dry-run` printed `Nothing new: gcpw <version> exists already ...` with exit 3. `pcman catalogs` ran once for all the new items together (2026-10-04): the tool's configured command ran `makecatalogs` on the repository's server, with exit 0, and wrote the catalogs `All` and `Production`, 106 items each. The MSI's own upgrade code was read at the import; the silent install is the client's (`/qn /norestart` for an MSI) and was NOT tested on a PC. Still NOT established after those runs: that the MSI installs silently on a PC; any install. Some facts of the source were fetched by the writer on 2026-10-02, before those runs: Read from Google's server on that day: (1) `https://dl.google.com/credentialprovider/gcpwstandaloneenterprise64.msi` answered 200 with no redirect, 47382528 bytes, last modified 2026-10-02 08:45 GMT; (2) the 32-bit file beside it, `gcpwstandaloneenterprise.msi`, is 25264128 bytes; the recipe takes the 64-bit file only, kept under the file name of the address. NOT established: that Google publishes no hash for this file and that no signature check exists for it (the writer knows of none); that Google's server answers the questions that AutoPkg asks about a changed file (a last-modified date was seen, nothing else was looked at); the silent install of the MSI on a PC. The first install on a test PC is the check of what is NOT established. When a run fails, STOP: nothing was written (a run that fails before the import writes nothing). Read the real address in a browser, correct the recipe, and only then look at the trust information. Never accept new trust information first to make a failure go away.**
 
-**Not verified. The download is NOT verified: Google publishes no hash for the file, and a check of the signature is not built. Because of this the shared importer REFUSES a real run of this recipe (nothing is published) unless the override sets `pcman_allow_unverified` to true. Do not set it before the signature check exists. Until then run the dry run only, and import by hand after a person has checked the file: `pcman import <file> --template gcpw` (no `--version` for an MSI; use the real item name when it is not `gcpw`). A real run of this recipe has NOT been run by anyone, not against a share and not on a PC, and neither has a dry run. `pcman catalogs` was NOT run either. The Windows overrides folder is not one of AutoPkg's override folders, so every override command here carries `--override-dir`: see the paragraph below.**
+**Not verified. The download is NOT verified: Google publishes no hash for the file, and a check of the signature is not built. Because of this the shared importer REFUSES a real run of this recipe (nothing is published) unless the override sets `pcman_allow_unverified` to true. Do not set it before the signature check exists. Until then run the dry run only, and import by hand after a person has checked the file: `pcman import <file> --template gcpw` (no `--version` for an MSI; use the real item name when it is not `gcpw`). A real run of this recipe was REFUSED on 2026-10-04 (see the status line above), and nothing has been installed on a PC. The Windows overrides folder is not one of AutoPkg's override folders, so every override command here carries `--override-dir`: see the paragraph below.**
 
 | Recipe | Identifier | What it does |
 | --- | --- | --- |
@@ -74,7 +74,7 @@ An override that was made from this recipe before the recipes were separated fro
 
 3. **`msiinfo` on the PATH of the run** (`brew install msitools`): `CimianImporter` reads the MSI's ProductVersion and its two codes with it, and does not parse an MSI itself. A job that `launchd` starts may have no Homebrew on its `PATH`, so the importer looks in `/opt/homebrew/bin` and `/usr/local/bin` too; the input `cimian_path` changes that list. This recipe cannot run without it: its step passes an empty `version` (so that a release tag is not taken for the MSI's own version), and an argument of a step wins over an override's `Input`, so the label can only come from the MSI. The run stops and names the facts that are missing.
 
-4. **The item.** The item's name is the recipe's input `CIMIAN_NAME`, `gcpw` (a PLACEHOLDER: see the first step of the package tool's way; the repository's own item may have another name). If the repository has an item of that name, its newest pkginfo (by the client's order of versions) is the template: nothing is to be made, and its catalogs, arguments, scripts and checks are carried into the new version. The recipe's `pkginfo` does not change a template: a key that the template lacks is added, a key that the template has with another value keeps the template's, and a NOTE names each (the display name of the recipe does not rename an item that has another). `cimian_pkginfo_wins` set to true in the override lets the recipe's `pkginfo` win instead, for example `pkginfo: {catalogs: [Testing]}` to put new versions into another catalog first. If it has no item of that name, the first real run builds a pkginfo from the recipe's `pkginfo` (the display name and the developer) and the inputs, in the catalog `Development`; that pkginfo is then the template of every later version. If the repository has pkginfo files of the item for several architectures, the run stops until the override gives `cimian_architecture` (for example `x64`).
+4. **The item.** The item's name is the recipe's input `CIMIAN_NAME`, `gcpw` (the name of the item that the first import of 2026-10-04 made; no GCPW item existed before). If the repository has an item of that name, its newest pkginfo (by the client's order of versions) is the template: nothing is to be made, and its catalogs, arguments, scripts and checks are carried into the new version. The recipe's `pkginfo` does not change a template: a key that the template lacks is added, a key that the template has with another value keeps the template's, and a NOTE names each (the display name of the recipe does not rename an item that has another). `cimian_pkginfo_wins` set to true in the override lets the recipe's `pkginfo` win instead, for example `pkginfo: {catalogs: [Testing]}` to put new versions into another catalog first. If it has no item of that name, the first real run builds a pkginfo from the recipe's `pkginfo` (the display name and the developer) and the inputs, in the catalog `Development`; that pkginfo is then the template of every later version. If the repository has pkginfo files of the item for several architectures, the run stops until the override gives `cimian_architecture` (for example `x64`).
 
    **For an `.msi` nothing needs completing for a silent install:** the client runs `msiexec /i <file> /qn /norestart` itself and then the arguments of the item (`InstallerService.cs:936-948`), so the recipe gives no silent arguments, and `CimianImporter` writes the install check of an MSI (an `installs` entry of type `msi` with the MSI's codes and version). What the MSI's own properties allow (features, per-user or per-machine) is the template's business: give them as `installer: {args: [...]}` in the override's `pkginfo`. An MSI whose upgrade code is not the template's, or that has none where the template's item had one, is refused (Windows Installer does not upgrade across upgrade codes): `cimian_allow_product_change` set to true in the override allows it, with a WARNING.
 
@@ -180,8 +180,8 @@ This way needs the owner's package tool, `pcman`, which is **not part of this re
    looks for it in its default `PATH`, which has the Homebrew folders).
 
 3. **The template item.** An item whose installer is the GCPW MSI may exist already
-   (imported by hand, say). Its name is not in this recipe: `gcpw` in the recipe is a
-   PLACEHOLDER. Find the real name first:
+   (imported by hand, say). On 2026-10-04 none existed, and the first import below made `gcpw`, the name
+   that the recipe has. Find out first whether one exists now:
    run `pcman versions <a name>` for the candidates, or look in the repository
    for the item whose pkginfo has the GCPW MSI as its installer. If it exists, do
    not make a second item: set its name in the override (step b). Only when no such item exists, make the template by a first import, so that
@@ -193,10 +193,10 @@ This way needs the owner's package tool, `pcman`, which is **not part of this re
            --developer "Google" --description "<one line about the item>" \
            --directory <the folder of the item> --architectures x64 --no-prompt --build
 
-   There is no `--version`: the package tool takes the MSI's own version. The
-   install arguments are not given: the package tool knows the arguments of an MSI
-   (silent, no restart); read what it wrote into the pkginfo and check it. Add the
-   icon as the package tool's README describes. A person changes the template
+   This is the form that ran on 2026-10-04 (it worked as written). There is no `--version`: the package tool takes the MSI's own version
+   (`150.0.7871.100` on that day). The install arguments are not given: for an MSI the client runs `msiexec /i <file> /qn /norestart`
+   itself (not tested on a PC). No icon was given because the repository had none for this item; add one with `--icon <the file name of an icon that the repository has>`
+   as the package tool's README describes. A person changes the template
    later; nothing else does. **If the template is made from the installer that is
    current at the vendor, the first run says "Nothing new" (see step c). To see a
    dry run that would publish, make the template from an older version.**
@@ -223,7 +223,8 @@ one processor that is not part of AutoPkg itself (`PcmanImporter`). **Open the w
 `ParentRecipe`: it must be `com.github.serrc-techops.pcman.GCPW`**, the identifier of the recipe that the override was made from (AutoPkg writes the identifier of the recipe it found by that name). Another value
 means that AutoPkg found another recipe of the same name.
 
-**The template name.** `PCMAN_TEMPLATE` in the recipe is the placeholder `gcpw`. When the
+**The template name.** `PCMAN_TEMPLATE` in the recipe is `gcpw`, the name of the item that the first import of 2026-10-04
+made, and the override of that day needed no change of it. When the
 real item has another name (step a.3), set it in the override, not in the recipe, and
 check the trust information again (a change of the `Input` does not break trust):
 
@@ -317,7 +318,7 @@ row says `published, NOT verified`.
        autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/GCPW.pcman.recipe
 
    Expected: `Nothing new: ... is in the repository already. Nothing was
-   written.` and `Nothing downloaded, packaged or imported.`
+   written.` and `Nothing downloaded, packaged or imported.` (On 2026-10-04 the first run of a fresh override printed the line `Nothing new: ...` after it had downloaded the file again, because a new override gets a new cache folder; `Nothing downloaded, packaged or imported.` was not seen in that run, and is the line of a later run of the same override.)
 
 ## f. When a recipe or a processor changes upstream
 
@@ -357,7 +358,7 @@ Nothing was written. Mount the share, then run again.
   by default (`pcman_timeout`), which is a limit for the copy to the share.
 - Whether the MSI's own ProductVersion is the number that Google's pages call the version
   of GCPW is NOT established. The first dry run shows it.
-- The recipe's `NAME` is `GCPW` and `PCMAN_TEMPLATE` is `gcpw` (a placeholder, see the status line). Change
+- The recipe's `NAME` is `GCPW` and `PCMAN_TEMPLATE` is `gcpw` (the item that the first import made). Change
   the template name in the override's `Input` (`PCMAN_TEMPLATE`), not in the recipe.
 
 ## Tests

@@ -2,7 +2,7 @@
 
 A Windows recipe pair: Zoom Workplace, the 64-bit `.msi`.
 
-**Status. The download is NOT verified: Zoom publishes no hash for the file, and a check of the signature is not built. Because of this the shared importer REFUSES a real run of this recipe (nothing is published) unless the override sets `pcman_allow_unverified` to true. Do not set it before the signature check exists. Until then run the dry run only, and import by hand after a person has checked the file: `pcman import <file> --template zoom` (no `--version` for an MSI). On 2026-10-01 it ran with the real AutoPkg 2.9.0 in a scratch folder up to "Nothing new", against a template of the same version (the download, the dry-run default and the importer ran). In that rehearsal the scratch overrides folder was one of AutoPkg's override folders; on the build machine the Windows overrides folder is not, so every override command here carries `--override-dir`: see the paragraph below. A real run of this recipe has NOT been run by anyone, not against a share and not on a PC. `pcman catalogs` was NOT rehearsed either.**
+**Status. The download is NOT verified: Zoom publishes no hash for the file, and a check of the signature is not built. Because of this the shared importer REFUSES a real run of this recipe (nothing is published) unless the override sets `pcman_allow_unverified` to true. Do not set it before the signature check exists. Until then run the dry run only, and import by hand after a person has checked the file: `pcman import <file> --template zoom` (no `--version` for an MSI). On 2026-10-01 it ran with the real AutoPkg 2.9.0 in a scratch folder up to "Nothing new", against a template of the same version (the download, the dry-run default and the importer ran). In that rehearsal the scratch overrides folder was one of AutoPkg's override folders; on the build machine the Windows overrides folder is not, so every override command here carries `--override-dir`: see the paragraph below. On 2026-10-04, under AutoPkg 2.9.0, the first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the item `zoom` (an MSI item, version `7.2.48556` read from the MSI, architectures `x64`) in the package tool's repository, in the catalog `Production`. The first import went beside the Chocolatey item `zoom` (version 1.0) without any option of the tool; the Chocolatey item file and its `zoom-1.0` pkginfo remain until a person removes them by hand, and `pcman validate` warns that the item has two versions until then. The override of `Zoom.pcman` (`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false) then ran for real and the importer REFUSED the run with `The download was not verified: no step of the recipe set checksum_verified together with the checksum_sha256 of this file. Nothing was published. ...` (exit 70), which is what an unverified download must get; `pcman_allow_unverified` was not set. The override downloaded the file again about ten minutes after the first import, and its hash was the imported file's. The hand-import form `pcman import <file> --template zoom --no-prompt --if-new --dry-run` printed `Nothing new: zoom <version> exists already ...` with exit 3. `pcman catalogs` ran once for all the new items together (2026-10-04): the tool's configured command ran `makecatalogs` on the repository's server, with exit 0, and wrote the catalogs `All` and `Production`, 106 items each. The silent install is the client's (`/qn /norestart` for an MSI) and was NOT tested on a PC. Still NOT established after those runs: that the MSI installs silently on a PC; any install; that a new release has the same upgrade code as the template.**
 
 | Recipe | Identifier | What it does |
 | --- | --- | --- |
@@ -181,11 +181,13 @@ This way needs the owner's package tool, `pcman`, which is **not part of this re
    it replaces. The command, with a real MSI:
 
        pcman import <path of the MSI> --name zoom \
-           --directory <the folder of the item> --architectures x64 --no-prompt --build
+           --directory <the folder of the item> --architectures x64 \
+           --display-name Zoom --category <the category of the item> --developer "Zoom Communications" \
+           --description <one sentence about the item> \
+           --icon <the file name of an icon that the repository has> --no-prompt --build
 
-   There is no `--version`: the package tool takes the MSI's own version. Add
-   `--display-name`, `--category`, `--developer`, `--description` and the icon as
-   the package tool's README describes. A person changes the template later;
+   This is the form that ran on 2026-10-04 (it worked as written). There is no `--version`: the package tool takes the MSI's own version
+   (`7.2.48556` on that day). The install arguments are not given: for an MSI the client runs `msiexec /i <file> /qn /norestart` itself (not tested on a PC). A person changes the template later;
    nothing else does. **If the template is made from the installer that is
    current at the vendor, the first run says "Nothing new" (see step c). To see a
    dry run that would publish, make the template from an older version.**
@@ -294,7 +296,7 @@ row says `published, NOT verified`.
        autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/Zoom.pcman.recipe
 
    Expected: `Nothing new: ... is in the repository already. Nothing was
-   written.` and `Nothing downloaded, packaged or imported.`
+   written.` and `Nothing downloaded, packaged or imported.` (On 2026-10-04 the first run of a fresh override printed the line `Nothing new: ...` after it had downloaded the file again, because a new override gets a new cache folder; `Nothing downloaded, packaged or imported.` was not seen in that run, and is the line of a later run of the same override.)
 
 ## f. When a recipe or a processor changes upstream
 

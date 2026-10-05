@@ -3,7 +3,7 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>Hands the downloaded Bambu Studio installer to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. The version label is the one that the download recipe read from the .exe itself (its ProductVersion), not the release tag; the package tool's answer to that label has NOT been seen yet, and the first dry run shows it. This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false.</string>
+        <string>Hands the downloaded Bambu Studio installer to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. The version label is the one that the download recipe took from the installer's file name, not the release tag; the package tool took the label, with its leading zeros, as written on 2026-10-04 (see the README). This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false.</string>
         <key>Identifier</key>
         <string>com.github.serrc-techops.pcman.BambuStudio</string>
         <key>Input</key>

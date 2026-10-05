@@ -409,8 +409,8 @@ class ReadmeTests(unittest.TestCase):
 
     def test_the_status_line_says_what_was_not_done(self):
         self.assertLess(self.raw.index("**Status."), self.raw.index("## a."))
-        self.assertTrue(self.raw.split("\n\n")[2].startswith(
-            "**Status. NOT rehearsed with AutoPkg. The facts of the source were fetched by the writer on 2026-10-02:"))
+        self.assertTrue(self.raw.split("\n\n")[2].startswith("**Status. Run on 2026-10-04 under AutoPkg 2.9.0, as follows."))
+        self.assertIn("The facts of the source were fetched by the writer on 2026-10-02, before those runs.", self.text)
         status = self.text[self.text.index("**Status."):self.text.index("| Recipe |")]
         verified = (
             "`https://download.videolan.org/vlc/last/win64/` answers 200 without a redirect",
@@ -426,12 +426,10 @@ class ReadmeTests(unittest.TestCase):
             "the check against the publisher's hash still shows that the file is what VideoLAN published",
         )
         not_known = (
-            "What is still NOT known: the MSI's own ProductVersion and UpgradeCode",
-            "how the package tool handles this MSI", "the template item", "`pcman catalogs`",
-            "anything about a run with AutoPkg",
+            "What is still NOT known: that the publisher keeps this layout for the next release",
             "a copy of the real index of 2026-10-02",
-            "The first run on the build Mac (step c) is the check of what is still not known",
-            "When it fails, stop",
+            "An install on a test PC is the check of what is NOT established, and the next dry run (step c) of what is still not known",
+            "When a run fails, stop",
             "correct the processor or the recipe, and only then touch the trust information",
             "stop and tell the owner",
             "carries `--override-dir`",
@@ -439,6 +437,8 @@ class ReadmeTests(unittest.TestCase):
         for needle in verified + not_known:
             with self.subTest(needle=needle):
                 self.assertIn(needle, status)
+        for gone in ("the MSI's own ProductVersion and UpgradeCode", "anything about a run with AutoPkg"):
+            self.assertNotIn(gone, status)
         self.assertNotIn("Rehearsed on", self.text)
         self.assertNotIn("NOT been run by anyone", self.text)
         self.assertNotIn("NOT fetched by the writer", self.text)
@@ -475,9 +475,15 @@ class ReadmeTests(unittest.TestCase):
         self.assertIn("NOT established", self.text)
         self.assertNotIn("--version", self.text.split("pcman import")[1].split("--build")[0])
 
-    def test_the_readme_does_not_teach_a_removal_of_the_exe_edition_as_the_recipes_work(self):
-        self.assertIn("removes the EXE edition of VLC from a PC itself", self.text)
-        self.assertIn("not the recipe's business", self.text)
+    def test_the_readme_says_that_the_template_made_on_2026_10_04_does_not_remove_the_exe_edition(self):
+        """An earlier text said that the template item removes the EXE edition of VLC from a PC itself. The first
+        import of 2026-10-04 made an item without that step."""
+        self.assertNotIn("removes the EXE edition of VLC from a PC itself", self.text)
+        self.assertIn("**The template does not remove the EXE edition of VLC from a PC:**", self.text)
+        self.assertIn("the Chocolatey item has a `postinstall_script` whose content was not read", self.text)
+        self.assertIn("a person adds the removal to the new item", self.text)
+        self.assertIn("The item that this command makes does NOT remove the EXE edition of VLC from a PC", self.text)
+        self.assertIn("not the recipe's", self.text)
 
 
 class ChainTests(_pcman_support.ToolTestCase):
@@ -525,6 +531,37 @@ class ChainTests(_pcman_support.ToolTestCase):
 def _text(path):
     with open(path, "r", encoding="utf-8") as handle:
         return handle.read()
+
+
+class RealRunReadmeTests(unittest.TestCase):
+    """What the README says of the first import and the real run of 2026-10-04 (AutoPkg 2.9.0). """
+
+    def setUp(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            self.raw = handle.read()
+        self.text = re.sub(r"\s+", " ", self.raw)
+        self.status = re.sub(r"\s+", " ", [line for line in self.raw.splitlines() if line.startswith("**Status.")][0])
+
+    def test_the_status_line_says_what_ran_on_2026_10_04(self):
+        for needle in ('The first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the item `vlc` (an MSI item, a version of four parts read from the MSI', '`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false', "the download was checked against VideoLAN's `.sha256` file by the processor", 'went beside the Chocolatey item `vlc` (version 1.0) without any option of the tool', 'the Chocolatey item file and its `vlc-1.0` pkginfo remain until a person removes them by hand', '`pcman validate` warns that the item has two versions until then', '`pcman catalogs` ran once for all the new items together (2026-10-04)', '`All` and `Production`, 106 items each', 'The generic importer (the way for any Cimian repository) was also run on a scratch copy of the repository, never on the share', "its pkginfo for this installer was byte for byte the package tool's", "The silent install is the client's (`/qn /norestart` for an MSI) and was NOT tested on a PC", 'Still NOT established after those runs: that the MSI installs silently on a PC; any install; that a new release has the same upgrade code as the template'):
+            self.assertIn(needle, self.status)
+
+    def test_the_readme_says_the_rest_of_it(self):
+        for needle in ('If the repository has an item `vlc` of the kind `choco`, it is not the template: see the status line.',):
+            self.assertIn(needle, self.text)
+
+    def test_the_first_import_step_says_what_worked(self):
+        step = re.sub(r"\s+", " ", self.raw[self.raw.index("3. **The template item"):self.raw.index("## b.")])
+        for needle in ('This is the form that ran on 2026-10-04 (it worked as written)', '--icon <the file name of an icon that the repository has>'):
+            self.assertIn(needle, step)
+
+    def test_nothing_that_was_not_tested_is_called_tested(self):
+        for claim in ('was tested on a PC', 'removes the EXE edition of VLC from a PC itself'):
+            self.assertNotIn(claim, self.text)
+
+    def test_the_second_run_line_is_not_promised_for_a_fresh_override(self):
+        self.assertIn("the first run of a fresh override printed the line `Nothing new: ...` after it had downloaded the file again", self.text)
+        self.assertIn("a new override gets a new cache folder", self.text)
 
 
 class CimianRecipeTests(unittest.TestCase):

@@ -4,8 +4,7 @@ The first Windows recipe pair: 7-Zip, the 64-bit `.exe`.
 
 **Status.** Rehearsed on 2026-10-01 with AutoPkg 2.9.0 and the real installer in
 a scratch repository (a folder with `pkgs/` and `pkgsinfo/`): a dry run, a publish,
-"Nothing new", a trust failure (a changed processor) and a missing repository. NOT
-yet run against the real share. `pcman catalogs` was NOT rehearsed. The lines quoted
+"Nothing new", a trust failure (a changed processor) and a missing repository. The first rehearsal was NOT against the real share. On 2026-10-04, under AutoPkg 2.9.0, both recipes of this folder (`7Zip.cimian.recipe` and `7Zip.pcman.recipe`) ran as a dry run, the default, against the real repository, whose template had been imported before, and **each ended clean**: the package tool's recipe with `PcmanImporter: Nothing new: 7zip 26.03 is in the repository already.` and the generic recipe with `CimianImporter: Nothing new: 7zip 26.03 is in the repository already (it has this very installer file).` Nothing was written. No real run of this program was made that day, and nothing has been installed on a PC. The lines quoted
 below are those that the rehearsal printed; spacing of the tables may differ. After the
 rehearsal the pre-release switch moved from the step into the `Input` (2026-10-04): that
 form was checked against AutoPkg 2.9.0's source and not run on the build machine. (In the
@@ -262,8 +261,7 @@ every recipe of that run.
    marked "published by pcman import".
 
 3. **Build the catalogs: `pcman catalogs`.** Without it no PC sees the new
-   version. (Not rehearsed. The package tool prints "nothing to run" when its
-   catalogs command is not set.)
+   version. (On 2026-10-04 `pcman catalogs` ran once for other programs' new items: the tool's configured command ran `makecatalogs` on the repository's server and wrote the catalogs `All` and `Production`, with exit 0. It has not been run for this program. The package tool prints "nothing to run" when its catalogs command is not set.)
 
 4. The second run, by path again:
 

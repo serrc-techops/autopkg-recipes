@@ -4,6 +4,7 @@ The recipes are read as property lists. Each step that names one of our shared
 processors is compared with what that processor declares (see
 ../../Win-SharedProcessors). The shared folder's tests are run separately.
 """
+import json
 import os
 import plistlib
 import re
@@ -30,6 +31,11 @@ import test_public_repository as shared_hygiene  # noqa: E402
 IDENTIFIER_PREFIX = "com.github.serrc-techops"
 SHARED_PREFIX = IDENTIFIER_PREFIX + ".SharedProcessors/"
 PCMAN_PREFIX = IDENTIFIER_PREFIX + ".PcmanProcessors/"
+# The pattern of the first run with AutoPkg 2.9.0 (2026-10-04): the name that the project used up to 5.2.9.
+OLD_PATTERN = r"pdfsam-[0-9.]+\.msi$"
+PATTERN = r"pdfsam-basic-[0-9.]+-windows-x64\.msi$"
+# Names, sizes and digest flags of the newest 14 releases, read from GitHub on 2026-10-04.
+RELEASES = os.path.join(TESTS_DIR, "releases_excerpt.json")
 DOWNLOAD = os.path.join(RECIPE_DIR, "PDFsam-Win.download.recipe")
 CIMIAN = os.path.join(RECIPE_DIR, "PDFsam.cimian.recipe")
 PCMAN = os.path.join(RECIPE_DIR, "PDFsam.pcman.recipe")
@@ -53,6 +59,25 @@ def processor_classes():
     for name in ("PcmanImporter", "CimianImporter", "ChecksumVerifier", "GitHubAssetDigest"):
         classes[name] = getattr(importlib.import_module(name), name)
     return classes
+
+
+def releases():
+    with open(RELEASES, "r", encoding="utf-8") as handle:
+        return json.load(handle)["releases"]
+
+
+def selected(pattern, include_prereleases=False):
+    """How the download recipe chooses its file in AutoPkg 2.9.0 (`GitHubReleasesInfoProvider.py`,
+    `select_asset`): the releases in the order that GitHub lists them (newest first), a pre-release
+    skipped unless `include_prereleases` is true, and in a release the first asset whose name the
+    pattern matches from its start (`re.match`). Returns (tag, asset name, digest recorded) or None."""
+    for release in releases():
+        if release["prerelease"] and not include_prereleases:
+            continue
+        for asset in release["assets"]:
+            if re.match(pattern, asset["name"]):
+                return release["tag_name"], asset["name"], asset["digest_recorded"]
+    return None
 
 
 def shared_steps(recipe):
@@ -98,7 +123,7 @@ class RecipeFileTests(unittest.TestCase):
         self.assertEqual(args["github_repo"], "torakiki/pdfsam")
         self.assertEqual(args["asset_regex"], "%SEARCH_PATTERN%")
         self.assertNotIn("include_prereleases", args)
-        self.assertEqual(load(DOWNLOAD)["Input"]["SEARCH_PATTERN"], r"pdfsam-[0-9.]+\.msi$")
+        self.assertEqual(load(DOWNLOAD)["Input"]["SEARCH_PATTERN"], PATTERN)
 
     def test_pre_releases_are_a_switch_of_the_input_that_an_override_can_change(self):
         """AutoPkg 2.9.0 puts the Input of the recipe and of the override into the run first and
@@ -127,12 +152,62 @@ class RecipeFileTests(unittest.TestCase):
                     self.assertNotIsInstance(recipe["Input"].get(match.group(1)), bool, key)
 
     def test_the_default_pattern_matches_the_msi_and_not_the_others(self):
+        """The names are those of GitHub's release list of 2026-10-04 (releases_excerpt.json)."""
         pattern = re.compile(load(DOWNLOAD)["Input"]["SEARCH_PATTERN"])
-        self.assertTrue(pattern.search("pdfsam-6.0.6.msi"))
-        for name in ("pdfsam-6.0.6-windows.zip", "pdfsam-6.0.6.dmg", "pdfsam_6.0.6-1_amd64.deb",
-                     "pdfsam-6.0.6.msi.sha256", "pdfsam-6.0.6.exe", "pdfsam-basic-6.0.6.msi",
-                     "pdfsam-6.0.6-linux.tar.gz"):
-            self.assertFalse(pattern.search(name), name)
+        self.assertTrue(pattern.match("pdfsam-basic-6.0.6-windows-x64.msi"))
+        for name in ("pdfsam-basic-6.0.6-windows-x64.msi.asc", "pdfsam-basic-6.0.6-windows-x64.zip",
+                     "pdfsam-basic-6.0.6-windows-x64.zip.asc", "pdfsam-basic-6.0.6-macos-arm64.dmg",
+                     "pdfsam-basic_6.0.6-1_amd64.deb", "pdfsam-basic-6.0.6-linux-x64.tar.gz",
+                     "pdfsam-5.2.9.msi", "pdfsam-basic-6.0.0.M1-windows-x64.zip",
+                     "pdfsam-basic-6.0.0.M1-windows-x64.msi", "pdfsam-basic--windows-x64.msi",
+                     "pdfsam-basic-6.0.6-windows-x86.msi", "old-pdfsam-basic-6.0.6-windows-x64.msi"):
+            self.assertIsNone(pattern.match(name), name)
+
+    def test_every_release_with_an_msi_has_one_file_that_the_pattern_takes_and_it_is_the_msi(self):
+        pattern = re.compile(load(DOWNLOAD)["Input"]["SEARCH_PATTERN"])
+        taken = {}
+        for release in releases():
+            hits = [asset["name"] for asset in release["assets"] if pattern.match(asset["name"])]
+            self.assertLessEqual(len(hits), 1, release["tag_name"])
+            taken[release["tag_name"]] = hits
+            for name in hits:
+                self.assertEqual(name, "pdfsam-basic-%s-windows-x64.msi" % release["tag_name"].lstrip("v"))
+        self.assertEqual(len(releases()), 14)
+        self.assertEqual([tag for tag, hits in taken.items() if not hits], ["v6.0.0.M1", "v5.2.9"])
+
+    def test_the_recipe_takes_the_newest_release_where_the_old_pattern_went_back_to_5_2_9(self):
+        """The first run (2026-10-04) took `pdfsam-5.2.9.msi`, a file of October 2024, and stopped because
+        GitHub records no digest for it: the old pattern matches no file of any release from 5.3.0 on, and
+        AutoPkg goes on to the next release when none matches."""
+        self.assertEqual(selected(OLD_PATTERN), ("v5.2.9", "pdfsam-5.2.9.msi", False))
+        tag, name, digest = selected(load(DOWNLOAD)["Input"]["SEARCH_PATTERN"])
+        self.assertEqual((tag, name), ("v6.0.6", "pdfsam-basic-6.0.6-windows-x64.msi"))
+        self.assertEqual(tag, [r["tag_name"] for r in releases() if not r["prerelease"]][0])
+
+    def test_the_msi_that_the_recipe_takes_has_a_digest_so_the_download_stays_verified(self):
+        """The error of the first run was about an old asset, not about the newest: the newest release's MSI
+        has a digest, and so has the MSI of every release from 5.3.2 on."""
+        pattern = load(DOWNLOAD)["Input"]["SEARCH_PATTERN"]
+        self.assertTrue(selected(pattern)[2])
+        recorded = {}
+        for release in releases():
+            for asset in release["assets"]:
+                if re.match(pattern, asset["name"]):
+                    recorded[release["tag_name"]] = asset["digest_recorded"]
+        self.assertEqual([tag for tag, flag in recorded.items() if not flag], ["v5.3.1", "v5.3.0"])
+        steps = [step["Processor"] for step in load(DOWNLOAD)["Process"]]
+        self.assertIn(SHARED_PREFIX + "GitHubAssetDigest", steps)
+        self.assertIn(SHARED_PREFIX + "ChecksumVerifier", steps)
+
+    def test_with_pre_releases_the_pattern_still_finds_the_newest_msi(self):
+        pattern = load(DOWNLOAD)["Input"]["SEARCH_PATTERN"]
+        self.assertEqual(selected(pattern, include_prereleases=True)[0], "v6.0.6")
+
+    def test_searching_a_name_or_matching_it_from_its_start_gives_the_same_answer(self):
+        pattern = re.compile(load(DOWNLOAD)["Input"]["SEARCH_PATTERN"])
+        for release in releases():
+            for asset in release["assets"]:
+                self.assertEqual(bool(pattern.search(asset["name"])), bool(pattern.match(asset["name"])), asset["name"])
 
     def test_the_inputs_of_the_pcman_recipe(self):
         recipe = load(PCMAN)
@@ -183,7 +258,12 @@ class RecipeFileTests(unittest.TestCase):
     def test_the_description_says_what_a_reader_must_know(self):
         self.assertIn("newest non-pre-release", load(DOWNLOAD)["Description"])
         self.assertIn("matching file", load(DOWNLOAD)["Description"])
-        self.assertIn("has not been checked against a real release", load(DOWNLOAD)["Description"])
+        self.assertIn("were read from GitHub's release list on 2026-10-04", load(DOWNLOAD)["Description"])
+        self.assertIn("pdfsam-basic-6.0.6-windows-x64.msi", load(DOWNLOAD)["Description"])
+        self.assertIn("AutoPkg takes the first release that has a matching file however old it is", load(DOWNLOAD)["Description"])
+        self.assertIn("stops with an error and writes nothing", load(DOWNLOAD)["Description"])
+        self.assertNotIn("has not been checked against a real release", load(DOWNLOAD)["Description"])
+        self.assertNotIn("writer's knowledge", load(DOWNLOAD)["Description"])
         self.assertNotIn("ehearsed", load(DOWNLOAD)["Description"])
         self.assertNotIn("ehearsed", load(PCMAN)["Description"])
         self.assertIn("MSI's own version", load(PCMAN)["Description"])
@@ -292,7 +372,7 @@ class ReadmeTests(unittest.TestCase):
             with self.subTest(command=command):
                 self.assertRegex(
                     command,
-                    r"^autopkg (run|verify-trust-info|update-trust-info)( -vv)? "
+                    r"^autopkg (run|verify-trust-info|update-trust-info)( -vv?)? "
                     r"--override-dir=<the Windows overrides folder> "
                     r"<the Windows overrides folder>/PDFsam\.(?:cimian|pcman)\.recipe$",
                 )
@@ -361,28 +441,80 @@ class ReadmeTests(unittest.TestCase):
         import_command = self.raw[start:self.raw.index("\n\n", start)]
         self.assertNotIn("--version", import_command)
         self.assertIn("--name pdfsam", import_command)
-        for flag in ("--display-name", "--category", "--developer", "--description"):
+        for flag in ("--display-name", "--category", "--developer", "--description", "--architectures x64", "--icon"):
             self.assertIn(flag, import_command)
+        self.assertNotIn("--install-path", import_command)
         self.assertIn("There is no `--version`", self.raw)
-        self.assertIn("(silent, `/qn`, from the writer's knowledge", self.text)
+        for needle in ("in the form that ran on 2026-10-04 (it worked as written)", "An item `pdfsam` of the kind `choco` is not the template",
+                       "(`/qn /norestart` from the client; not tested on a PC)"):
+            self.assertIn(needle, self.text)
+        self.assertNotIn("from the writer's knowledge, not read in the package tool's README", self.text)
 
-    def test_the_status_line_says_what_was_not_done(self):
+    def test_the_status_line_says_what_was_read_and_what_was_not(self):
         lines = [line for line in self.raw.splitlines() if line.strip()]
         self.assertTrue(lines[0].startswith("# "))
         status = lines[2]
-        self.assertTrue(status.startswith("**Status. NOT rehearsed, and the facts of the source NOT fetched by the writer:"))
+        opening = "**Status. Changed after the first dry run with AutoPkg 2.9.0, and run again after the change (2026-10-04)."
+        self.assertTrue(status.startswith(opening))
         self.assertTrue(status.endswith("**"))
         status = re.sub(r"\s+", " ", status)
-        for needle in ("torakiki/pdfsam", "pdfsam-6.0.6.msi", "v6.0.6", "pdfsam-[0-9.]+\\.msi$", "64-bit",
-                       "GitHub records a SHA-256 digest", "`GitHubAssetDigest` stops the run with its error",
-                       "NOT read from the source", "nothing of this folder was run by anyone",
-                       "The first run on the build Mac is the check of every one of these facts",
+        for needle in ("2026-10-04", "`GitHubAssetDigest` with \"GitHub asset 202307085: the record has no digest (older assets have none)\"",
+                       "`pdfsam-5.2.9.msi`, a file of October 2024", "`pdfsam-[0-9.]+\\.msi$`",
+                       "matches no file of any release from `v5.3.0` on",
+                       "`pdfsam-basic-<version>-windows-x64.msi`",
+                       "the first release (in GitHub's order, newest first, a pre-release skipped) that has a file whose name the pattern matches from its start",
+                       "`select_asset`", "`re.match`", "however old",
+                       "the old pattern takes `pdfsam-5.2.9.msi` and the new one takes the newest",
+                       "The newest release's MSI does have a digest on GitHub, so the download stays verified",
+                       "`https://api.github.com/repos/torakiki/pdfsam/releases`", "the newest 14 releases", "no file was downloaded",
+                       "`v6.0.6` (published 2026-10-02)", "`v6.0.0.M1` is flagged as a pre-release and has no MSI",
+                       "97030144 bytes", "`.asc`", "which no step checks",
+                       "every release from `v5.3.2` (2025-07-24) to `v6.0.6`", "none of `v5.3.1` (2025-04-18) and older",
+                       "`pdfsam-basic-[0-9.]+-windows-x64\\.msi$`", "exactly the MSI of each release from `v5.3.0` to `v6.0.6` that has one",
+                       "`GitHubAssetDigest` stops the run with its error",
+                       "After the change a dry run under AutoPkg 2.9.0 selected `pdfsam-basic-6.0.6-windows-x64.msi` of `v6.0.6` and verified it against GitHub's digest",
+                       "the first import with the package tool (the command of step a.3 below, run with `--no-prompt` and `--build`) made the item `pdfsam` (an MSI item, architectures `x64`, the catalog `Production`; "
+                       "the MSI's own version has four parts, the tag `v6.0.6` and a fourth part `0`; its summary says platform `x64` and its Property table has `ALLUSERS=1`)",
+                       "`PcmanImporter: Nothing new: pdfsam <the label> is in the repository already. Nothing was written.`",
+                       "went beside the Chocolatey item `pdfsam` (version 1.0) without any option of the tool",
+                       "the Chocolatey item file and its `pdfsam-1.0` pkginfo remain until a person removes them by hand",
+                       "`pcman catalogs` ran a second time later on 2026-10-04", "110 items each (106 before)",
+                       "The silent install is the client's (`/qn /norestart` for an MSI) and was NOT tested on a PC; nothing has been installed on a PC",
+                       "NOT established: that the MSI installs silently on a PC; that a new release has the same UpgradeCode as the template",
+                       "that the next release keeps this spelling of the name", "any install on a PC",
+                       "An install on a test PC is the check of each of them",
                        "stop: nothing was written", "correct the recipe",
                        "never accept trust information to make a failure go away",
                        "carries `--override-dir`"):
             self.assertIn(needle, status)
+        for gone in ("NOT rehearsed since", "any run with AutoPkg after this change", "nobody opened it", "whether the MSI's own version equals the release's tag"):
+            self.assertNotIn(gone, status)
+        self.assertNotIn("the network was closed", self.text)
+        self.assertNotIn("NOT fetched by the writer", self.raw)
         self.assertLess(self.raw.index("**Status."), self.raw.index("## a."))
         self.assertNotIn("Rehearsed on", self.raw)
+
+    def test_the_dry_run_commands_carry_dash_v_so_that_the_selected_asset_line_is_printed(self):
+        """The provider prints `Selected asset ... from release ...` at verbosity 1 only. The two dry-run
+        commands (step 3 of the generic way and step c of the package tool's way) run with `-v`; the real runs do not."""
+        generic = self.raw[self.raw.index("### 3. First try: a dry run"):self.raw.index("### 4. Switch a real run on")]
+        tool = self.raw[self.raw.index("## c. First try: a dry run"):self.raw.index("## d. Switch a real run on")]
+        for text, recipe in ((generic, "PDFsam.cimian.recipe"), (tool, "PDFsam.pcman.recipe")):
+            self.assertIn("autopkg run -v --override-dir=<the Windows overrides folder> <the Windows overrides folder>/%s" % recipe, text)
+            self.assertIn("`Selected asset ... from release ...`", re.sub(r"\s+", " ", text))
+        commands = self.operator_commands()
+        self.assertEqual(len([c for c in commands if c.startswith("autopkg run -v ")]), 2)
+        self.assertEqual(len([c for c in commands if c.startswith("autopkg run --override-dir")]), 4)
+
+    def test_the_readme_says_that_the_provider_goes_back_when_a_name_changes(self):
+        self.assertIn("takes the first release, newest first, that has a file whose name matches `SEARCH_PATTERN`, however old",
+                      self.text)
+        self.assertIn("Read the `Selected asset` line of every dry run", self.text)
+
+    def test_the_readme_names_the_real_file_name_and_not_the_old_one(self):
+        self.assertIn("pdfsam-basic-<version>-windows-x64.msi", self.raw)
+        self.assertNotIn("downloaded pdfsam-<version>.msi", self.raw)
+        self.assertIn("(default `pdfsam-basic-[0-9.]+-windows-x64\\.msi$`)", self.text)
 
     def test_the_readme_says_that_the_version_is_the_msis_own(self):
         self.assertIn("takes the MSI's own version", self.text)
@@ -434,6 +566,23 @@ class ChainTests(_pcman_support.ToolTestCase):
 def _text(path):
     with open(path, "r", encoding="utf-8") as handle:
         return handle.read()
+
+
+class CatalogsStepReadmeTests(unittest.TestCase):
+    """The step that builds the catalogs says what happened on 2026-10-04 and no longer says "Not rehearsed"."""
+
+    def test_the_catalogs_step_names_the_run_of_2026_10_04(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            text = re.sub(r"\s+", " ", handle.read())
+        i = text.index("3. **Build the catalogs: `pcman catalogs`.**")
+        step = text[i:text.index("4. The second run, by path again:", i)]
+        for needle in ("(Run on 2026-10-04: `pcman catalogs` ran twice that day, the second time after the first imports of this and three other programs.",
+                       "The tool's configured command ran `makecatalogs` on the repository's server",
+                       "wrote the catalogs `All` and `Production`, 110 items each in the second run, with exit 0",
+                       "The package tool prints \"nothing to run\" when its catalogs command is not set"):
+            self.assertIn(needle, step)
+        self.assertNotIn("Not rehearsed", step)
+        self.assertNotIn("for no program", step)
 
 
 class CimianRecipeTests(unittest.TestCase):

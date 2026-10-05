@@ -1,6 +1,6 @@
 # Win-SharedProcessors
 
-Four AutoPkg processors for Windows installers, and the stub recipe that lets
+Five AutoPkg processors for Windows installers, and the stub recipe that lets
 other recipes use them. None of them needs the package tool or any other program
 that is not in this repository or in AutoPkg: they work with any Cimian repository.
 (The processor for the owner's own package tool, `pcman`, is in
@@ -16,6 +16,7 @@ processor like this: `com.github.serrc-techops.SharedProcessors/<Processor>`.
 | `ChecksumVerifier.py` | Stops the recipe when a file does not have the SHA-256 that its publisher gives |
 | `GitHubAssetDigest.py` | Reads the SHA-256 that GitHub records for a release asset |
 | `WindowsExeVersion.py` | Reads the version of a downloaded `.exe` from the file itself, for the version label that `CimianImporter` needs |
+| `VersionFromName.py` | Reads the version label from the name of a downloaded file and checks its shape, for an `.exe` that has no version resource of its own |
 | `SharedProcessors.recipe` | Stub. Carries the identifier `com.github.serrc-techops.SharedProcessors`. Does nothing |
 | `tests/` | Tests. They need no AutoPkg and no network. The tests of `CimianImporter` need PyYAML (see below) |
 
@@ -383,12 +384,28 @@ comes back as the same text; a `version` is always text; a multi-line text is wr
 with no anchors, as in the pkginfo files that Cimian's own tools write. Before a file is written
 its text is read back and must equal what was meant.
 
+### Measured against the package tool (2026-10-04)
+
+On 2026-10-04, on scratch copies of a repository (never on the share), the importer was run for real under AutoPkg 2.9.0 against the package tool's pkginfo of three programs that the tool had imported:
+an MSI program, an EXE program and one more MSI program. In each copy the tool's pkginfo had been made older (its version, its installer's name and its hash), so that the importer found a template of an
+older version and published the new one. **With a template, the importer's pkginfo was byte for byte the package tool's** for each of the three (`diff` found nothing; the keys, their values and their
+order were equal: the display data, the catalog, the icon, the architectures, `unattended_install` and `unattended_uninstall`, the installer's location, hash, size and type, for the EXE program its
+arguments and its `check`, and for the MSI programs the `installs` entry). The importer's one NOTE was that the repository has pkginfo files of the item for all architectures beside the x64 template.
+**Without a template**, the importer's pkginfo has `name`, `display_name`, `version`, the installer's hash, size and type, for an MSI the whole `installs` entry, and `developer` where the recipe's
+`pkginfo` gives it; it lands in the catalog `Development`. It lacks, compared with the package tool's: the catalog `Production` (a PC that reads `Production` does not see the version at all), the item's folder
+in `installer.location` (no difference for a PC), `supported_architectures` (the version is offered to every processor), `unattended_install` and `unattended_uninstall` (the client defers an install in an
+automatic run while a user is active when `unattended_install` is false: `UpdateEngine.cs:684-712` at `3cf02c4`, as read by the operator of that day), the installer's arguments and the install check of an EXE
+(the importer warns that there is no check; without it the item counts as installed only through the ManagedInstalls registry), `category`, `description` and `icon_name` (Managed Software Center only), and
+`developer` where the recipe's `pkginfo` does not give it. That is what a person completes by hand, as the sections above say. One of the three runs needed `cimian_allow_unverified` (its download had no
+verification step); it was set in the scratch override only. The order of the keys differs without a template (`name` first, as Cimian's own `makepkginfo` writes them) and nothing depends on it.
+
 ### Not established
 
-Nothing here has run with AutoPkg, with a real Cimian repository or with a real `msiinfo`. The tests
+Until 2026-10-04 nothing here had run with AutoPkg, with a real Cimian repository or with a real `msiinfo`. Since then the importer has run under AutoPkg 2.9.0 on scratch copies of a repository
+(the section above) and with the machine's `msiinfo` for MSI files, and its dry runs against the real repository ended in `Nothing new` for the three programs whose template was an MSI or an EXE item. The ten programs whose item was a Chocolatey `nopkg` item were refused, as designed ("The template ... is of the kind nopkg, and the file is an .exe ..."). The tests
 use a temporary repository, files with bytes in them, and a stand-in for `msiinfo` whose output
-follows the description above. NOT established: the exact output of a real `msiinfo` for a real
-MSI (the parser is tolerant on purpose); that a pkginfo written by this processor is accepted by
+follows the description above. NOT established: the exact output of a real `msiinfo` for an MSI other than those of 2026-10-04
+(the parser is tolerant on purpose); that a pkginfo written by this processor is accepted by
 every version of the client and of `makecatalogs`; that `makecatalogs` finds nothing to complain
 about in the result (its `--hash_check` option compares an MD5 with `installer.hash`,
 `CatalogBuilder.cs:120-127`, while the client checks a SHA-256, `DownloadService.cs:193-200`: do not
@@ -533,6 +550,65 @@ and whoever made the file chose it. It only gives the label that the importer an
 the client compare. It does not replace a check of the download (`ChecksumVerifier`,
 a vendor signature, or the pinned address of the vendor).
 
+## VersionFromName
+
+Some `.exe` installers have no version resource, so `WindowsExeVersion` stops on them (its
+error is "the file has no version resource (RT_VERSION)"). When the name that the vendor gave
+the file has the version in it (a release asset such as `setup-3.10.0.exe`), this processor
+takes the label from the name. It runs no program, opens no file, writes nothing and uses no
+network.
+
+| Input | Required | Meaning |
+| --- | --- | --- |
+| `pathname` | yes | The downloaded file. Only its file name is read, never a folder of the path |
+| `version_pattern` | yes | A regular expression with **exactly one group**, matched from the start of the file name (`re.match`, like the `asset_regex` of `GitHubReleasesInfoProvider`, so a recipe may give both the same pattern). The text of the group is the label |
+
+| Output | Meaning |
+| --- | --- |
+| `version` | The label, as it stands in the name (leading zeros stay), checked for its shape |
+
+**The shape.** Two to four numbers joined by dots, each of at most nine ASCII digits, with at
+least one digit that is not zero. A build date such as `20260128215914` is not a part of a
+version: the group of a pattern that was written for the wrong part of a name would take it,
+and the check stops that. The label is never repaired, shortened or guessed. The step prints
+`version is ..., taken from the file name ...`.
+
+**Errors** (`ProcessorError`, and `version` stays as it was): the pathname has no file name;
+the pattern is empty, is not text or is not a regular expression; it has no group or more than
+one; the file name does not match it; the group did not take part in the match; or its text does
+not have the shape above (one number, five parts, a letter, a part of ten digits, zeros only).
+
+**What the label proves.** Nothing about the file: the name is chosen by whoever published the
+file, and the version in it is the publisher's word for the release. It does not say what the
+installed program reports about itself, so the first dry run is read against the program on a
+test PC (each recipe's README says so). It does not replace a check of the download
+(`ChecksumVerifier`, a vendor signature).
+
+**Three-part labels.** The client reads some labels as a build time. `CatalogService.ExpandBuildTimestamp`, the code that
+orders catalog versions and checks installed ones (`cli/managedsoftwareupdate/Services/CatalogService.cs`, the same at
+`3cf02c4` and `e10498b`), reads a label of exactly three parts, `yy.M.ddHH`, with the first part from 20 to 99, a month from 1 to 12 and a third part of
+three or four digits, as a build time; `VersionService.TryParseCalendarBuildStamp` reads a label of three or more numeric parts whose first part is a year of four digits as a build time. This
+processor accepts such a label (a label of two to four parts that has a digit other than zero) and does not warn about it. For a recipe whose label has
+three parts, read the order that the dry run's plan gives before the first import. A label of four parts, such as the four numbers of a Bambu Studio
+file name, meets neither rule.
+
+## When a vendor renames a file
+
+The recipes that take a file from a GitHub release choose it with AutoPkg's `GitHubReleasesInfoProvider` and an `asset_regex`: the **first release, newest first and a
+pre-release skipped, that has a file whose name matches the pattern** (AutoPkg 2.9.0, `GitHubReleasesInfoProvider.py`, `select_asset` and `main`). When a vendor
+renames its file so that the pattern no longer matches the newest release, the provider does not stop and says nothing: it goes on to the next older release whose
+file matches, and the run goes on with that file. If that older release has a digest, the digest and checksum steps pass; the label is the old file's; the importer
+finds that version in the repository and says `Nothing new`. The run then ends clean at the old version every time it is made, and it stops only when no release of the whole list
+matches. This happened in the first AutoPkg runs of 2026-10-04 to three recipes whose patterns knew only an old spelling of the name (they took files of January 2026,
+October 2024 and December 2020, and then stopped on a property of those old files).
+
+These recipes have **no guard** against it (none is built; one that compares the selected release with GitHub's `latest` is possible and costs one more request a run).
+What was checked: on 2026-10-04 the release that Angry IP Scanner, Bambu Studio, PDFsam, XCP-ng Center, osquery and Greenshot take is the newest release that is not a
+pre-release (the saved lists of GitHub's release API; for Bambu Studio, PDFsam and XCP-ng Center also GitHub's `latest` of that day). For 7-Zip and OpenSSH only their dry
+runs are known, which showed that the version taken equals the template's, and that does not show that it is the newest. **What the operator compares in a dry run** (run it with `-v`): the
+line `Selected asset ... from release ...` against the vendor's releases page. The release that it names must be the newest one that is not a pre-release. A run that ends in
+`Nothing new` is not proof that the newest release was taken.
+
 ## An example: the last steps of a recipe
 
 The names are made up. The first steps (download, version) are the recipe's own. This is an
@@ -658,6 +734,8 @@ The tests of `CimianImporter` make a temporary Cimian repository, installers tha
 bytes in them, and a stand-in for `msiinfo` that starts with the real interpreter's path. They need
 PyYAML, which AutoPkg's own Python has; in a Python without it they are skipped (the tests of the
 version order, of the declarations and of the missing-PyYAML error still run).
+
+The tests of `VersionFromName` read only names and patterns; they open no file.
 
 The tests of `WindowsExeVersion` build a small PE file in a temporary folder; no real
 `.exe` is in this repository. One more test reads real files and is skipped unless a

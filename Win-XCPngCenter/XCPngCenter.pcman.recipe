@@ -3,7 +3,7 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>Hands the downloaded XCP-ng Center installer (an .msi) to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. The recipe gives no version label: the package tool takes the MSI's own ProductVersion. This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false.</string>
+        <string>This import is NOT verified yet: the download has no hard check (no vendor hash, no digest on GitHub, no signature check). A real run is refused by the shared importer until a verification step exists, unless the override sets pcman_allow_unverified to true (the run then publishes with a WARNING, and the report says published, NOT verified). Hands the downloaded XCP-ng Center installer (an .msi) to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. The recipe gives no version label: the package tool takes the MSI's own ProductVersion. It refuses an MSI whose upgrade code differs from the template's, and a label that is not the MSI's own version. This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false.</string>
         <key>Identifier</key>
         <string>com.github.serrc-techops.pcman.XCPngCenter</string>
         <key>Input</key>

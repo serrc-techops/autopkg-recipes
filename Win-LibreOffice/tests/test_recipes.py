@@ -232,12 +232,13 @@ class RecipeFileTests(unittest.TestCase):
         self.assertIn("pcman_dry_run", cimian)
 
     def test_no_description_claims_a_rehearsal(self):
-        """The writer ran nothing. A description that says it was rehearsed or tested would be false."""
+        """The only run is the first dry run of 2026-10-04, which stopped at the provider. A description that
+        says it was rehearsed or tested would be false."""
         for path in (DOWNLOAD, PCMAN):
             text = re.sub(r"\s+", " ", load(path)["Description"])
             for word in ("rehearsed", "Rehearsed", "was tested", "has been tested", "verified on"):
                 self.assertNotIn(word, text)
-        self.assertIn("NOT run when it was written", re.sub(r"\s+", " ", load(DOWNLOAD)["Description"]))
+        self.assertIn("nothing after the provider has run", re.sub(r"\s+", " ", load(DOWNLOAD)["Description"]))
 
 
 class ProcessorTests(unittest.TestCase):
@@ -432,7 +433,10 @@ class ReadmeTests(unittest.TestCase):
 
     def test_the_status_line_says_what_was_fetched_and_what_was_not(self):
         self.assertTrue(self.raw.index("**Status.") < self.raw.index("## a."))
-        self.assertIn("**Status. NOT rehearsed with AutoPkg. Some facts of the source were fetched by the writer on 2026-10-02:",
+        self.assertIn("**Status. One dry run with AutoPkg 2.9.0 (2026-10-04) stopped at the provider, as expected: "
+                      "`LibreOfficeInfoProvider` said \"The server answered 404 Not Found for the hash file.\" "
+                      "Nothing after the provider has run, and nothing of this pair has run with the package tool, a share or a PC. "
+                      "Some facts of the source were fetched by the writer on 2026-10-02:",
                       self.text)
         i = self.text.index("**Status.")
         paragraph = self.text[i:self.text.index("| Recipe |", i)]
@@ -458,7 +462,7 @@ class ReadmeTests(unittest.TestCase):
             self.assertIn(needle, verified)
         for needle in ("a `.meta4` address never answered", "a HEAD of the MSI answered 500 once",
                        "ProductVersion and UpgradeCode", "the template",
-                       "`pcman catalogs`", "any run with AutoPkg",
+                       "`pcman catalogs`", "any run with AutoPkg beyond the provider",
                        "stop: nothing was written", "correct the recipe",
                        "never accept the trust information first",
                        "tell the owner", "a hash read from a mirror is not the publisher's",
@@ -479,7 +483,7 @@ class ReadmeTests(unittest.TestCase):
         self.assertIn("LibreOffice stays a hand import", first_sentence)
         i = self.raw.index("## What the checks prove")
         checks = re.sub(r"\s+", " ", self.raw[i:self.raw.index("## Run every override")])
-        self.assertIn("The hash file that the provider reads does not exist on the vendor's server (2026-10-02)", checks)
+        self.assertIn("The hash file that the provider reads does not exist on the vendor's server (2026-10-02, and again in the first run of 2026-10-04)", checks)
         self.assertIn("LibreOffice stays a hand import", checks)
         docstring = re.sub(r"\s+", " ", own.__doc__)
         self.assertIn("THE HASH FILE DOES NOT EXIST (checked 2026-10-02)", docstring)
@@ -534,7 +538,32 @@ class ReadmeTests(unittest.TestCase):
         self.assertIn("from the writer's knowledge, not read in the installer", self.text)
 
     def test_the_example_of_the_summary_table_does_not_claim_a_printed_line(self):
-        self.assertIn("this program was NOT run", self.text)
+        self.assertIn("this program was NOT run beyond the provider", self.text)
+
+    def test_every_text_about_the_hash_file_agrees_with_the_first_run_of_2026_10_04(self):
+        """The first run with AutoPkg 2.9.0 stopped at the provider with a 404 for the hash file, which is what
+        every text of this folder expects. They must say the same: the README's mark and status line and its
+        list of what the checks prove, the three descriptions and the provider's own docstring."""
+        error = "The server answered 404 Not Found for the hash file."
+        self.assertIn(error, self.text)
+        self.assertEqual(self.text.count("The first dry run with AutoPkg 2.9.0 (2026-10-04) stopped there, as expected"), 1)
+        mark = self.text[self.text.index("**NOT WORKING (expected)."):self.text.index("**Status.")]
+        self.assertIn("(2026-10-04) stopped there, as expected", mark)
+        self.assertIn("and again in the first run of 2026-10-04", self.text)
+        download = re.sub(r"\s+", " ", load(DOWNLOAD)["Description"])
+        self.assertIn("2026-10-04", download)
+        self.assertIn(error, download)
+        self.assertIn("nothing after the provider has run", download)
+        for path in (CIMIAN, PCMAN):
+            self.assertIn("the first run, on 2026-10-04, stopped at the parent's provider, as expected",
+                          re.sub(r"\s+", " ", load(path)["Description"]))
+        docstring = re.sub(r"\s+", " ", own.__doc__)
+        self.assertIn("(2026-10-04) got as far as the hash file and stopped there", docstring)
+        self.assertIn("404 again in the first run of 2026-10-04", docstring)
+        for text in (self.text, download, docstring):
+            self.assertNotIn("This recipe was NOT run when it was written", text)
+            self.assertNotIn("Status. NOT rehearsed", text)
+            self.assertNotIn("The first run on the build Mac is the check of each of them", docstring)
 
 
 class ChainTests(_pcman_support.ToolTestCase):

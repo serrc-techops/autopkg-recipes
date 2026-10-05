@@ -145,8 +145,64 @@ class ReadmeTests(unittest.TestCase):
         self.assertIn("Run `makecatalogs` (Cimian's tool) after a publish", text)
         self.assertIn("**This processor does not parse an MSI itself.**", text)
         self.assertIn("**A person should then complete by hand**", text)
-        self.assertIn("Nothing here has run with AutoPkg, with a real Cimian repository or with a real `msiinfo`", text)
+        self.assertIn("Until 2026-10-04 nothing here had run with AutoPkg, with a real Cimian repository or with a real `msiinfo`", text)
+        self.assertNotIn("Nothing here has run with AutoPkg", text)
         self.assertIn("NOT established", text)
+
+    def test_the_readme_says_what_happens_when_a_vendor_renames_a_file_and_what_the_operator_compares(self):
+        text = normalized_text()
+        start = text.index("## When a vendor renames a file")
+        section = text[start:text.index("## An example: the last steps of a recipe")]
+        for needle in ("the **first release, newest first and a pre-release skipped, that has a file whose name matches the pattern**",
+                       "`GitHubReleasesInfoProvider.py`, `select_asset` and `main`",
+                       "the provider does not stop and says nothing: it goes on to the next older release whose file matches",
+                       "If that older release has a digest, the digest and checksum steps pass; the label is the old file's",
+                       "the importer finds that version in the repository and says `Nothing new`",
+                       "it stops only when no release of the whole list matches",
+                       "(they took files of January 2026, October 2024 and December 2020",
+                       "These recipes have **no guard** against it (none is built;",
+                       "on 2026-10-04 the release that Angry IP Scanner, Bambu Studio, PDFsam, XCP-ng Center, osquery and Greenshot take is the newest release that is not a pre-release",
+                       "For 7-Zip and OpenSSH only their dry runs are known",
+                       "**What the operator compares in a dry run** (run it with `-v`)",
+                       "`Selected asset ... from release ...` against the vendor's releases page",
+                       "A run that ends in `Nothing new` is not proof that the newest release was taken"):
+            self.assertIn(needle, section)
+        self.assertLess(text.index("## VersionFromName"), start)
+
+    def test_the_readme_names_the_three_part_label_rules_of_the_client(self):
+        text = normalized_text()
+        start = text.index("**Three-part labels.**")
+        paragraph = text[start:text.index("## When a vendor renames a file")]
+        for needle in ("`CatalogService.ExpandBuildTimestamp`", "exactly three parts, `yy.M.ddHH`",
+                       "the first part from 20 to 99, a month from 1 to 12 and a third part of three or four digits",
+                       "`VersionService.TryParseCalendarBuildStamp`", "accepts such a label", "does not warn about it",
+                       "A label of four parts", "meets neither rule"):
+            self.assertIn(needle, paragraph)
+        self.assertIn("for the three programs whose template was an MSI or an EXE item. The ten programs whose item was a Chocolatey `nopkg` item were refused, as designed",
+                      text)
+        self.assertNotIn("ended in `Nothing new` for the programs that had a template", text)
+
+    def test_the_readme_gives_the_measured_result_against_the_package_tool(self):
+        text = normalized_text()
+        start = text.index("### Measured against the package tool (2026-10-04)")
+        section = text[start:text.index("### Not established")]
+        for needle in ("on scratch copies of a repository (never on the share)", "run for real under AutoPkg 2.9.0",
+                       "an MSI program, an EXE program and one more MSI program",
+                       "**With a template, the importer's pkginfo was byte for byte the package tool's** for each of the three",
+                       "`diff` found nothing", "the keys, their values and their order were equal",
+                       "**Without a template**", "it lands in the catalog `Development`",
+                       "the catalog `Production` (a PC that reads `Production` does not see the version at all)",
+                       "`supported_architectures`", "`unattended_install` and `unattended_uninstall`",
+                       "the installer's arguments and the install check of an EXE",
+                       "`category`, `description` and `icon_name`",
+                       "`developer` where the recipe's `pkginfo` does not give it",
+                       "That is what a person completes by hand",
+                       "One of the three runs needed `cimian_allow_unverified`", "set in the scratch override only"):
+            self.assertIn(needle, section)
+        self.assertEqual(section.count("byte for byte"), 1)
+        self.assertNotIn("Chrome", section)
+        self.assertNotIn("VLC", section)
+        self.assertNotIn("Firefox", section)
 
     def test_the_nothing_new_and_dry_run_rules_are_documented(self):
         text = normalized_text()

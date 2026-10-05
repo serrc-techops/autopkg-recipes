@@ -408,9 +408,9 @@ class ReadmeTests(unittest.TestCase):
                        "the provider read the vendor's real page",
                        "with a template of the same version the run said \"Nothing new\"",
                        "a dry run, a real publish", "a third run",
-                       "NOT run: against the real share, `pcman catalogs`, a PC",
                        "carries `--override-dir`"):
             self.assertIn(needle, self.text)
+        self.assertNotIn("NOT run: against the real share, `pcman catalogs`, a PC", self.text)
         self.assertNotIn("NOT been run by anyone", self.text)
 
     def test_the_readme_says_how_the_file_is_checked_against_the_record(self):
@@ -480,6 +480,37 @@ class ChainTests(_pcman_support.ToolTestCase):
 def _text(path):
     with open(path, "r", encoding="utf-8") as handle:
         return handle.read()
+
+
+class RealRunReadmeTests(unittest.TestCase):
+    """What the README says of the first import and the real run of 2026-10-04 (AutoPkg 2.9.0). """
+
+    def setUp(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            self.raw = handle.read()
+        self.text = re.sub(r"\s+", " ", self.raw)
+        self.status = re.sub(r"\s+", " ", [line for line in self.raw.splitlines() if line.startswith("**Status.")][0])
+
+    def test_the_status_line_says_what_ran_on_2026_10_04(self):
+        for needle in ('On 2026-10-04, under AutoPkg 2.9.0, the first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the item `zabbix-agent2` (an MSI item, version `7.0.31.2400` read from the MSI, architectures `x64`)', '`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false', "the download was checked against the vendor's hash", '`Nothing new: zabbix-agent2 7.0.31.2400 is in the repository already. Nothing was written.`', 'went beside the Chocolatey item `zabbix-agent2` (version 1.0) without any option of the tool', 'the Chocolatey item file and its `zabbix-agent2-1.0` pkginfo remain until a person removes them by hand', '`pcman validate` warns that the item has two versions until then', '`pcman catalogs` ran once for all the new items together (2026-10-04)', '`All` and `Production`, 106 items each', '**The new item has no MSI properties and none of the scripts of the Chocolatey item**', '(`preinstall_script`, `postinstall_script` and `pre_installcheck_script`; their content was not read)', "A note of 2026-10-01 says that the vendor's MSI writes a new configuration file on a command-line install unless properties are passed (not tried again here)", "The silent install is the client's (`/qn /norestart` for an MSI) and was NOT tested on a PC", 'Still NOT established after those runs: that the MSI installs silently on a PC; any install; that a new release has the same upgrade code as the template'):
+            self.assertIn(needle, self.status)
+
+    def test_the_readme_says_the_rest_of_it(self):
+        for needle in ('Rehearsed on 2026-10-01 with AutoPkg 2.9.0 in a scratch folder',):
+            self.assertIn(needle, self.text)
+
+    def test_the_first_import_step_says_what_worked(self):
+        step = re.sub(r"\s+", " ", self.raw[self.raw.index("3. **The template item"):self.raw.index("## b.")])
+        for needle in ('This is the form that ran on 2026-10-04 (it worked as written)', '--icon <the file name of an icon that the repository has>'):
+            self.assertIn(needle, step)
+
+    def test_nothing_that_was_not_tested_is_called_tested(self):
+        for claim in ('was tested on a PC',):
+            self.assertNotIn(claim, self.text)
+
+    def test_the_second_run_line_is_not_promised_for_a_fresh_override(self):
+        self.assertIn("the first run of a fresh override printed the line `Nothing new: ...` after it had downloaded the file again", self.text)
+        self.assertIn("a new override gets a new cache folder", self.text)
 
 
 class CimianRecipeTests(unittest.TestCase):

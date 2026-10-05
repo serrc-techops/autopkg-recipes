@@ -462,12 +462,13 @@ class ReadmeTests(unittest.TestCase):
             self.assertIn(needle, self.text)
 
     def test_the_status_line_says_what_was_read_and_what_was_not(self):
-        """Read from GitHub's release list on 2026-10-04 (read only); nothing was run."""
-        self.assertLess(self.raw.index("**Status. NOT rehearsed"), self.raw.index("## a."))
-        start = self.raw.index("**Status. NOT rehearsed")
+        """Run on 2026-10-04 under AutoPkg 2.9.0; the facts of the source read from GitHub's release list
+        the same day (read only)."""
+        opening = "**Status. Run on 2026-10-04 under AutoPkg 2.9.0, as follows."
+        self.assertLess(self.raw.index(opening), self.raw.index("## a."))
+        start = self.raw.index(opening)
         paragraph = re.sub(r"\s+", " ", self.raw[start:self.raw.index("\n\n", start)])
-        self.assertTrue(paragraph.startswith(
-            "**Status. NOT rehearsed with AutoPkg: nothing in this folder has run with AutoPkg"))
+        self.assertTrue(paragraph.startswith(opening))
         self.assertTrue(paragraph.endswith("**"))
         for needle in ("2026-10-04", "`https://api.github.com/repos/greenshot/greenshot/releases`",
                        "the newest twelve releases", "no file was downloaded",
@@ -480,14 +481,17 @@ class ReadmeTests(unittest.TestCase):
                        "no other file of the twelve releases",
                        "records a SHA-256 digest for every file of the twelve releases",
                        "AutoPkg 2.9.0 (which takes the first release", "`select_asset`", "`re.match`",
-                       "is expected to take `Greenshot-INSTALLER-1.3.315-RELEASE.exe` of `v1.3.315`",
-                       "`GitHubAssetDigest` is expected to find its digest",
-                       "NOT established:", "that the installer has a version resource",
-                       "what its `ProductVersion` text is", "`WindowsExeVersion` overwrites `version`",
-                       "`/VERYSILENT /NORESTART`", "writer's knowledge", "its architecture", "the template item",
-                       "`pcman catalogs`", "any run with AutoPkg", "first run on the build Mac",
+                       "took `Greenshot-INSTALLER-1.3.315-RELEASE.exe` of `v1.3.315` in the runs of 2026-10-04",
+                       "`GitHubAssetDigest` found its digest",
+                       "Still NOT established after those runs: that the switches install silently on a PC",
+                       "the architecture of the installed program", "that the next release keeps these names",
+                       "`/VERYSILENT /NORESTART`", "writer's knowledge",
+                       "An install on a test PC is the check of what is NOT established",
                        "stop; nothing was written", "never the trust information first", "carries `--override-dir`"):
             self.assertIn(needle, paragraph)
+        for gone in ("is expected to take `Greenshot-INSTALLER", "any run with AutoPkg", "first run on the build Mac",
+                     "that the installer has a version resource, and what its `ProductVersion` text is"):
+            self.assertNotIn(gone, paragraph)
         for old in ("fetched by the writer", "through git and tags only", "1.2", "2017", "predate",
                     "names of the 1.4 assets were NOT seen", "hand import", "owner's decision"):
             self.assertNotIn(old, paragraph)
@@ -546,13 +550,15 @@ class ReadmeTests(unittest.TestCase):
     def test_the_first_import_is_for_an_exe_and_marks_what_is_from_knowledge(self):
         step = self.raw[self.raw.index("## a."):self.raw.index("## b.")]
         text = re.sub(r"\s+", " ", step)
-        for needle in ("--name greenshot", "--version <the installer's own ProductVersion",
+        for needle in ("--name greenshot", "--version <the label that the first dry run prints>",
                        "--display-name", "--category", "--developer",
-                       "--description", "--install-arguments", "/VERYSILENT /NORESTART",
-                       "(from the writer's knowledge, not read in the installer)",
+                       "--description", "--install-arguments '/VERYSILENT /NORESTART'", "--icon", "in the form that ran on 2026-10-04",
+                       "**used on 2026-10-04, not tested on a PC**", "the file has \"Inno Setup\"",
                        "`--architectures x64` is an expectation, not a fact",
-                       "its architecture is NOT established"):
+                       "architecture of the installed program is NOT established",
+                       "`--install-path` was left out because the path must be read on that PC after a test install"):
             self.assertIn(needle, text)
+        self.assertNotIn("--install-path '", text)
         self.assertEqual(len(re.findall(r"--version ", text)), 1)
 
     def test_the_label_section_says_where_the_label_comes_from(self):
@@ -659,6 +665,65 @@ class ChainTests(_pcman_support.ToolTestCase):
 def _text(path):
     with open(path, "r", encoding="utf-8") as handle:
         return handle.read()
+
+
+class RealRunReadmeTests(unittest.TestCase):
+    """What the README says of the first import and the real run of 2026-10-04 (AutoPkg 2.9.0). """
+
+    def setUp(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            self.raw = handle.read()
+        self.text = re.sub(r"\s+", " ", self.raw)
+        self.status = re.sub(r"\s+", " ", [line for line in self.raw.splitlines() if line.startswith("**Status.")][0])
+
+    def test_the_status_line_says_what_ran_on_2026_10_04(self):
+        for needle in ("The first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the template `greenshot` (an EXE item, label `1.3.315` with a fourth part `0`, `--install-arguments '/VERYSILENT /NORESTART'`, architectures `x64`)", '`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false', 'the provider took `Greenshot-INSTALLER-1.3.315-RELEASE.exe` of `v1.3.315`, `GitHubAssetDigest` found its digest, the checksum and the label step passed', '`PcmanImporter: Nothing new: greenshot <the label> is in the repository already. Nothing was written.`', 'went beside the Chocolatey item `greenshot` (version 1.0) without any option of the tool', 'the Chocolatey item file and its `greenshot-1.0` pkginfo remain until a person removes them by hand', '`pcman validate` warns that the item has two versions until then', '`pcman catalogs` ran once for all the new items together (2026-10-04)', '`All` and `Production`, 106 items each', 'whose `ProductVersion` text is `1.3.315+420b08b2a9`, which is not numbers and dots only', 'took the four numbers of the fixed file information (`1.3.315` and a fourth part `0`) as the label', 'the file has "Inno Setup" strings, so it is an Inno Setup installer', 'has NO install check until a person adds one', '**used on 2026-10-04, not tested on a PC**'):
+            self.assertIn(needle, self.status)
+
+    def test_the_readme_says_the_rest_of_it(self):
+        for needle in ("On 2026-10-04 the `ProductVersion` string was `1.3.315+420b08b2a9` (not numbers and dots only), so the label is the fixed file information's `1.3.315` with a fourth part `0`",):
+            self.assertIn(needle, self.text)
+
+    def test_the_first_import_step_says_what_worked(self):
+        step = re.sub(r"\s+", " ", self.raw[self.raw.index("3. **The template item"):self.raw.index("## b.")])
+        for needle in ('in the form that ran on 2026-10-04', "--install-arguments '/VERYSILENT /NORESTART'", '--icon'):
+            self.assertIn(needle, step)
+
+    def test_nothing_that_was_not_tested_is_called_tested(self):
+        for claim in ('was tested on a PC', 'the switch is established'):
+            self.assertNotIn(claim, self.text)
+
+    def test_the_second_run_line_is_not_promised_for_a_fresh_override(self):
+        self.assertIn("the first run of a fresh override printed the line `Nothing new: ...` after it had downloaded the file again", self.text)
+        self.assertIn("a new override gets a new cache folder", self.text)
+
+
+class CatalogsStepReadmeTests(unittest.TestCase):
+    """The step that builds the catalogs says what happened on 2026-10-04 and no longer says "Not rehearsed"."""
+
+    def test_the_catalogs_step_names_the_run_of_2026_10_04(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            text = re.sub(r"\s+", " ", handle.read())
+        i = text.index("3. **Build the catalogs: `pcman catalogs`.**")
+        step = text[i:text.index("4. The second run, by path again:", i)]
+        for needle in ('(Run on 2026-10-04 for all the new items of that day together, this one among them:', "the tool's configured command ran `makecatalogs` on the repository's server",
+                       "wrote the catalogs `All` and `Production`, with exit 0",
+                       "The package tool prints \"nothing to run\" when its catalogs command is not set"):
+            self.assertIn(needle, step)
+        self.assertNotIn("Not rehearsed", step)
+        self.assertNotIn("for no program", step)
+
+
+class CimianVersionArgumentTextTests(unittest.TestCase):
+    """The cimian recipe passes the label to `CimianImporter` as `version`; only the pcman recipe passes `pcman_version`."""
+
+    def test_no_sentence_says_that_the_cimian_recipe_passes_pcman_version(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            text = re.sub(r"\s+", " ", handle.read())
+        for sentence in re.split(r"(?<=[.;])\s", text):
+            if re.search(r"cimian recipe passes", sentence) and "pcman_version" in sentence:
+                self.assertIn("pcman recipe", sentence)  # `pcman_version` is named only as the pcman recipe's argument
+        self.assertEqual(text.count("the cimian recipe passes that `version` as `pcman_version`"), 0)
 
 
 class CimianRecipeTests(unittest.TestCase):

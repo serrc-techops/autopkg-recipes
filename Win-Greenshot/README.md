@@ -2,7 +2,7 @@
 
 A Windows recipe pair: Greenshot, the installer `.exe`, with the version label read from the file itself.
 
-**Status. NOT rehearsed with AutoPkg: nothing in this folder has run with AutoPkg, the package tool, a share or a PC. Some facts of the source were read on 2026-10-04 from GitHub's public release list of `greenshot/greenshot` (`https://api.github.com/repos/greenshot/greenshot/releases`, the newest twelve releases; read only, no file was downloaded). READ: (1) the project publishes its releases there, and its tags begin with `v`; the newest release that is not flagged as a pre-release is `v1.3.315` (published 2026-03-20, titled "Greenshot 1.3.315"), then `v1.3.312` and `v1.3.311` (both published 2026-01-07); (2) the other nine of the twelve are flagged as pre-releases and titled "(continuous build)": every `v1.4.` build (the newest, `v1.4.289-g7bee683e93`, was published on 2026-10-04) and the 1.3 builds whose files are named `-UNSTABLE-UNSIGNED`; (3) the files of `v1.3.315` are `Greenshot-INSTALLER-1.3.315-RELEASE.exe` (3967064 bytes) and `Greenshot-PORTABLE-1.3.315-RELEASE.zip` (3722113 bytes), and `v1.3.312` and `v1.3.311` have the same two kinds of name; the installers of the pre-releases are named like `Greenshot-INSTALLER-1.4.289-g7bee683e93-UNSTABLE-UNSIGNED.exe`, and the 1.4 builds have a second installer, `Greenshot-Light-INSTALLER-...`; (4) the pattern `Greenshot-INSTALLER-[0-9.]+-RELEASE\.exe$` matches the installer of each of the three releases that are not flagged and no other file of the twelve releases; (5) GitHub records a SHA-256 digest for every file of the twelve releases, the `.exe` files included. So, by these names, AutoPkg 2.9.0 (which takes the first release, in GitHub's order, that is not flagged and has a file whose name the pattern matches from its start: `GitHubReleasesInfoProvider.py`, `select_asset`, `re.match`) is expected to take `Greenshot-INSTALLER-1.3.315-RELEASE.exe` of `v1.3.315`, and `GitHubAssetDigest` is expected to find its digest. NOT established: that the installer has a version resource, and what its `ProductVersion` text is (it becomes the label: the tag gives `1.3.315`, but the step `WindowsExeVersion` overwrites `version` with the one in the file, see "The label"); that the installer is built with Inno Setup, so that the silent switches are `/VERYSILENT /NORESTART` (from the writer's knowledge, the installer was not opened); its architecture and its install path; the template item; that the next release keeps these names; `pcman catalogs`; any run with AutoPkg. The first run on the build Mac is the check of each of them. When a run fails (no asset matches, the asset has no digest, the digest does not match, the executable has no version resource or says zeros, the package tool refuses the label): stop; nothing was written. Read the real release page and the real asset list of the project, and correct the recipe or the template, never the trust information first. Where a line below says "expected", it is what the recipes and the other folders lead to, not something that was printed. Every override command here carries `--override-dir`: see the paragraph below.**
+**Status. Run on 2026-10-04 under AutoPkg 2.9.0, as follows. The first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the template `greenshot` (an EXE item, label `1.3.315` with a fourth part `0`, `--install-arguments '/VERYSILENT /NORESTART'`, architectures `x64`) in the package tool's repository, in the catalog `Production`. The first import went beside the Chocolatey item `greenshot` (version 1.0) without any option of the tool; the Chocolatey item file and its `greenshot-1.0` pkginfo remain until a person removes them by hand, and `pcman validate` warns that the item has two versions until then. The override of `Greenshot.pcman` (`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false) then ran for real: the provider took `Greenshot-INSTALLER-1.3.315-RELEASE.exe` of `v1.3.315`, `GitHubAssetDigest` found its digest, the checksum and the label step passed, and the run ended with `PcmanImporter: Nothing new: greenshot <the label> is in the repository already. Nothing was written.` `pcman catalogs` ran once for all the new items together (2026-10-04): the tool's configured command ran `makecatalogs` on the repository's server, with exit 0, and wrote the catalogs `All` and `Production`, 106 items each. The installer has a version resource whose `ProductVersion` text is `1.3.315+420b08b2a9`, which is not numbers and dots only, so `WindowsExeVersion` took the four numbers of the fixed file information (`1.3.315` and a fourth part `0`) as the label (see "The label"); the file has "Inno Setup" strings, so it is an Inno Setup installer. No `--install-path` was given (it must be read on a PC after a test install), so the template has NO install check until a person adds one. The switches `/VERYSILENT /NORESTART` are the ones this README proposed from the writer's knowledge of Inno Setup: they were **used on 2026-10-04, not tested on a PC**. Still NOT established after those runs: that the switches install silently on a PC; the architecture of the installed program (the loader is a 32-bit program, and the item says `x64`, as this README proposed) and its install path; that the next release keeps these names; any install on a PC. Facts of the source read the same day: GitHub's public release list of `greenshot/greenshot` (`https://api.github.com/repos/greenshot/greenshot/releases`, the newest twelve releases; read only, no file was downloaded). READ: (1) the project publishes its releases there, and its tags begin with `v`; the newest release that is not flagged as a pre-release is `v1.3.315` (published 2026-03-20, titled "Greenshot 1.3.315"), then `v1.3.312` and `v1.3.311` (both published 2026-01-07); (2) the other nine of the twelve are flagged as pre-releases and titled "(continuous build)": every `v1.4.` build (the newest, `v1.4.289-g7bee683e93`, was published on 2026-10-04) and the 1.3 builds whose files are named `-UNSTABLE-UNSIGNED`; (3) the files of `v1.3.315` are `Greenshot-INSTALLER-1.3.315-RELEASE.exe` (3967064 bytes) and `Greenshot-PORTABLE-1.3.315-RELEASE.zip` (3722113 bytes), and `v1.3.312` and `v1.3.311` have the same two kinds of name; the installers of the pre-releases are named like `Greenshot-INSTALLER-1.4.289-g7bee683e93-UNSTABLE-UNSIGNED.exe`, and the 1.4 builds have a second installer, `Greenshot-Light-INSTALLER-...`; (4) the pattern `Greenshot-INSTALLER-[0-9.]+-RELEASE\.exe$` matches the installer of each of the three releases that are not flagged and no other file of the twelve releases; (5) GitHub records a SHA-256 digest for every file of the twelve releases, the `.exe` files included. So, by these names, AutoPkg 2.9.0 (which takes the first release, in GitHub's order, that is not flagged and has a file whose name the pattern matches from its start: `GitHubReleasesInfoProvider.py`, `select_asset`, `re.match`) took `Greenshot-INSTALLER-1.3.315-RELEASE.exe` of `v1.3.315` in the runs of 2026-10-04, and `GitHubAssetDigest` found its digest. An install on a test PC is the check of what is NOT established. When a run fails (no asset matches, the asset has no digest, the digest does not match, the executable has no version resource or says zeros, the package tool refuses the label): stop; nothing was written. Read the real release page and the real asset list of the project, and correct the recipe or the template, never the trust information first. Where a line below says "expected", it is what the recipes and the other folders lead to, not something that was printed. Every override command here carries `--override-dir`: see the paragraph below.**
 
 | Recipe | Identifier | What it does |
 | --- | --- | --- |
@@ -24,8 +24,8 @@ expected to take is `v1.3.315`, which gives `1.3.315`, and the tag of a pre-rele
 which is not a label. The last step of the download recipe, `WindowsExeVersion`, reads the
 `ProductVersion` of the downloaded file and overwrites `version` with it (when that
 string is numbers and dots only; otherwise it takes the four numbers of the fixed file
-information; see its section in the shared README). The cimian recipe passes that
-`version` as `pcman_version`.
+information; see its section in the shared README). The cimian recipe passes it as
+`version`, the pcman recipe as `pcman_version`.
 
 The first dry run prints two lines from that step: `ProductVersion '...', product
 version numbers ..., file version '...', file version numbers ...` and `version is ...,
@@ -33,8 +33,7 @@ taken from ...`. A person reads them and compares: the label must be the version
 the file's properties show, and the first import (step a) must be made with the same
 label. If the `ProductVersion` is not numbers and dots only, the label has four numbers
 and may not look like what the project prints; the package tool's plan shows what it
-makes of it. Whether the label orders correctly against the template's version is NOT
-established, and so is the shape of Greenshot's `ProductVersion`.
+makes of it. On 2026-10-04 the `ProductVersion` string was `1.3.315+420b08b2a9` (not numbers and dots only), so the label is the fixed file information's `1.3.315` with a fourth part `0`. Whether the label orders correctly against the installed program's version is NOT established.
 
 **Pre-releases.** The download recipe takes the newest release that GitHub does not
 flag as a pre-release. The switch is the key `include_prereleases` in the recipe's
@@ -194,27 +193,26 @@ This way needs the owner's package tool, `pcman`, which is **not part of this re
    (the share mounted).
 
 3. **The template item, made once by a first import**, so that its pkginfo and
-   installer are in the repository. The command, with the real installer (NOT run;
-   the facts of the installer are marked):
+   installer are in the repository. The command, in the form that ran on 2026-10-04, with the
+   real installer:
 
        pcman import <path of the installer, a file that matches the pattern> --name greenshot \
-           --version <the installer's own ProductVersion, as the file's properties or the first dry run show it> \
+           --version <the label that the first dry run prints> \
            --directory <the repository folder for this item> \
            --display-name "Greenshot" --category <the category> \
            --developer "Greenshot" --description "<one sentence>" \
            --install-arguments '/VERYSILENT /NORESTART' \
-           --install-path '<the path of the installed Greenshot.exe, read after a test install>' \
-           --architectures x64 --no-prompt --build
+           --architectures x64 --icon <the file name of an icon that the repository has> --no-prompt --build
 
-   The silent switches `/VERYSILENT /NORESTART` are an Inno Setup installer's
-   (from the writer's knowledge, not read in the installer): confirm that the
-   installer is Inno Setup, and that the switches install without a window, on a
-   test PC first. `--architectures x64` is an expectation, not a fact: nobody opened the
-   installer, so its architecture is NOT established (see the status line); read it in the
-   installer before the import. The install path is not given here: read it on that PC. The label
-   after `--version` is for an `.exe`: it must be the installer's own version, as a
-   person reads it in its properties, and the same that the first dry run prints
-   (see "The label"). Give the flags `--category`,
+   The silent switches `/VERYSILENT /NORESTART` are an Inno Setup installer's, and the file has "Inno Setup"
+   strings; they were **used on 2026-10-04, not tested on a PC**: test that they install without a window on a
+   test PC. `--architectures x64` is an expectation, not a fact: the installer is a 32-bit loader, and the
+   architecture of the installed program is NOT established (see the status line). `--install-path` was left out because
+   the path must be read on that PC after a test install; the template then has no install check, and a wrong path would
+   install again at every run, so add it only after reading it. The label
+   after `--version` is for an `.exe`: it must be the same that the first dry run prints
+   (see "The label"; on 2026-10-04 it was `1.3.315` with a fourth part `0`, the fixed file information, because the
+   `ProductVersion` string has text in it). Give the flags `--category`,
    `--developer` and `--description` as the package tool's README describes. A person
    changes the template later; nothing else does. **If the template is made from the
    installer that is current on GitHub, the first run says "Nothing new" (see step c).
@@ -308,15 +306,14 @@ every recipe of that run.
    marked "published by pcman import".
 
 3. **Build the catalogs: `pcman catalogs`.** Without it no PC sees the new
-   version. (Not rehearsed, for no program. The package tool prints "nothing to run" when its
-   catalogs command is not set.)
+   version. (Run on 2026-10-04 for all the new items of that day together, this one among them: the tool's configured command ran `makecatalogs` on the repository's server and wrote the catalogs `All` and `Production`, with exit 0. The package tool prints "nothing to run" when its catalogs command is not set.)
 
 4. The second run, by path again:
 
        autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/Greenshot.pcman.recipe
 
    It prints `Nothing new: greenshot <the label> is in the repository already. Nothing was
-   written.` and `Nothing downloaded, packaged or imported.`
+   written.` and `Nothing downloaded, packaged or imported.` (On 2026-10-04 the first run of a fresh override printed the line `Nothing new: ...` after it had downloaded the file again, because a new override gets a new cache folder; `Nothing downloaded, packaged or imported.` was not seen in that run, and is the line of a later run of the same override.)
 
 ## f. When a recipe or a processor changes upstream
 

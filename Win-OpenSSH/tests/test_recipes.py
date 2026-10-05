@@ -431,7 +431,7 @@ class ReadmeTests(unittest.TestCase):
         self.assertNotIn("imported it by hand", self.text)
 
     def test_the_status_line_says_what_was_not_done(self):
-        start = "**Status. NOT rehearsed, and the facts of the source NOT fetched by the writer:"
+        start = "**Status. On 2026-10-04, under AutoPkg 2.9.0, both recipes of this folder"
         self.assertIn(start, self.raw)
         i = self.raw.index(start)
         self.assertLess(i, self.raw.index("## a."))
@@ -444,8 +444,10 @@ class ReadmeTests(unittest.TestCase):
                        "before GitHub began to record digests has none",
                        "v9.8.3.0p2-Preview", "9.8.3.0p2-Preview", "through git", "OpenSSH-Win64-v9.8.3.0.msi",
                        "NOT read",
-                       "The first dry run on the build Mac is the check of every one of them",
-                       "When it fails, stop. Nothing was written.",
+                       "the dry run of 2026-10-04 read the real release assets and their digests",
+                       "the network was closed, so what follows was the writer's knowledge of the project",
+                       "**each ended clean**",
+                       "When a run fails, stop. Nothing was written.",
                        "correct the recipe", "never the trust information first"):
             self.assertIn(needle, paragraph)
         self.assertNotIn("Rehearsed on", self.text)
@@ -506,6 +508,24 @@ class ChainTests(_pcman_support.ToolTestCase):
 def _text(path):
     with open(path, "r", encoding="utf-8") as handle:
         return handle.read()
+
+
+class CleanRunReadmeTests(unittest.TestCase):
+    """What the README says of the dry run of both recipes on 2026-10-04 (AutoPkg 2.9.0): each ended in "Nothing new"."""
+
+    def setUp(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            self.raw = handle.read()
+        self.text = re.sub(r"\s+", " ", self.raw)
+
+    def test_both_recipes_ran_clean_as_a_dry_run_under_autopkg_2_9_0(self):
+        for needle in ('On 2026-10-04, under AutoPkg 2.9.0, both recipes of this folder (`OpenSSHWin64.cimian.recipe` and `OpenSSHWin64.pcman.recipe`) ran as a dry run, the default, against the real repository, whose template had been imported before, and **each ended clean**:', "the package tool's recipe with `PcmanImporter: Nothing new: OpenSSH-Win64 <the current version> is in the repository already.`", 'the generic recipe with `CimianImporter: Nothing new: OpenSSH-Win64 <the current version> is in the repository already (it has this very installer file).`'):
+            self.assertIn(needle, self.text)
+
+    def test_no_real_run_and_no_install_is_claimed(self):
+        self.assertIn("No real run of this program was made that day, and nothing has been installed on a PC.", self.text)
+        for claim in ("was installed on a PC", "a real run published"):
+            self.assertNotIn(claim, self.text)
 
 
 class CimianRecipeTests(unittest.TestCase):

@@ -58,6 +58,7 @@ _install_autopkglib_stub()
 import ChecksumVerifier as checksum  # noqa: E402
 import CimianImporter as cimian  # noqa: E402
 import GitHubAssetDigest as digest  # noqa: E402
+import VersionFromName as version_name  # noqa: E402
 import WindowsExeVersion as exe_version  # noqa: E402
 
 ProcessorError = sys.modules["autopkglib"].ProcessorError

@@ -2,7 +2,7 @@
 
 A Windows recipe pair: PDFsam Basic, the `.msi` of the project `torakiki/pdfsam` on GitHub.
 
-**Status. NOT rehearsed, and the facts of the source NOT fetched by the writer: this recipe pair was written with the network closed, from the writer's knowledge and from the pattern of the recipes `Win-7Zip` and `Win-ZabbixAgent2`. These facts are from the writer's knowledge and were NOT read from the source: that the project is `torakiki/pdfsam` on GitHub; that a release has an asset named like `pdfsam-6.0.6.msi` beside a `-windows.zip`, a `.dmg` and a `.deb`, so that the pattern `pdfsam-[0-9.]+\.msi$` takes the MSI only; that the MSI is the 64-bit installer; that GitHub records a SHA-256 digest for that asset (an asset uploaded before GitHub began to record digests has none, and then `GitHubAssetDigest` stops the run with its error, nothing is written, and the program is a hand import until a release with a digest exists); that the project does not mark a release as a pre-release when it is one (the recipe skips releases that GitHub marks as pre-releases, and cannot know of any other kind); and that the MSI installs silently with the usual MSI switches. The step list is the one of `Win-7Zip`, which was rehearsed on 2026-10-01 with another product; nothing of this folder was run by anyone, not AutoPkg, not the package tool, not a PC. The only fact read from the source, on 2026-10-02 through git and for tags only, is that the newest tags of `torakiki/pdfsam` are v6.0.3, v6.0.4, v6.0.5 and v6.0.6, so the 5.3.1 of the writer's knowledge is an old release and the asset would be `pdfsam-6.0.6.msi` if the naming holds (not verified: the release assets and their digests were NOT fetched). The first run on the build Mac is the check of every one of these facts. When it fails (no asset matches, no digest, an error from the package tool), stop: nothing was written. Read the real release page and the real asset list, correct the recipe (the pattern, the repository, the template name), and only then look at the trust information: never accept trust information to make a failure go away. Where a line below says "expected", it is what the code and the pattern lead to, not something that was printed. Every override command here carries `--override-dir`: see the next paragraph.**
+**Status. Changed after the first dry run with AutoPkg 2.9.0, and run again after the change (2026-10-04). The first run (before the change) stopped at `GitHubAssetDigest` with "GitHub asset 202307085: the record has no digest (older assets have none)". That asset was `pdfsam-5.2.9.msi`, a file of October 2024, and not one of the newest release: the pattern of that run, `pdfsam-[0-9.]+\.msi$`, matches no file of any release from `v5.3.0` on, because the project now names its installer `pdfsam-basic-<version>-windows-x64.msi`. AutoPkg 2.9.0 takes the first release (in GitHub's order, newest first, a pre-release skipped) that has a file whose name the pattern matches from its start (`GitHubReleasesInfoProvider.py`, `select_asset`, `re.match`), however old, so it went back to `v5.2.9`. The test file writes that selection down as a function: on the saved list the old pattern takes `pdfsam-5.2.9.msi` and the new one takes the newest. The newest release's MSI does have a digest on GitHub, so the download stays verified. After the change a dry run under AutoPkg 2.9.0 selected `pdfsam-basic-6.0.6-windows-x64.msi` of `v6.0.6` and verified it against GitHub's digest. Later that day the first import with the package tool (the command of step a.3 below, run with `--no-prompt` and `--build`) made the item `pdfsam` (an MSI item, architectures `x64`, the catalog `Production`; the MSI's own version has four parts, the tag `v6.0.6` and a fourth part `0`; its summary says platform `x64` and its Property table has `ALLUSERS=1`), and the real run of the override of `PDFsam.pcman` (`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false) ended with `PcmanImporter: Nothing new: pdfsam <the label> is in the repository already. Nothing was written.` The first import went beside the Chocolatey item `pdfsam` (version 1.0) without any option of the tool; the Chocolatey item file and its `pdfsam-1.0` pkginfo remain until a person removes them by hand, and `pcman validate` warns that the item has two versions until then. `pcman catalogs` ran a second time later on 2026-10-04, after the first imports of this and three other programs: the same command wrote the catalogs `All` and `Production`, 110 items each (106 before), with exit 0, and `Production` lists both versions of this name (the Chocolatey item's `1.0` and the new one). The silent install is the client's (`/qn /norestart` for an MSI) and was NOT tested on a PC; nothing has been installed on a PC. Facts of the source were read by the writer on 2026-10-04 from GitHub's public release list of `torakiki/pdfsam` (`https://api.github.com/repos/torakiki/pdfsam/releases`, the newest 14 releases, `v6.0.6` to `v5.2.9`; read only, no file was downloaded). READ: (1) the newest release that is not a pre-release is `v6.0.6` (published 2026-10-02); `v6.0.0.M1` is flagged as a pre-release and has no MSI; (2) from `v5.3.0` the Windows files of a release are `pdfsam-basic-<version>-windows-x64.msi` and `pdfsam-basic-<version>-windows-x64.zip` (for `v6.0.6`: `pdfsam-basic-6.0.6-windows-x64.msi`, 97030144 bytes), and in `v6.0.6` each has a detached signature file with `.asc` added to its name, which no step checks; up to `v5.2.9` the installer is `pdfsam-<version>.msi`; (3) GitHub records a SHA-256 digest for the MSI of every release from `v5.3.2` (2025-07-24) to `v6.0.6`, and for none of `v5.3.1` (2025-04-18) and older; (4) the pattern is now `pdfsam-basic-[0-9.]+-windows-x64\.msi$`, which takes exactly the MSI of each release from `v5.3.0` to `v6.0.6` that has one, and not the `.zip` or the `.asc`. If a later release has an MSI without a digest, `GitHubAssetDigest` stops the run with its error, nothing is written, and the program is a hand import until a release with a digest exists. NOT established: that the MSI installs silently on a PC; that a new release has the same UpgradeCode as the template; that the next release keeps this spelling of the name (if the project renames the file again, the provider goes back to the newest older release that matches, as it did on 2026-10-04: read the line of the first dry run that names the selected asset and release); that the digest check proves more than that the file is what GitHub holds (the `.asc` signature is not checked); any install on a PC. An install on a test PC is the check of each of them. When a run fails (no asset matches, no digest, an error from the package tool), stop: nothing was written. Read the real release page and the real asset list, correct the recipe (the pattern, the repository, the template name), and only then look at the trust information: never accept trust information to make a failure go away. Where a line below says "expected", it is what the code and the pattern lead to, not something that was printed. Every override command here carries `--override-dir`: see the next paragraph.**
 
 | Recipe | Identifier | What it does |
 | --- | --- | --- |
@@ -82,9 +82,9 @@ Each name must be listed once, from this repository. (Not run: the lines of the 
 
 ### 3. First try: a dry run
 
-Run the override BY PATH and with `--override-dir` (see above):
+Run the override BY PATH and with `--override-dir` (see above), with `-v` so that the line of the provider that names the selected asset and release (`Selected asset ... from release ...`) is printed:
 
-    autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/PDFsam.cimian.recipe
+    autopkg run -v --override-dir=<the Windows overrides folder> <the Windows overrides folder>/PDFsam.cimian.recipe
 
 **Why by path:** the recipe's name or identifier (`com.github.serrc-techops.cimian.PDFsam`) runs the recipe itself, not the override. The recipe itself never leaves the dry run, so the real run of step 5 would never happen.
 
@@ -165,19 +165,20 @@ This way needs the owner's package tool, `pcman`, which is **not part of this re
 
 3. **The template item, made once by a first import**, so that its pkginfo and
    installer are in the repository. The template keeps the name of the item that
-   it replaces. The command, with a real MSI of the project:
+   it replaces. An item `pdfsam` of the kind `choco` is not the template (see the status line: the
+   first import of 2026-10-04 went beside it without any option, and a person removes the Chocolatey item
+   by hand). The command, in the form that ran on 2026-10-04 (it worked as written), with a real MSI of the project:
 
-       pcman import <path of the downloaded pdfsam-<version>.msi> --name pdfsam \
+       pcman import <path of the downloaded pdfsam-basic-<version>-windows-x64.msi> --name pdfsam \
            --display-name "PDFsam Basic" --category <the category> \
            --developer <the developer's name> --description <the description> \
-           --directory <the folder of the item> --architectures x64 --no-prompt --build
+           --directory <the folder of the item> --architectures x64 \
+           --icon <the file name of an icon that the repository has> --no-prompt --build
 
-   There is no `--version`: the package tool takes the MSI's own version. The
-   install arguments are the package tool's own for an MSI (silent, `/qn`, from the
-   writer's knowledge, not read in the package tool's README or in the installer):
-   read the package tool's README before the first import, and do not add an
-   install path for an MSI unless the README asks for one. `--architectures x64` is
-   from the writer's knowledge that the MSI is 64-bit (not read in the installer).
+   There is no `--version`: the package tool takes the MSI's own version (four parts on 2026-10-04: the tag and a
+   fourth part). The install arguments are the package tool's own for an MSI (`/qn /norestart` from the client; not tested
+   on a PC): do not add an install path for an MSI unless the package tool's README asks for one. `--architectures x64` is
+   from the name of the file (`windows-x64`); the MSI's summary says platform `x64` (read on 2026-10-04).
    Give the category, the developer and the description the package tool's README
    describes. A person changes the template later; nothing else does. **If the
    template is made from the installer that is current on GitHub, the first run says
@@ -208,9 +209,9 @@ means that AutoPkg found another recipe of the same name.
 
 ## c. First try: a dry run
 
-Run the override BY PATH and with `--override-dir` (see above):
+Run the override BY PATH and with `--override-dir` (see above), with `-v` so that the line of the provider that names the selected asset and release (`Selected asset ... from release ...`) is printed:
 
-    autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/PDFsam.pcman.recipe
+    autopkg run -v --override-dir=<the Windows overrides folder> <the Windows overrides folder>/PDFsam.pcman.recipe
 
 **Why by path:** the recipe's name or identifier
 (`com.github.serrc-techops.pcman.PDFsam`) runs the recipe itself, not the
@@ -218,9 +219,9 @@ override. The recipe itself never leaves the dry run, so the real run of step e
 would never happen.
 
 Expected (the lines are those that `Win-7Zip` printed in its rehearsal, with this
-product's name; nothing here was run), also without `-v`, when the current version is
-not yet in the repository. `<version>` is the MSI's own version, which may have more
-numbers than the release's tag:
+product's name; the real run of this recipe on 2026-10-04 printed `Nothing new` as the status line says), also without `-v`, when the current version is
+not yet in the repository. `<version>` is the MSI's own version, which has a fourth part beyond the release's tag
+(the tag `v6.0.6` gave an MSI version of four parts on 2026-10-04):
 
     WARNING: DRY RUN. Nothing was written, because pcman_dry_run is on. ...
     Dry run: the package tool wrote nothing (pcman_dry_run is on):
@@ -261,8 +262,7 @@ every recipe of that run.
    marked "published by pcman import".
 
 3. **Build the catalogs: `pcman catalogs`.** Without it no PC sees the new
-   version. (Not rehearsed. The package tool prints "nothing to run" when its
-   catalogs command is not set.)
+   version. (Run on 2026-10-04: `pcman catalogs` ran twice that day, the second time after the first imports of this and three other programs. The tool's configured command ran `makecatalogs` on the repository's server and wrote the catalogs `All` and `Production`, 110 items each in the second run, with exit 0. The package tool prints "nothing to run" when its catalogs command is not set.)
 
 4. The second run, by path again:
 
@@ -309,10 +309,13 @@ Nothing was written there. Expected here too, not run. Mount the share, then run
 - The checksum step sets `checksum_verified` and the hash `checksum_sha256`, which the
   shared importer compares with the file it imports, so it allows a real run of this
   recipe without `pcman_allow_unverified`. The input of the download recipe is
-  `SEARCH_PATTERN` (default `pdfsam-[0-9.]+\.msi$`): change it in the override's
+  `SEARCH_PATTERN` (default `pdfsam-basic-[0-9.]+-windows-x64\.msi$`): change it in the override's
   `Input`, not in the recipe.
 - `-p` (a local file instead of the download) fails the checksum, because the
   digest is the one of the GitHub asset.
+- AutoPkg's provider takes the first release, newest first, that has a file whose name
+  matches `SEARCH_PATTERN`, however old. When a name changes, the recipe does not stop: it
+  goes back. Read the `Selected asset` line of every dry run (run it with `-v`).
 
 ## Tests
 

@@ -338,14 +338,15 @@ class NotVerifiedTests(unittest.TestCase):
         self.assertTrue(lines[0].startswith("# "))
         self.assertTrue(lines[1].startswith("A Windows recipe pair"))
         status = lines[2]
-        self.assertTrue(status.startswith("**Status. NOT rehearsed with AutoPkg. Some facts of the source were fetched "
-                                          "by the writer on 2026-10-02:"), status[:60])
+        self.assertTrue(status.startswith("**Status. Run on 2026-10-04 under AutoPkg 2.9.0, as follows."), status[:60])
         self.assertTrue(status.endswith("**"))
         for needle in ("The download is NOT verified", "a check of the signature is not built", "REFUSES a real run",
                        "pcman_allow_unverified", "Do not set it before the signature check exists",
                        "pcman import <file> --template adobereader --version <the label>",
-                       "has NOT been run by anyone"):
+                       "No run of this recipe has published anything, and none can while the download is unverified",
+                       "nothing has been installed on a PC"):
             self.assertIn(needle, status)
+        self.assertNotIn("has NOT been run by anyone", status)
 
     def test_the_readme_says_what_still_protects_and_that_it_is_not_enough(self):
         text = re.sub(r"\s+", " ", read(README))
@@ -582,23 +583,27 @@ class ReadmeTests(unittest.TestCase):
         self.assertTrue(match)
         command = re.sub(r"\s+", " ", match.group(1))
         self.assertIn("--name adobereader", command)
-        self.assertIn("--version <the installer's own ProductVersion", command)  # an EXE has a label
+        self.assertIn("--version <the label that the first dry run prints>", command)  # an EXE has a label
         for flag in ("--display-name", "--category", "--developer", "--description", "--install-arguments",
-                     "--install-path", "--architectures", "--no-prompt", "--directory"):
+                     "--architectures", "--no-prompt", "--directory", "--icon"):
             self.assertIn(flag, command)
-        # Facts of the installer that the writer did not read are placeholders, never a guess.
-        self.assertIn("--install-arguments <the installer's silent switch, read in the vendor's documentation first>",
-                      command)
-        self.assertIn("--install-path <the path of the installed program, read on a PC first>", command)
-        self.assertIn("--architectures <the installer's architecture, read in the installer first>", command)
-        self.assertNotIn("/sALL", self.raw)
-        self.assertNotIn("EULA_ACCEPT", self.raw)
+        # The form that ran on 2026-10-04: the switch and the architectures were read in the vendor's
+        # documentation and in the PE header; the install path was NOT given.
+        self.assertIn("--install-arguments '/sAll /rs /msi EULA_ACCEPT=YES'", command)
+        self.assertIn("--architectures x86,x64", command)
+        self.assertNotIn("--install-path", command)
+        step = re.sub(r"\s+", " ", self.raw[self.raw.index("3. **The template item"):self.raw.index("## b.")])
+        for needle in ("in the form that ran on 2026-10-04", "**used on 2026-10-04, not tested on a PC**",
+                       "from Adobe's documentation for administrators", "the string `/sAll` is in the file",
+                       "`--install-path` was left out because the path must be read on a PC after an install",
+                       "the template then has no install check", "an item of the kind `choco` is not the template"):
+            self.assertIn(needle, step)
 
     def test_the_status_line_says_what_was_fetched_and_what_was_not(self):
         """This folder was NOT run with AutoPkg. The writer fetched some facts of the source on
         2026-10-02: the README opens with a bold paragraph that lists what was verified and
         what is still not."""
-        opening = "**Status. NOT rehearsed with AutoPkg. Some facts of the source were fetched by the writer on 2026-10-02:"
+        opening = "**Status. Run on 2026-10-04 under AutoPkg 2.9.0, as follows."
         start = self.raw.index(opening)
         self.assertLess(start, self.raw.index("| Recipe |"))
         self.assertLess(self.raw.index("# Win-AdobeReader"), start)
@@ -606,11 +611,13 @@ class ReadmeTests(unittest.TestCase):
         paragraph = re.sub(r"\s+", " ", self.raw[start:end + 2])
         self.assertTrue(paragraph.startswith(opening))
         self.assertTrue(paragraph.endswith("**"))
-        verified, _, rest = paragraph.partition("NOT established:")
+        ran, _, fetched = paragraph.partition("Facts of the source that the writer fetched on 2026-10-02, before those runs:")
+        self.assertTrue(fetched)
+        verified, _, rest = fetched.partition("NOT established:")
         self.assertTrue(rest)
         not_established, _, after = rest.partition("The download is NOT verified")
         self.assertTrue(after)
-        for needle in ("no run of AutoPkg was made", "an earlier HEAD request got 403, a GET answers 200",
+        for needle in ("an earlier HEAD request got 403, a GET answers 200",
                        "https://rdc.adobe.io/reader/products?lang=en&platformArch=64&site=landing"
                        "&os=Windows%2010&preInstalled=&country=US&nativeOs=Windows%2010"
                        "&api_key=dc-get-adobereader-cdn",
@@ -633,16 +640,17 @@ class ReadmeTests(unittest.TestCase):
         for needle in ("that the products file is stable", "the fixed public key",
                        "that the installer scheme, seen for one version, holds for the next",
                        "whether Adobe offers an installer for x64 under another scheme",
-                       "the 32-bit installers", "the silent switch of the installer, its install path and its architecture",
+                       "the 32-bit installers", "the silent switch on a PC, the install path and an install check",
                        "the version text that the installed Reader shows after the wrapper has installed it",
-                       "that the next release keeps this spelling",
-                       "the template item `adobereader` exists", "`pcman catalogs`", "any run with AutoPkg"):
+                       "that the next release keeps this spelling", "any install on a PC"):
             self.assertIn(needle, not_established)
+        for needle in ("the template item `adobereader` exists", "any run with AutoPkg"):
+            self.assertNotIn(needle, not_established)
         # What the real file settled is no longer listed as unknown.
         self.assertNotIn("what ProductVersion the installer file carries", not_established)
         self.assertNotIn("leading zeros (`002`)", not_established)
         for needle in ("wrote by hand after the real answer of 2026-10-02",
-                       "The first run on the build Mac is the check of everything that is NOT established",
+                       "The first install on a test PC is the check of what is NOT established",
                        "STOP: nothing was written", "correct the processor or the recipe",
                        "and only then look at the trust information",
                        "Never accept new trust information first",
@@ -779,6 +787,55 @@ class ChainTests(_pcman_support.ToolTestCase):
 def _text(path):
     with open(path, "r", encoding="utf-8") as handle:
         return handle.read()
+
+
+class RealRunReadmeTests(unittest.TestCase):
+    """What the README says of the first import and the real run of 2026-10-04 (AutoPkg 2.9.0)."""
+
+    def setUp(self):
+        self.raw = read(README)
+        self.text = re.sub(r"\s+", " ", self.raw)
+        self.status = re.sub(r"\s+", " ", [line for line in self.raw.splitlines() if line.startswith("**Status.")][0])
+
+    def test_the_status_line_says_what_ran_and_what_the_refusal_was(self):
+        for needle in ("The first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the template "
+                       "`adobereader` (an EXE item, label `26.2.21931.0`, architectures `x86,x64`)",
+                       "`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false",
+                       "the importer REFUSED the run with `The download was not verified:", "(exit 70)",
+                       "`pcman_allow_unverified` was not set",
+                       "The override downloaded the file again about ten minutes after the first import, and its hash was the imported file's",
+                       "`Nothing new: adobereader <label> exists already ...` with exit 3",
+                       "`pcman catalogs` ran once for all the new items together (2026-10-04)",
+                       "`All` and `Production`, 106 items each"):
+            self.assertIn(needle, self.status)
+
+    def test_what_is_not_established_is_still_said(self):
+        for needle in ("was NOT tested on a PC", "has NO install check until a person adds one",
+                       "Still NOT established after those runs: that the switch installs silently on a PC; an install check; any install"):
+            self.assertIn(needle, self.status)
+
+    def test_nothing_untested_is_called_established(self):
+        for claim in ("the switch is established", "installs silently on a PC (tested)", "was tested on a PC"):
+            self.assertNotIn(claim, self.text)
+
+    def test_the_chocolatey_item_is_said_to_remain_for_a_person_to_remove(self):
+        self.assertIn("went beside the Chocolatey item `adobereader` (version 1.0) without any option of the tool", self.status)
+        self.assertIn("the Chocolatey item file and its `adobereader-1.0` pkginfo remain until a person removes them by hand", self.status)
+        self.assertIn("`pcman validate` warns that the item has two versions until then", self.status)
+
+    def test_the_second_run_line_is_not_promised_for_a_fresh_override(self):
+        self.assertIn("the first run of a fresh override printed the line `Nothing new: ...` after it had downloaded the file again", self.text)
+        self.assertIn("a new override gets a new cache folder", self.text)
+
+
+class FlagNameTests(unittest.TestCase):
+    """The cimian recipe's flag for an unverified download is `cimian_allow_unverified`; `pcman_allow_unverified` is the package tool's."""
+
+    def test_the_download_description_names_the_flag_of_each_recipe_correctly(self):
+        text = re.sub(r"\s+", " ", load(DOWNLOAD)["Description"])
+        self.assertIn("refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true "
+                      "(pcman_allow_unverified for the package tool's recipe)", text)
+        self.assertNotIn("of the cimian recipe unless the override sets pcman_allow_unverified", text)
 
 
 class CimianRecipeTests(unittest.TestCase):

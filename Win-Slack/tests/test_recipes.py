@@ -8,8 +8,10 @@ The download of this program has NO hard check (no vendor hash, no signature
 check). The tests make sure that nobody can overlook that: the Description of
 both recipes and the top of the README say it, and no recipe invents a check.
 
-Nothing of this folder was rehearsed, and the writer could not fetch the vendor's
-pages: the README's first paragraph says so, and a test checks it.
+The pair is marked NOT WORKING (expected): on 2026-10-04 the vendor's server did not
+have the MSI at the address that the recipe builds, and no other address of an MSI could
+be established. The README's first paragraph and the first sentences of the three
+Descriptions say so, and a test checks each.
 """
 import http.server
 import os
@@ -98,6 +100,15 @@ def shared_steps(recipe):
 
 def first_sentence(text):
     return re.split(r"(?<=[.!?])\s", text.strip(), maxsplit=1)[0]
+
+
+def unverified_sentence(text):
+    """The sentence of a Description that says the download or the import is NOT verified: it follows the
+    NOT WORKING mark and its explanation."""
+    for sentence in re.split(r"(?<=[.!?])\s", re.sub(r"\s+", " ", text.strip())):
+        if "NOT verified yet" in sentence:
+            return sentence
+    raise AssertionError("no sentence says NOT verified yet")
 
 
 class RecipeFileTests(unittest.TestCase):
@@ -207,11 +218,14 @@ class VersionPatternTests(unittest.TestCase):
 
 class RecipeContentTests(unittest.TestCase):
 
-    def test_the_download_recipe_has_no_parent_and_says_what_was_not_fetched(self):
+    def test_the_download_recipe_has_no_parent_and_says_what_the_first_run_did(self):
         text = re.sub(r"\s+", " ", load(DOWNLOAD)["Description"])
         self.assertNotIn("ParentRecipe", read(DOWNLOAD))
-        self.assertIn("were NOT fetched by the writer and this recipe was NOT rehearsed", text)
-        self.assertIn("the first run on the build machine is the check of them", text)
+        self.assertIn("The first run with AutoPkg 2.9.0, on 2026-10-04, passed the first step", text)
+        self.assertIn("the first match on the page is the newest version, 4.52.171 that day", text)
+        self.assertIn("stopped at the second, with a 404", text)
+        for claim in ("were NOT fetched by the writer", "was NOT rehearsed", "the first run on the build machine is the check of them"):
+            self.assertNotIn(claim, text)
 
     def test_no_description_claims_a_rehearsal(self):
         for path in (DOWNLOAD, PCMAN):
@@ -289,11 +303,11 @@ class NotVerifiedTests(unittest.TestCase):
     def test_the_description_of_both_recipes_begins_by_saying_that_nothing_is_verified(self):
         for path in (DOWNLOAD, PCMAN):
             with self.subTest(path=os.path.basename(path)):
-                sentence = first_sentence(load(path)["Description"])
-                self.assertIn("NOT verified yet", sentence)
+                sentence = unverified_sentence(load(path)["Description"])
+                self.assertTrue(sentence.startswith(("This download is NOT verified yet:", "This import is NOT verified yet:")))
 
     def test_the_download_description_names_the_two_missing_checks(self):
-        sentence = first_sentence(load(DOWNLOAD)["Description"])
+        sentence = unverified_sentence(load(DOWNLOAD)["Description"])
         self.assertIn("no hash", sentence)
         self.assertIn("signature", sentence)
 
@@ -339,8 +353,11 @@ class NotVerifiedTests(unittest.TestCase):
         lines = [line for line in read(README).splitlines() if line.strip()]
         self.assertTrue(lines[0].startswith("# "))
         self.assertTrue(lines[1].startswith("A Windows recipe pair"))
-        status, not_verified = lines[2], lines[3]
-        self.assertTrue(status.startswith("**Status. NOT rehearsed, and the facts of the source NOT fetched by the writer:"),
+        mark, status, not_verified = lines[2], lines[3], lines[4]
+        self.assertTrue(mark.startswith("**NOT WORKING (expected). This recipe pair is expected to stop at its first run and publish nothing"),
+                        mark[:80])
+        self.assertTrue(mark.endswith("**"))
+        self.assertTrue(status.startswith("**Status. One dry run with AutoPkg 2.9.0 (2026-10-04) stopped at the download"),
                         status[:80])
         self.assertTrue(status.endswith("**"))
         self.assertTrue(not_verified.startswith("**Not verified. The download is NOT verified:"), not_verified[:60])
@@ -351,26 +368,94 @@ class NotVerifiedTests(unittest.TestCase):
                        "has NOT been run by anyone"):
             self.assertIn(needle, not_verified)
 
-    def test_the_status_line_says_what_was_not_done(self):
+    def test_the_mark_says_what_was_read_and_what_it_means(self):
+        mark = re.sub(r"\s+", " ", [line for line in read(README).splitlines() if line.startswith("**NOT WORKING")][0])
+        for needle in (
+                "the download answers 404",
+                "passed the first step (the version from the release notes page) and stopped at `URLDownloader` with `curl: (56) The requested URL returned error: 404`",
+                "by HEAD requests and four pages (no installer was downloaded)",
+                "`https://slack.com/release-notes/windows` answers 200",
+                "`slack-standalone-<version>.0.msi`", "`https://downloads.slack-edge.com/desktop-releases/windows/x64/<version>/`",
+                "answers 200 for the 13 versions of the page from `4.46.96` (2025-09-09) to `4.48.102` (2026-03-17)",
+                "404 for the 13 versions from `4.49.81` (2026-04-02) to `4.52.171` (2026-09-28)",
+                "the 26 newest versions of the page were tried and no older one",
+                "`https://slack.com/api/desktop.latestRelease?variant=msi&arch=x64`", "`download_url` is that same file",
+                "the vendor's permanent address leads to the missing file",
+                "`https://slack.com/ssb/download-win64-msi`, which names an MSI for 64-bit Windows, answers 404",
+                "`https://slack.com/downloads/windows`, offers three builds (`win64`, `arm64` and `win64_msix`) and the word MSI is not on it",
+                "`Slack.msix` in the same folder answers 200 for all 26 versions",
+                "`SlackSetup.exe` answers 200 for `4.52.171` (the one version tried)",
+                "does not say that the MSI is discontinued",
+                "So no address of an MSI can be established",
+                "the package tool does not take an MSIX", "an EXE would be another kind of item",
+                "the owner's decision and not made here",
+                "When Slack serves the MSI again at that address the recipe works unchanged",
+                "the owner's decision at the merge"):
+            self.assertIn(needle, mark)
+
+    def test_the_status_line_says_what_was_read_and_what_was_not(self):
         status = [line for line in read(README).splitlines() if line.startswith("**Status.")][0]
         text = re.sub(r"\s+", " ", status)
         for needle in (
-                "the writer had no network and read neither Slack's pages nor its download server",
-                "Nothing in this folder has run with AutoPkg",
+                "stopped at the download (see the mark above)",
+                "Nothing of this pair has run with the package tool, a share or a PC",
+                "no installer was downloaded",
                 "https://slack.com/release-notes/windows",
-                "taken from the Cimian authors' own recipe for Slack",
+                "`Slack 4.52.171` (September 28, 2026)", "`Slack 4.52.162` (September 21, 2026)", "`Slack 4.52.155` (August 31, 2026)",
                 "the FIRST match on that page is the newest release",
-                "may also be built by script",
-                "outputs a named group of the pattern under its own name, here `version`",
+                "the text is in the HTML that `curl` gets (it is not built by script)",
+                "`URLTextSearcher` stops with `No match found on URL` when the pattern finds nothing",
+                "sets each named group of the pattern in the run under its own name, here `version`",
                 "https://downloads.slack-edge.com/desktop-releases/windows/x64/<version>/slack-standalone-<version>.0.msi",
-                "Slack.msix", "does not take an MSIX",
-                "The first run on the build Mac is the check of every one of them",
+                "was right for the versions up to `4.48.102` and answers 404 since `4.49.81`",
+                "`Slack.msix` is in the same folder", "does not take an MSIX",
+                "NOT established", "why Slack stopped serving the MSI",
+                "any run with AutoPkg beyond the download",
                 "When it fails, stop: nothing was written",
                 "correct the recipe, never the trust information first"):
             self.assertIn(needle, text)
+        for claim in ("the writer had no network", "NOT fetched by the writer", "NOT rehearsed, and"):
+            self.assertNotIn(claim, read(README))
         self.assertNotIn("Rehearsed on", read(README))
         # the pattern in the status line is the one in the recipe
         self.assertIn(load(DOWNLOAD)["Input"]["VERSION_PATTERN"], status)
+        # the address in the status line is the one that the recipe builds
+        built = FILE_ADDRESS.replace("%version%", "<version>")
+        self.assertIn(built, status)
+        self.assertEqual(load(DOWNLOAD)["Process"][1]["Arguments"]["url"], FILE_ADDRESS)
+
+    def test_the_pair_is_marked_as_not_working_in_the_readme_and_in_all_three_descriptions(self):
+        """The pair stops at its first run (the download answers 404) and the owner decides at the merge
+        whether it stays. The mark comes first, before the status line, and the three descriptions begin with it."""
+        text = re.sub(r"\s+", " ", read(README))
+        mark = text.index("**NOT WORKING (expected). This recipe pair is expected to stop at its first run and publish nothing")
+        self.assertLess(text.index("# Win-Slack"), mark)
+        self.assertLess(mark, text.index("**Status."))
+        self.assertLess(text.index("**Status."), text.index("**Not verified."))
+        download = re.sub(r"\s+", " ", load(DOWNLOAD)["Description"])
+        self.assertTrue(download.startswith("NOT WORKING (expected). This recipe is expected to stop at its first run and publish nothing; "
+                                            "whether it stays in the repository is the owner's decision. The download answers 404:"))
+        for needle in ("4.48.102 (2026-03-17)", "4.49.81 (2026-04-02) to 4.52.171 (2026-09-28)",
+                       "the 26 newest of the page; older ones were not tried",
+                       "no other address of an MSI could be established",
+                       "until Slack serves the MSI again (the recipe then works unchanged)"):
+            self.assertIn(needle, download)
+        for path in (CIMIAN, PCMAN):
+            description = re.sub(r"\s+", " ", load(path)["Description"])
+            self.assertTrue(description.startswith("NOT WORKING (expected). Its parent, the download recipe, is expected to stop at its first run "
+                                                   "(see the parent's Description), so this recipe publishes nothing"), path)
+            self.assertIn("(the first run, on 2026-10-04, stopped at the parent's download with a 404, as expected)", description)
+
+    def test_the_readme_and_the_descriptions_name_the_same_versions_and_dates(self):
+        readme = re.sub(r"\s+", " ", read(README))
+        download = re.sub(r"\s+", " ", load(DOWNLOAD)["Description"])
+        for fact in ("4.46.96", "2025-09-09", "4.48.102", "2026-03-17", "4.49.81", "2026-04-02", "4.52.171", "2026-09-28"):
+            self.assertIn(fact, readme)
+            if fact != "4.46.96" and fact != "2025-09-09":
+                self.assertIn(fact, download)
+        self.assertIn("13 versions", readme)
+        self.assertIn("13 versions", download)
+        self.assertIn("26", readme)
 
     def test_the_readme_says_what_still_protects_and_that_it_is_not_enough(self):
         text = re.sub(r"\s+", " ", read(README))
@@ -690,7 +775,7 @@ class ReadmeTests(unittest.TestCase):
         self.assertIn("`pcman catalogs` was NOT run either", self.text)
         self.assertIn("carries `--override-dir`", self.text)
         self.assertIn("A real run of this recipe has NOT been run by anyone, not against a share and not on a PC, "
-                      "and neither has a dry run", self.text)
+                      "and its one dry run (2026-10-04) stopped at the download", self.text)
         self.assertIn("they were NOT seen for this recipe", self.text)
 
     def test_the_readme_tells_what_to_read_when_the_pattern_or_the_address_fails(self):
@@ -702,6 +787,16 @@ class ReadmeTests(unittest.TestCase):
 def _text(path):
     with open(path, "r", encoding="utf-8") as handle:
         return handle.read()
+
+
+class FlagNameTests(unittest.TestCase):
+    """The cimian recipe's flag for an unverified download is `cimian_allow_unverified`; `pcman_allow_unverified` is the package tool's."""
+
+    def test_the_download_description_names_the_flag_of_each_recipe_correctly(self):
+        text = re.sub(r"\s+", " ", load(DOWNLOAD)["Description"])
+        self.assertIn("refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true "
+                      "(pcman_allow_unverified for the package tool's recipe)", text)
+        self.assertNotIn("of the cimian recipe unless the override sets pcman_allow_unverified", text)
 
 
 class CimianRecipeTests(unittest.TestCase):
@@ -817,7 +912,7 @@ class CimianRecipeTests(unittest.TestCase):
     def test_the_description_of_an_unverified_download_says_so_first(self):
         description = load(CIMIAN)["Description"]
         if True:
-            self.assertTrue(description.startswith("This import is NOT verified yet:"))
+            self.assertIn(" This import is NOT verified yet:", description)
             self.assertIn("cimian_allow_unverified", description)
             self.assertIn("published, NOT verified", description)
         else:

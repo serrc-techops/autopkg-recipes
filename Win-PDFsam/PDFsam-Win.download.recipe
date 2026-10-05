@@ -3,7 +3,7 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>Downloads the current release of PDFsam Basic for Windows (the .msi asset of the newest non-pre-release on GitHub that has a matching file, kept under the asset's own file name) and checks it against the SHA-256 that GitHub records for the asset. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. The asset name pattern is from the writer's knowledge and has not been checked against a real release: the first run on the build Mac is that check. Pre-releases are skipped unless the override sets the input include_prereleases to true.</string>
+        <string>Downloads the current release of PDFsam Basic for Windows (the 64-bit .msi asset of the newest non-pre-release on GitHub that has a matching file, kept under the asset's own file name) and checks it against the SHA-256 that GitHub records for the asset. When the asset has no recorded digest the run stops with an error and writes nothing: the program is then a hand import until a release with a digest exists. The asset names, sizes and digest flags were read from GitHub's release list on 2026-10-04 (the newest fourteen releases): the project names the installer like pdfsam-basic-6.0.6-windows-x64.msi and GitHub records a digest for it from version 5.3.2 on. The first run with AutoPkg 2.9.0, on 2026-10-04, took an October 2024 file named pdfsam-5.2.9.msi under the earlier pattern and stopped for a missing digest: AutoPkg takes the first release that has a matching file however old it is, so a new spelling of the name would send the recipe back to an older release; read the line that names the selected asset and release in the first dry run. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. Pre-releases are skipped unless the override sets the input include_prereleases to true.</string>
         <key>Identifier</key>
         <string>com.github.serrc-techops.download.PDFsam-Win</string>
         <key>Input</key>
@@ -11,7 +11,7 @@
             <key>NAME</key>
             <string>PDFsam</string>
             <key>SEARCH_PATTERN</key>
-            <string>pdfsam-[0-9.]+\.msi$</string>
+            <string>pdfsam-basic-[0-9.]+-windows-x64\.msi$</string>
             <key>include_prereleases</key>
             <false/>
         </dict>

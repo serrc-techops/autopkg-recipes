@@ -306,23 +306,22 @@ class NotVerifiedTests(unittest.TestCase):
         self.assertTrue(lines[0].startswith("# "))
         self.assertTrue(lines[1].startswith("A Windows recipe pair: Google Drive for desktop, the `.exe` installer"))
         status, not_verified = lines[2], lines[3]
-        self.assertTrue(status.startswith("**Status. NOT rehearsed with AutoPkg. "
-                                          "Some facts of the source were fetched by the writer on 2026-10-02:"),
-                        status[:100])
+        self.assertTrue(status.startswith("**Status. Run on 2026-10-04 under AutoPkg 2.9.0, as follows."), status[:100])
         self.assertTrue(status.endswith("**"))
         self.assertTrue(not_verified.startswith("**Not verified. The download is NOT verified:"), not_verified[:60])
         self.assertTrue(not_verified.endswith("**"))
         for needle in ("signature check", "REFUSES a real run", "pcman_allow_unverified",
                        "Do not set it before the signature check exists",
                        "pcman import <file> --template googledrive --version <label>", "the label of an EXE",
-                       "has NOT been run by anyone"):
+                       "A real run of this recipe was REFUSED on 2026-10-04 (see the status line above), and nothing has been installed on a PC"):
             self.assertIn(needle, not_verified)
+        self.assertNotIn("has NOT been run by anyone", not_verified)
 
     def test_the_status_line_says_what_was_fetched_and_what_was_not_established(self):
         status = [line for line in read(README).splitlines() if line.startswith("**Status.")][0]
         text = re.sub(r"\s+", " ", status)
         for needle in (
-                "no run of AutoPkg was made, and nothing was written to a repository",
+                "Some facts of the source were fetched by the writer on 2026-10-02, before those runs:",
                 "`https://dl.google.com/drive-file-stream/GoogleDriveSetup.exe` answered 200 with no redirect, "
                 "291173528 bytes, last modified 2026-10-01 14:26 GMT",
                 "the address holds no version, and no hash was found for the file",
@@ -336,17 +335,17 @@ class NotVerifiedTests(unittest.TestCase):
                 "so `version` is those four numbers, with no text in them",
                 "equals the version number that Google publishes for Drive",
                 "that the package tool has a check of the product for an EXE",
-                "the silent switch of the installer and the path of the installed program",
-                "the name of the template item",
-                "`googledrive` is the proposed name",
+                "the silent switch on a PC and the path of the installed program",
                 "that Google's server answers the questions that AutoPkg asks about a changed file",
-                "`pcman catalogs`", "any run with AutoPkg",
-                "The first run on the build Mac is the check of everything that is NOT established",
-                "When it fails, STOP: nothing was written",
+                "any install on a PC",
+                "The first install on a test PC is the check of what is NOT established",
+                "When a run fails, STOP: nothing was written",
                 "correct the recipe, and only then look at the trust information",
                 "Never accept new trust information first"):
             self.assertIn(needle, text)
         self.assertNotIn("Rehearsed on", read(README))
+        for gone in ("the name of the template item", "`googledrive` is the proposed name", "any run with AutoPkg"):
+            self.assertNotIn(gone, text)
         # the version resource is no longer on the NOT list
         self.assertNotIn("that the file has a version resource", text)
         self.assertNotIn("was NOT run on this file", text)
@@ -600,31 +599,35 @@ class ReadmeTests(unittest.TestCase):
         self.assertTrue(match)
         command = re.sub(r"\s+", " ", match.group(1))
         self.assertIn("--name googledrive", command)
-        self.assertIn("--version <the ProductVersion of that file, as its properties show it>", command)
+        self.assertIn("--version <the label that the first dry run prints>", command)
         self.assertIn("--no-prompt", command)
 
-    def test_the_first_import_names_the_fields_of_the_item_and_marks_the_installer_facts_as_placeholders(self):
-        """The silent switch and the install path of the Drive installer were NOT read:
-        the command has a placeholder for each, never a value from memory."""
+    def test_the_first_import_is_the_form_that_ran_on_2026_10_04_with_the_equals_sign_and_no_install_path(self):
+        """The switch begins with `-`: it must be given as `--install-arguments=--silent`. It is from Google's
+        help page for administrators and was not tested on a PC. No install path was given."""
         match = re.search(r"pcman import ([^`]*?--build)", self.raw, re.S)
         command = re.sub(r"\s+", " ", match.group(1))
         for flag in ("--display-name", "--category", "--developer", "--description", "--directory",
-                     "--install-arguments", "--install-path", "--architectures"):
+                     "--install-arguments=--silent", "--architectures x64", "--icon"):
             self.assertIn(flag, command)
-        self.assertIn("--install-arguments <the installer's silent switch, read in the vendor's documentation first>",
-                      command)
-        self.assertIn("--install-path <the path of the installed program, read on one PC after an install>", command)
-        self.assertIn("--architectures <the architectures of the installer, NOT read by the writer>", command)
-        for switch in ("/S ", "/silent", "/quiet", "/qn", "--silent", "/VERYSILENT"):
+        self.assertNotIn("--install-path", command)
+        self.assertNotIn("--install-arguments --silent", command)
+        for switch in ("/S ", "/silent", "/quiet", "/qn", "/VERYSILENT"):
             self.assertNotIn(switch, command + " ")
         self.assertNotIn("Program Files", command)
+        step = re.sub(r"\s+", " ", self.raw[self.raw.index("3. **The template item"):self.raw.index("## b.")])
+        for needle in ("Give the switch as `--install-arguments=--silent`, with the equals sign",
+                       "`--install-arguments --silent` fails with `argument --install-arguments: expected one argument` (exit 2)",
+                       "**used on 2026-10-04, not tested on a PC**", "Google's help page for administrators, \"Set up Drive for desktop\"",
+                       "`--install-path` was left out because the installed program's folder carries the version"):
+            self.assertIn(needle, step)
 
     def test_the_readme_does_not_claim_a_rehearsal_of_this_folder(self):
         self.assertNotIn("Rehearsed on", self.raw)
-        self.assertIn("`pcman catalogs` was NOT run either", self.text)
+        self.assertNotIn("`pcman catalogs` was NOT run either", self.text)
         self.assertIn("carries `--override-dir`", self.text)
-        self.assertIn("A real run of this recipe has NOT been run by anyone, not against a share and not on a PC, "
-                      "and neither has a dry run", self.text)
+        self.assertIn("A real run of this recipe was REFUSED on 2026-10-04 (see the status line above), and nothing has been installed on a PC", self.text)
+        self.assertNotIn("has NOT been run by anyone", self.text)
         self.assertIn("NOT seen for this recipe", self.text)
 
     def test_the_readme_says_what_to_do_when_the_server_does_not_answer_the_changed_file_question(self):
@@ -635,6 +638,59 @@ class ReadmeTests(unittest.TestCase):
 def _text(path):
     with open(path, "r", encoding="utf-8") as handle:
         return handle.read()
+
+
+class RealRunReadmeTests(unittest.TestCase):
+    """What the README says of the first import and the real run of 2026-10-04 (AutoPkg 2.9.0). """
+
+    def setUp(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            self.raw = handle.read()
+        self.text = re.sub(r"\s+", " ", self.raw)
+        self.status = re.sub(r"\s+", " ", [line for line in self.raw.splitlines() if line.startswith("**Status.")][0])
+
+    def test_the_status_line_says_what_ran_on_2026_10_04(self):
+        for needle in ("The first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the template `googledrive` (an EXE item, label of four numbers read from the file's fixed file information, the first of them `131`, architectures `x64`)", '`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false', 'the importer REFUSED the run with `The download was not verified:', '(exit 70)', '`pcman_allow_unverified` was not set', "The override downloaded the file again about ten minutes after the first import, and its hash was the imported file's", '`Nothing new: googledrive <label> exists already ...` with exit 3', 'went beside the Chocolatey item `googledrive` (version 1.0) without any option of the tool', 'the Chocolatey item file and its `googledrive-1.0` pkginfo remain until a person removes them by hand', '`pcman validate` warns that the item has two versions until then', '`pcman catalogs` ran once for all the new items together (2026-10-04)', '`All` and `Production`, 106 items each', 'The file is a 64-bit PE file (read from its header)', 'The silent switch `--silent` was used on 2026-10-04', 'it was NOT tested on a PC', '`--install-arguments --silent` fails with `argument --install-arguments: expected one argument` (exit 2)', 'has NO install check until a person adds one', 'Still NOT established after those runs: that the switch installs silently on a PC; an install check; any install'):
+            self.assertIn(needle, self.status)
+
+    def test_the_readme_says_the_rest_of_it(self):
+        for needle in ('an item of the kind `choco` is not the template',):
+            self.assertIn(needle, self.text)
+
+    def test_the_first_import_step_says_what_worked(self):
+        step = re.sub(r"\s+", " ", self.raw[self.raw.index("3. **The template item"):self.raw.index("## b.")])
+        for needle in ('in the form that ran on 2026-10-04', '--install-arguments=--silent', 'an item of the kind `choco` is not the template'):
+            self.assertIn(needle, step)
+
+    def test_nothing_that_was_not_tested_is_called_tested(self):
+        for claim in ('was tested on a PC', 'the switch is established'):
+            self.assertNotIn(claim, self.text)
+
+    def test_the_second_run_line_is_not_promised_for_a_fresh_override(self):
+        self.assertIn("the first run of a fresh override printed the line `Nothing new: ...` after it had downloaded the file again", self.text)
+        self.assertIn("a new override gets a new cache folder", self.text)
+
+
+class FlagNameTests(unittest.TestCase):
+    """The cimian recipe's flag for an unverified download is `cimian_allow_unverified`; `pcman_allow_unverified` is the package tool's."""
+
+    def test_the_download_description_names_the_flag_of_each_recipe_correctly(self):
+        text = re.sub(r"\s+", " ", load(DOWNLOAD)["Description"])
+        self.assertIn("refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true "
+                      "(pcman_allow_unverified for the package tool's recipe)", text)
+        self.assertNotIn("of the cimian recipe unless the override sets pcman_allow_unverified", text)
+
+
+class CimianVersionArgumentTextTests(unittest.TestCase):
+    """The cimian recipe passes the label to `CimianImporter` as `version`; only the pcman recipe passes `pcman_version`."""
+
+    def test_no_sentence_says_that_the_cimian_recipe_passes_pcman_version(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            text = re.sub(r"\s+", " ", handle.read())
+        for sentence in re.split(r"(?<=[.;])\s", text):
+            if re.search(r"cimian recipe passes", sentence) and "pcman_version" in sentence:
+                self.assertIn("pcman recipe", sentence)  # `pcman_version` is named only as the pcman recipe's argument
+        self.assertEqual(text.count("the cimian recipe passes that `version` as `pcman_version`"), 0)
 
 
 class CimianRecipeTests(unittest.TestCase):

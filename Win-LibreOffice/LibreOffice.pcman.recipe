@@ -3,7 +3,7 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>NOT WORKING (expected). Its parent, the download recipe, is expected to stop at its first run (see the parent's Description), so this recipe publishes nothing. Hands the downloaded LibreOffice installer to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. The recipe gives no version label: the package tool takes the MSI's own ProductVersion, and a label made from the release's three numbers could be refused. This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false.</string>
+        <string>NOT WORKING (expected). Its parent, the download recipe, is expected to stop at its first run (see the parent's Description), so this recipe publishes nothing (the first run, on 2026-10-04, stopped at the parent's provider, as expected). Hands the downloaded LibreOffice installer to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. The recipe gives no version label: the package tool takes the MSI's own ProductVersion, and a label made from the release's three numbers could be refused. This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false.</string>
         <key>Identifier</key>
         <string>com.github.serrc-techops.pcman.LibreOffice</string>
         <key>Input</key>

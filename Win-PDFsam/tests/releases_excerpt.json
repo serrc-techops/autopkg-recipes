@@ -1,0 +1,368 @@
+{
+ "_note": "Names, sizes and whether GitHub records a digest, read from the public release list of torakiki/pdfsam on 2026-10-04 (the newest 14 releases, newest first, in the order that GitHub listed them). Not the whole record: no digest value is kept and the assets of the other systems are left out; the Windows files are all there.",
+ "releases": [
+  {
+   "tag_name": "v6.0.6",
+   "prerelease": false,
+   "published_at": "2026-10-02T06:43:06Z",
+   "assets": [
+    {
+     "name": "pdfsam-basic-6.0.6-windows-x64.msi",
+     "size": 97030144,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.6-windows-x64.msi.asc",
+     "size": 228,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.6-windows-x64.zip",
+     "size": 95477850,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.6-windows-x64.zip.asc",
+     "size": 228,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v6.0.5",
+   "prerelease": false,
+   "published_at": "2026-08-05T11:57:42Z",
+   "assets": [
+    {
+     "name": "pdfsam-basic-6.0.5-windows-x64.msi",
+     "size": 98328576,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.5-windows-x64.msi.asc",
+     "size": 228,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.5-windows-x64.zip",
+     "size": 96789920,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.5-windows-x64.zip.asc",
+     "size": 228,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v6.0.4",
+   "prerelease": false,
+   "published_at": "2026-07-10T16:47:05Z",
+   "assets": [
+    {
+     "name": "pdfsam-basic-6.0.4-windows-x64.msi",
+     "size": 98250752,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.4-windows-x64.msi.asc",
+     "size": 228,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.4-windows-x64.zip",
+     "size": 96712931,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.4-windows-x64.zip.asc",
+     "size": 228,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v6.0.3",
+   "prerelease": false,
+   "published_at": "2026-07-10T08:02:43Z",
+   "assets": [
+    {
+     "name": "pdfsam-basic-6.0.3-windows-x64.msi",
+     "size": 98242560,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.3-windows-x64.msi.asc",
+     "size": 228,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.3-windows-x64.zip",
+     "size": 96712717,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.3-windows-x64.zip.asc",
+     "size": 228,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v6.0.1",
+   "prerelease": false,
+   "published_at": "2026-05-01T07:55:49Z",
+   "assets": [
+    {
+     "name": "pdfsam-basic-6.0.1-windows-x64.msi",
+     "size": 98209792,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.1-windows-x64.msi.asc",
+     "size": 228,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.1-windows-x64.zip",
+     "size": 96682500,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.1-windows-x64.zip.asc",
+     "size": 228,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v6.0.0",
+   "prerelease": false,
+   "published_at": "2026-03-30T21:19:57Z",
+   "assets": [
+    {
+     "name": "pdfsam-basic-6.0.0-windows-x64.msi",
+     "size": 97767424,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.0-windows-x64.msi.asc",
+     "size": 228,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.0-windows-x64.zip",
+     "size": 96249725,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.0-windows-x64.zip.asc",
+     "size": 228,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v6.0.0.M1",
+   "prerelease": true,
+   "published_at": "2026-03-02T16:33:54Z",
+   "assets": [
+    {
+     "name": "pdfsam-basic-6.0.0.M1-windows-x64.zip",
+     "size": 97272531,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-6.0.0.M1-windows-x64.zip.asc",
+     "size": 849,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v5.4.5",
+   "prerelease": false,
+   "published_at": "2026-01-27T07:40:06Z",
+   "assets": [
+    {
+     "name": "pdfsam-basic-5.4.5-windows-x64.msi",
+     "size": 98291712,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-5.4.5-windows-x64.msi.asc",
+     "size": 849,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-5.4.5-windows-x64.zip",
+     "size": 96678313,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-5.4.5-windows-x64.zip.asc",
+     "size": 849,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v5.4.1",
+   "prerelease": false,
+   "published_at": "2025-10-23T15:43:59Z",
+   "assets": [
+    {
+     "name": "pdfsam-basic-5.4.1-windows-x64.msi",
+     "size": 97075200,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-5.4.1-windows-x64.msi.asc",
+     "size": 849,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-5.4.1-windows-x64.zip",
+     "size": 95457144,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-5.4.1-windows-x64.zip.asc",
+     "size": 849,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v5.4.0",
+   "prerelease": false,
+   "published_at": "2025-09-24T15:10:27Z",
+   "assets": [
+    {
+     "name": "pdfsam-basic-5.4.0-windows-x64.msi",
+     "size": 86708224,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-5.4.0-windows-x64.msi.asc",
+     "size": 849,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-5.4.0-windows-x64.zip",
+     "size": 85103219,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-5.4.0-windows-x64.zip.asc",
+     "size": 849,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v5.3.2",
+   "prerelease": false,
+   "published_at": "2025-07-24T10:13:08Z",
+   "assets": [
+    {
+     "name": "pdfsam-basic-5.3.2-windows-x64.msi",
+     "size": 86827008,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-5.3.2-windows-x64.msi.asc",
+     "size": 849,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-5.3.2-windows-x64.zip",
+     "size": 85223358,
+     "digest_recorded": true
+    },
+    {
+     "name": "pdfsam-basic-5.3.2-windows-x64.zip.asc",
+     "size": 849,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v5.3.1",
+   "prerelease": false,
+   "published_at": "2025-04-18T10:40:26Z",
+   "assets": [
+    {
+     "name": "pdfsam-basic-5.3.1-windows-x64.msi",
+     "size": 83132416,
+     "digest_recorded": false
+    },
+    {
+     "name": "pdfsam-basic-5.3.1-windows-x64.msi.asc",
+     "size": 849,
+     "digest_recorded": false
+    },
+    {
+     "name": "pdfsam-basic-5.3.1-windows-x64.zip",
+     "size": 81525515,
+     "digest_recorded": false
+    },
+    {
+     "name": "pdfsam-basic-5.3.1-windows-x64.zip.asc",
+     "size": 849,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v5.3.0",
+   "prerelease": false,
+   "published_at": "2025-01-24T07:53:39Z",
+   "assets": [
+    {
+     "name": "pdfsam-basic-5.3.0-windows-x64.msi",
+     "size": 83103744,
+     "digest_recorded": false
+    },
+    {
+     "name": "pdfsam-basic-5.3.0-windows-x64.msi.asc",
+     "size": 849,
+     "digest_recorded": false
+    },
+    {
+     "name": "pdfsam-basic-5.3.0-windows-x64.zip",
+     "size": 81493707,
+     "digest_recorded": false
+    },
+    {
+     "name": "pdfsam-basic-5.3.0-windows-x64.zip.asc",
+     "size": 849,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v5.2.9",
+   "prerelease": false,
+   "published_at": "2024-10-28T10:49:16Z",
+   "assets": [
+    {
+     "name": "pdfsam-5.2.9-windows.zip",
+     "size": 81034963,
+     "digest_recorded": false
+    },
+    {
+     "name": "pdfsam-5.2.9-windows.zip.asc",
+     "size": 833,
+     "digest_recorded": false
+    },
+    {
+     "name": "pdfsam-5.2.9.msi",
+     "size": 82644992,
+     "digest_recorded": false
+    }
+   ]
+  }
+ ]
+}

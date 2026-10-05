@@ -1,14 +1,14 @@
 # Win-BambuStudio
 
-A Windows recipe pair: Bambu Studio, the public Windows `.exe` installer, with the version label read from the file itself.
+A Windows recipe pair: Bambu Studio, the public Windows `.exe` installer, with the version label taken from the file's name.
 
-**Status. NOT rehearsed, and the facts of the source NOT fetched by the writer: the network was closed, so nothing here was run with AutoPkg and nothing was read from GitHub or from the vendor. Every fact below is from the writer's knowledge or from the pattern of another recipe of this repository, and the first run on the build Mac is the check of each one: (1) the repository is `bambulab/BambuStudio` and it publishes its Windows installer as a release asset; (2) the asset name has the shape `Bambu_Studio_win_public-v<version>-<number>.exe`, where the number after the version is a build date (for the newest tag it would be `Bambu_Studio_win_public-v02.08.04.61-<build date>`, with the build date and the file name's end NOT known), which is what `SEARCH_PATTERN` matches; (3) the release tag is `v` followed by the version, with leading zeros (four parts of two digits), so AutoPkg 2.9.0 (which strips the leading `v`, read in its source) makes `version` from it; the download recipe then overwrites `version` with the `ProductVersion` that `WindowsExeVersion` reads from the installer, so the tag is no longer the label; (4) GitHub records a digest for the asset, so that `GitHubAssetDigest` finds one; (5) the installer is an NSIS installer that takes `/S` as its silent switch (from the writer's knowledge, not read in the installer). Read through git on 2026-10-02 (tags only; the release assets and their digests were NOT fetched): the newest tags of `bambulab/BambuStudio` are `v02.08.03.65`, `v02.08.03.66`, `v02.08.04.57` and `v02.08.04.61`. The shape of the installer's own ProductVersion is NOT known: if it keeps the tag's leading zeros, the label has them too, and whether the package tool accepts a version part with a leading zero, and whether the Cimian client orders that label as the EXE's own version, is NOT established. The first dry run shows the label and the package tool's answer, and the label must then equal the EXE's own ProductVersion as a person reads it on a PC. When any of this fails, stop. Nothing was written. Read the real release page or the real release, and correct the recipe. Never change the trust information first. A real run has NOT been run by anyone, not against a share and not on a PC. `pcman catalogs` was NOT rehearsed either.**
+**Status. Changed after the first dry run with AutoPkg 2.9.0, and run again after the change (2026-10-04). The first run (before the change) chose `Bambu_Studio_win_public-v02.05.00.66-20260128215914.exe`, a file of January 2026, and stopped at `WindowsExeVersion`: the file has no version resource (RT_VERSION). Two things were wrong, and the release list explains both. (1) The installer has no version of its own, so the label is now taken from the file's name by `VersionFromName` (see "The version label"). (2) The pattern of that run, `Bambu_Studio_win_public-v[0-9.]+-[0-9]+\.exe$`, knew one spelling of the name, and the newer releases use others: AutoPkg 2.9.0 takes the first release (in GitHub's order, newest first, a pre-release skipped) that has a file whose name the pattern matches from its start (`GitHubReleasesInfoProvider.py`, `select_asset`, `re.match`), however old, so the recipe went back to January 2026 instead of stopping. The test file writes that selection down as a function: on the saved list the old pattern takes that January file and the new one takes the newest. After the change a dry run under AutoPkg 2.9.0 selected `Bambu_Studio_win-v02.08.02.61-20260820225108.exe` of `v02.08.02.61`, the newest release that is not a pre-release, passed the digest and checksum steps and took the label from the file name (`VersionFromName`): the four parts of `v02.08.02.61` without the `v`, leading zeros kept. Later that day the first import with the package tool (the command of step a.3 below, run with `--no-prompt` and `--build`) made the item `bambustudio` (an EXE item, label the four parts of `v02.08.02.61` without the `v`, `--install-arguments /S`, architectures `x64`, the catalog `Production`, no install path), and the real run of the override of `BambuStudio.pcman` (`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false) ended with `PcmanImporter: Nothing new: bambustudio <the label> is in the repository already. Nothing was written.` The first import went beside the Chocolatey item `bambustudio` (version 1.0) without any option of the tool; the Chocolatey item file and its `bambustudio-1.0` pkginfo remain until a person removes them by hand, and `pcman validate` warns that the item has two versions until then. `pcman catalogs` ran a second time later on 2026-10-04, after the first imports of this and three other programs: the same command wrote the catalogs `All` and `Production`, 110 items each (106 before), with exit 0, and `Production` lists both versions of this name (the Chocolatey item's `1.0` and the new one). **The package tool took the label with its leading zeros as written**: no refusal, no WARNING and no note in the dry run or the real import; it keeps the spelling in the item file, in the pkginfo and in both file names, it ranks it above the Chocolatey item's `1.0` (`pcman versions` lists it first), and its `--if-new` found it as "Nothing new". (Its `pcman validate` WARNING writes the new version first, as `<the label>, 1.0`, where it writes `1.0` first for every other name; that looks like a sort of the text, and nothing that is written depends on it.) The Cimian client compares the parts of a version as numbers (see "The version label"). **The installer is an NSIS installer** (the file has "Nullsoft" and "NSIS" strings and NSIS's `.ndata` section; its stub is a 32-bit program that says nothing about the architecture of what it installs), so the `/S` of this README is the right kind of switch; it was **used on 2026-10-04, not tested on a PC**. No install path was given, so the template has NO install check until a person adds one. Nothing has been installed on a PC. Facts of the source were read by the writer on 2026-10-04 from GitHub's public release list of `bambulab/BambuStudio` (`https://api.github.com/repos/bambulab/BambuStudio/releases`, the newest 28 releases; read only, no file was downloaded). READ: (1) the project publishes its releases there and flags its betas as pre-releases: the newest two, `v02.08.04.57` and `v02.08.03.66`, are pre-releases, and the newest release that is not one is `v02.08.02.61` (published 2026-08-21); (2) each release has one Windows `.exe` installer (the asset of `v02.08.02.61` is `Bambu_Studio_win-v02.08.02.61-20260820225108.exe`, 429020440 bytes) and a Windows `.zip` of the same build (in `v02.05.02.51` and later with the same name apart from its ending), which the pattern does not take and nobody opened; (3) the project has used four spellings of the installer's name: `Bambu_Studio_win_public-v<version>-<stamp>.exe` (until `v02.05.02.51`), `Bambu_Studio_win-v<version>-<stamp>.exe` (from `v02.05.03.62`), `Bambu_Studio_win_v<version>-<stamp>.exe` (`v02.08.04.57`) and `Bambu_Studio_public-v<version>-<stamp>.exe` (`v02.02.01.60`), where the stamp is a build date and time of 14 digits; the pattern is now `Bambu_Studio_(?:win_public|win|public)[_-]v([0-9]+(?:\.[0-9]+)+)-[0-9]+\.exe$`, which takes exactly one file in each of the 28 releases, the installer, and its one group is the label; (4) the tag is not always the version in the file's name: `v02.05.03.62` holds an installer whose name says `v02.05.03.61`, `v02.05.00.67` one that says `v02.05.00.66` and `v02.05.00.65` one that says `v02.05.00.64`, and one tag starts with a capital V (`V02.00.03.54`), which the provider does not strip (it strips a lower-case `v` only), so the label is taken from the name and not from the tag; (5) GitHub records a SHA-256 digest for the installer of every release from `v02.01.00.59` (2025-06-03) to the newest, and for none of `V02.00.03.54` (2025-04-24) and older, so `GitHubAssetDigest` finds one for the release that the recipe takes. NOT established: that the switch `/S` installs silently on a PC; the install path and the architecture of the installed program; the version that the installed program reports about itself (the installer has no version resource and nobody installed it), and whether it is written with the leading zeros of the label; that the next release keeps one of the four spellings (if the project renames the file again, the provider goes back to the newest older release that matches, as it did on 2026-10-04: read the line of the first dry run that names the selected asset and release); any install on a PC. An install on a test PC is the check of each of them. When a run fails, stop. Nothing was written. Read the real release page or the real release, and correct the recipe. Never change the trust information first. The real run of 2026-10-04 published nothing, because the item was there already.**
 
 | Recipe | Identifier | What it does |
 | --- | --- | --- |
-| `BambuStudio-Win.download.recipe` | `com.github.serrc-techops.download.BambuStudio-Win` | Takes the newest non-pre-release of `bambulab/BambuStudio` on GitHub that has a file matching `SEARCH_PATTERN`. Downloads it under its own file name. Reads the SHA-256 that GitHub records for the file and stops when the file does not match. Last, reads the `ProductVersion` from the `.exe` itself and sets `version` to it |
-| `BambuStudio.cimian.recipe` | `com.github.serrc-techops.cimian.BambuStudio` | Parent: the download recipe. Hands the file to `CimianImporter`, which publishes it as a new version of the item into any Cimian repository (a copy of the repository's newest pkginfo of the item, with what belongs to the installer file replaced), or says that nothing is new. It passes the version label that the download recipe read from the `.exe` (`%version%`) |
-| `BambuStudio.pcman.recipe` | `com.github.serrc-techops.pcman.BambuStudio` | Parent: the download recipe. Hands the file to the package tool (`pcman`), which publishes it as a new version of the template item, or says that nothing is new. It passes the version label that the download recipe read from the `.exe` (`%version%`) |
+| `BambuStudio-Win.download.recipe` | `com.github.serrc-techops.download.BambuStudio-Win` | Takes the newest non-pre-release of `bambulab/BambuStudio` on GitHub that has a file matching `SEARCH_PATTERN`. Downloads it under its own file name. Reads the SHA-256 that GitHub records for the file and stops when the file does not match. Last, takes the version label from the file's name (`VersionFromName`: the one group of `SEARCH_PATTERN`, checked for its shape) and sets `version` to it |
+| `BambuStudio.cimian.recipe` | `com.github.serrc-techops.cimian.BambuStudio` | Parent: the download recipe. Hands the file to `CimianImporter`, which publishes it as a new version of the item into any Cimian repository (a copy of the repository's newest pkginfo of the item, with what belongs to the installer file replaced), or says that nothing is new. It passes the version label that the download recipe took from the file's name (`%version%`) |
+| `BambuStudio.pcman.recipe` | `com.github.serrc-techops.pcman.BambuStudio` | Parent: the download recipe. Hands the file to the package tool (`pcman`), which publishes it as a new version of the template item, or says that nothing is new. It passes the version label that the download recipe took from the file's name (`%version%`) |
 
 **Three recipes.** The download recipe is the parent of both of the others. `BambuStudio.cimian.recipe` is for any Cimian repository: its last step is `CimianImporter`, and no other tool is needed. `BambuStudio.pcman.recipe` is the package tool's way, with `PcmanImporter`: it is what the `.cimian.recipe` was before the processors were separated from the package tool. The section "With any Cimian repository" comes first below, then "With the package tool (pcman)".
 
@@ -34,31 +34,46 @@ Below, `pcman` stands for
 
 ## The version label
 
-The installer is an `.exe`, so the recipe passes the label to the package tool
-(`pcman_version` is `%version%`): the tool never reads a version from an EXE. The label
-is the file's own. AutoPkg makes `version` from the release tag and removes the leading
-`v` (the tag has four parts of two digits each, so `version` keeps their leading zeros),
-and the last step of the download recipe, `WindowsExeVersion` (shared, see its README),
-reads the `ProductVersion` of the downloaded installer and overwrites `version` with it
-(when that string is numbers and dots only; otherwise it takes the four numbers of the
-fixed file information; a label of zeros stops the run). The tag is not used as the
-label: it belongs to the release and not to the file, and a release whose tag and file
-disagree would be published under the tag.
+The installer is an `.exe`, so the recipes pass the label on: the pcman recipe to the package tool
+(`pcman_version` is `%version%`), the cimian recipe to `CimianImporter` (`version` is `%version%`); neither tool reads a version from an EXE. This installer has
+no version resource of its own: in the first dry run with AutoPkg 2.9.0 (2026-10-04)
+`WindowsExeVersion` stopped on a Bambu Studio installer with "the file has no version resource
+(RT_VERSION)". So the label is the version in the file's name. AutoPkg makes `version` from the
+release tag first, and the last step of the download recipe, `VersionFromName` (shared, see its
+section in the shared README), matches the downloaded file's name with `SEARCH_PATTERN`, whose
+one group is the label, checks that the group is two to four numbers joined by dots, and
+overwrites `version` with it. The label keeps the leading zeros of the name (`v02.08.02.61`
+gives a label of four parts of two digits). The tag is not the source: it belongs to the release
+and not to the file, and it is not always the file's version (see the status line: three tags in
+the list hold installers that name another build).
 
-The shape of the installer's own ProductVersion is NOT known. If it keeps the tag's
-leading zeros, two questions are open, and nobody has answered them:
+**What the label is not.** It is not the file's own version (the file has none) and it is not
+what the installed program says about itself: that is NOT established, because nobody has
+installed the program. The project sets the number in the name, and the label is only as good as
+that word.
 
-- Does the package tool accept a part with a leading zero? The first dry run shows its
-  answer. A refusal is an error of the tool, shown by the processor; nothing is written.
-- Does the Cimian client order that label as the EXE's own version? The label must
-  equal the EXE's own ProductVersion as a person reads it on a PC (the file's
-  properties, after a hand install). If it does not, stop and tell the owner: a label
-  that the client orders wrongly would hide a newer version or offer an older one.
+One question was answered on 2026-10-04 and one is still open:
 
-The first dry run (with `-v`) prints two lines from the label step: `... ProductVersion
-'...', product version numbers ..., file version '...', file version numbers ...` and
-`version is ..., taken from ...`. **Read them first**, and compare the label with the
-file's properties on a PC.
+- **Answered: the package tool accepts a part with a leading zero.** It took the label as written: no
+  refusal, no WARNING and no note, and it keeps the spelling everywhere (see the status line). (The
+  importer of the way for any Cimian repository takes the label too: it needs a digit first and
+  letters, numbers, dots, underscores and hyphens only.)
+- **Open: does the Cimian client order that label as the program's own version?** It compares the parts
+  of a version as numbers, so a part `02` is `2` (`int.TryParse` in `CatalogService.CompareVersions`,
+  `CatalogService.cs:260-292`, and `ParseVersionPart`, `:374-389`, of `cli/managedsoftwareupdate/Services`; `long.TryParse`
+  in `VersionService.ParseVersion` of `shared/core`; read at commit `3cf02c4` of `windowsadmins/cimian` on
+  2026-10-04, and a second reader found the same code at `e10498b`). The client has two rules that read a label as a build
+  time, and this label, which has four parts and starts with `02`, meets neither: `VersionService.TryParseCalendarBuildStamp`
+  needs a first part that is a year of four digits, and `CatalogService.ExpandBuildTimestamp` (the code of the catalog order and of
+  the check of installed versions) reads a label of exactly three parts, `yy.M.ddHH`, with `yy` from 20 to 99, a month from 1 to 12 and a
+  third part of three or four digits, as a build time. What the program itself shows has still to be compared with the label, on a PC after
+  a hand install (its About box, or Apps & features). If the numbers differ, stop and tell the owner: a label that the
+  client orders wrongly would hide a newer version or offer an older one.
+
+The first dry run (with `-v`) prints the lines of the provider that name the selected asset and
+release (`Selected asset ... from release ...`) and one line from the label step: `version is ...,
+taken from the file name ...`. **Read them first**: the selected release must be the newest that
+is not a pre-release (see the status line for why).
 
 ## Run every override with `--override-dir`
 
@@ -89,7 +104,7 @@ An override that was made from this recipe before the recipes were separated fro
    The root is the folder that has `pkgs/` and `pkgsinfo/`. Write the value as a string. The share must be mounted;
    `CimianImporter` never makes the root, `pkgs/` or `pkgsinfo/`. The input is named `cimian_repo`; the preference is the one name in upper case.
 
-3. **The version label** needs no program: the download recipe's step `WindowsExeVersion` reads it from the `.exe` itself, and this recipe passes it on as `%version%`.
+3. **The version label** needs no program: the download recipe's step `VersionFromName` takes it from the installer's file name, and this recipe passes it on as `%version%`.
 
 4. **The item.** The item's name is the recipe's input `CIMIAN_NAME`, `bambustudio`. If the repository has an item of that name, its newest pkginfo (by the client's order of versions) is the template: nothing is to be made, and its catalogs, arguments, scripts and checks are carried into the new version. The recipe's `pkginfo` does not change a template: a key that the template lacks is added, a key that the template has with another value keeps the template's, and a NOTE names each (the display name of the recipe does not rename an item that has another). `cimian_pkginfo_wins` set to true in the override lets the recipe's `pkginfo` win instead, for example `pkginfo: {catalogs: [Testing]}` to put new versions into another catalog first. If it has no item of that name, the first real run builds a pkginfo from the recipe's `pkginfo` (the display name and the developer) and the inputs, in the catalog `Development`; that pkginfo is then the template of every later version. If the repository has pkginfo files of the item for several architectures, the run stops until the override gives `cimian_architecture` (for example `x64`).
 
@@ -110,9 +125,9 @@ Each name must be listed once, from this repository. (Not run: the lines of the 
 
 ### 3. First try: a dry run
 
-Run the override BY PATH and with `--override-dir` (see above):
+Run the override BY PATH and with `--override-dir` (see above), with `-v` so that the lines of the provider and of the label step are printed:
 
-    autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.cimian.recipe
+    autopkg run -v --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.cimian.recipe
 
 **Why by path:** the recipe's name or identifier (`com.github.serrc-techops.cimian.BambuStudio`) runs the recipe itself, not the override. The recipe itself never leaves the dry run, so the real run of step 5 would never happen.
 
@@ -190,23 +205,23 @@ This way needs the owner's package tool, `pcman`, which is **not part of this re
    (the share mounted).
 
 3. **The template item, made once by a first import**, so that its pkginfo and
-   installer are in the repository. The command, with a real installer that a
-   person has downloaded and checked:
+   installer are in the repository. The command, in the form that ran on 2026-10-04 (it worked as
+   written), with a real installer that a person has downloaded and checked:
 
        pcman import <path of the installer> --name bambustudio --version <label> \
            --display-name "Bambu Studio" --category <the category> \
            --developer "Bambu Lab" --description "<the description>" \
            --directory <the folder of the item> \
-           --install-arguments /S \
-           --install-path '<the path of the installed program, read on a PC after a hand install>' \
-           --architectures x64 --no-prompt --build
+           --install-arguments /S --architectures x64 \
+           --icon <the file name of an icon that the repository has> --no-prompt --build
 
    `--version <label>` is for an EXE only, and the label is the one that step c will
-   show (see "The version label"). `/S` is the silent switch of an NSIS installer: it
-   is from the writer's knowledge, not read in the installer. Read the installer's own
-   behaviour on a test PC before the first import, and use what you find. The install
-   path is a fact of the installer too: it is not given here because the writer did not
-   read it. Add the icon as the package tool's README describes. A person changes the
+   show (see "The version label"). The installer is an NSIS installer (the file has "Nullsoft" and "NSIS" strings and
+   NSIS's `.ndata` section), so `/S` is the right kind of switch; it was **used on 2026-10-04, not tested on a PC**: test
+   that it installs without a window on a test PC. **Still to fill in:** the architecture and the install path. The stub of the
+   installer is a 32-bit program that says nothing about the architecture of what it installs, so `--architectures x64` is an
+   expectation, and `--install-path` was left out because the path must be read on a PC after a hand install; the template
+   then has no install check, and a wrong path would install again at every run, so add it only after reading it. A person changes the
    template later; nothing else does. **If the template is made from the installer that
    is current on GitHub, the first run says "Nothing new" (see step c). To see a dry run
    that would publish, make the template from an older release.**
@@ -230,7 +245,7 @@ The command takes the recipe's name, `BambuStudio.pcman`, not a path. It writes
 `<the Windows overrides folder>/BambuStudio.pcman.recipe` with the identifier
 `local.pcman.BambuStudio` and the trust information of the two recipes and the four
 processors that are not part of AutoPkg itself (`GitHubAssetDigest`, `ChecksumVerifier`,
-`WindowsExeVersion`, `PcmanImporter`). **Open the written file and read
+`VersionFromName`, `PcmanImporter`). **Open the written file and read
 `ParentRecipe`: it must be `com.github.serrc-techops.pcman.BambuStudio`**, the identifier of the recipe that the override was made from (AutoPkg writes the identifier of the recipe it found by that name). Another value
 means that AutoPkg found another recipe of the same name.
 
@@ -252,15 +267,19 @@ This is the first check of every fact in the status line. The run may stop befor
 dry run, and that is the check working:
 
 - **No asset matches** (the lines of the provider name the pattern and the release):
-  the real asset name is not the one the writer knows. Read the release's real asset
+  the real asset name is not one that the pattern knows. Read the release's real asset
   list and correct `SEARCH_PATTERN`.
+- **The run goes on, but with an old release** (the line `Selected asset ... from release ...`
+  names a release that is not the newest non-pre-release): the newest one has a name that the
+  pattern does not take, and the provider went back to an older one. Stop. This is what
+  happened on 2026-10-04. Correct `SEARCH_PATTERN` before anything is published.
 - **`GitHubAssetDigest` stops with its error** (the record has no digest): GitHub
   recorded none for this asset. Nothing was written. The program is a hand import
   until a release with a digest exists.
-- **`WindowsExeVersion` stops** (the file has no version resource, is not a PE file, or
-  says a version of zeros): the file is not what the recipe expects. Nothing was written.
-  Read the file's properties on a Windows PC, and import by hand with a label that a
-  person has read.
+- **`VersionFromName` stops** (the file's name does not match the pattern, or the number in
+  it is not two to four numbers joined by dots): the name is not what the recipe expects.
+  Nothing was written. Read the release's real asset list, and import by hand with a label
+  that a person has read.
 - **The package tool refuses the label**: see "The version label".
 
 Expected when everything holds and the current version is not yet in the repository
@@ -274,8 +293,8 @@ Expected when everything holds and the current version is not yet in the reposit
 The plan itself is not printed. The repository is unchanged. If the current
 version is in the repository already (the template was made from it), the line
 is `Nothing new: bambustudio <label> is in the repository already. Nothing was written.`
-instead. That is correct. **Read the label in that line and compare it with the EXE's own
-ProductVersion** (see "The version label").
+instead. That is correct. **Read the label in that line and compare it with the version that the
+installed program shows** (see "The version label").
 
 ## d. Switch a real run on
 
@@ -301,8 +320,7 @@ every recipe of that run.
    marked "published by pcman import".
 
 3. **Build the catalogs: `pcman catalogs`.** Without it no PC sees the new
-   version. (Not rehearsed. The package tool prints "nothing to run" when its
-   catalogs command is not set.)
+   version. (Run on 2026-10-04: `pcman catalogs` ran twice that day, the second time after the first imports of this and three other programs. The tool's configured command ran `makecatalogs` on the repository's server and wrote the catalogs `All` and `Production`, 110 items each in the second run, with exit 0. The package tool prints "nothing to run" when its catalogs command is not set.)
 
 4. The second run, by path again:
 
@@ -343,6 +361,9 @@ tests show this failure; it was NOT seen on this program.)
 - The recipe takes the newest non-pre-release only. A beta that the project marks as a
   pre-release is not downloaded, unless the override sets `include_prereleases` (see
   "Pre-releases" at the top).
+- AutoPkg's provider takes the first release, newest first, that has a file whose name
+  matches `SEARCH_PATTERN`, however old. When a name changes, the recipe does not stop: it
+  goes back. Read the `Selected asset` line of every dry run (the run is made with `-v`).
 
 ## Tests
 

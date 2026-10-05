@@ -1,14 +1,14 @@
 # Win-AngryIPScanner
 
-A Windows recipe pair: Angry IP Scanner, the `.exe` installer (`ipscan-<version>-setup.exe`), with the version label read from the file itself.
+A Windows recipe pair: Angry IP Scanner, the `.exe` installer (`ipscan-<version>-setup.exe`), with the version label taken from the file's name.
 
-**Status. NOT rehearsed with AutoPkg: nothing in this folder has run with AutoPkg, the package tool, a share or a PC. Some facts of the source were read by the writer on 2026-10-04 from GitHub's public release list of `angryip/ipscan` (`https://api.github.com/repos/angryip/ipscan/releases`, the newest four releases; read only, no file was downloaded). READ: (1) the project publishes its releases there; the tags are plain numbers without a `v` (`3.10.0`, published 2026-08-31, then `3.9.3`, `3.9.2` and `3.9.1`) and none is flagged as a pre-release; (2) the Windows files of `3.10.0` are `ipscan-3.10.0-setup.exe` (24912120 bytes) and `ipscan-3.10.0-win.exe` (3009741 bytes); those of `3.9.3` are `ipscan-3.9.3-setup.exe` (22162953 bytes) and `ipscan-win64-3.9.3.exe` (3064425 bytes), and `3.9.2` and `3.9.1` have the same two kinds of name; (3) GitHub records a SHA-256 digest for every file of `3.10.0`, `3.9.3` and `3.9.2`, and for none of `3.9.1` (uploaded in 2023). **Installer or portable program?** The release's text does not say in words which file is the installer (the `body` field of GitHub's answer holds the change list only, and neither of the words "installer" and "portable" is in it for `3.10.0` and `3.9.3`; the release's `README` file was not opened), so this is by name and size: the `-setup.exe` is the installer (18 to 25 MB; the change list of `3.10.0` says that Java 25 is bundled with the Windows builds), and the other Windows file (3 MB) is the stand-alone program, with no installer, that a silent switch would only start. Nobody opened either file, so even that is NOT established beyond the names and the sizes. The pattern of an earlier draft of this recipe, `ipscan-win64-[0-9.]+\.exe$`, names the stand-alone program of `3.9.3` and older and matches nothing in `3.10.0`: AutoPkg 2.9.0 takes the first release (in GitHub's order, newest first, a pre-release skipped) that has a file whose name the pattern matches from its start (`GitHubReleasesInfoProvider.py`, `select_asset`, `re.match`); the test file writes that down as a function, and run on the saved list it takes `ipscan-win64-3.9.3.exe` and skips `3.10.0`. The pattern is now `ipscan-[0-9.]+-setup\.exe$`, which takes the installer of each of the four releases and no other file. The label is no longer the tag: the download recipe reads it from the installer with `WindowsExeVersion` (see "The label"). NOT established: that the installer is built with Inno Setup, so that the silent switches are `/VERYSILENT /NORESTART` (from the writer's knowledge, the installer was not opened); the installer's architecture, its install path and its ProductVersion; that the next release keeps these names; `pcman catalogs`; any run with AutoPkg. The first run on the build Mac is the check of each of them. When a run fails (no asset matches, the asset has no digest, the digest does not match, the executable has no version resource or says zeros, the package tool refuses the label): stop; nothing was written. Read the real release page and the real asset list of the project, and correct the recipe or the template, never the trust information first. Where a line below says "expected", it is what the recipes and the other folders lead to, not something that was printed. Every override command here carries `--override-dir`: see the paragraph below.**
+**Status. Changed after the first dry run with AutoPkg 2.9.0, and run again after the change (2026-10-04). The first run (before the change) stopped at the last step of the download recipe: `WindowsExeVersion` said that `ipscan-3.10.0-setup.exe` has no version resource (RT_VERSION), so the installer carries no version of its own and the label is now taken from the file's name by `VersionFromName` (see "The label"). The steps before it, the download and the checks of the digest, had passed (by the order of the steps; that run's log was not kept). After the change a dry run under AutoPkg 2.9.0 selected `ipscan-3.10.0-setup.exe` of `3.10.0`, passed the digest and checksum steps and took the label `3.10.0` from the file name (`VersionFromName`). Later that day the first import with the package tool (the command of step a.3 below, run with `--no-prompt` and `--build`) made the template `angryip` (an EXE item, label `3.10.0`, `--install-arguments /S`, architectures `x64`, the catalog `Production`, no install path), and the real run of the override of `AngryIPScanner.pcman` (`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false) ended with `PcmanImporter: Nothing new: angryip 3.10.0 is in the repository already. Nothing was written.` The first import went beside the Chocolatey item `angryip` (version 1.0) without any option of the tool; the Chocolatey item file and its `angryip-1.0` pkginfo remain until a person removes them by hand, and `pcman validate` warns that the item has two versions until then. `pcman catalogs` ran a second time later on 2026-10-04, after the first imports of this and three other programs: the same command wrote the catalogs `All` and `Production`, 110 items each (106 before), with exit 0, and `Production` lists both versions of this name (the Chocolatey item's `1.0` and the new one). **The installer is an NSIS installer, not an Inno Setup installer** (the file has "Nullsoft" and "NSIS" strings and NSIS's `.ndata` section), so the switch used was `/S` and not `/VERYSILENT /NORESTART`; it was **used on 2026-10-04, not tested on a PC**. The file's stub is a 32-bit program that says nothing about the architecture of what it installs: `x64` was chosen from the project's older file names (`win64`) and the bundled Java, and no install path was given, so the template has NO install check until a person adds one. Nothing has been installed on a PC. Some facts of the source were read by the writer on 2026-10-04 from GitHub's public release list of `angryip/ipscan` (`https://api.github.com/repos/angryip/ipscan/releases`, the newest four releases; read only, no file was downloaded). READ: (1) the project publishes its releases there; the tags are plain numbers without a `v` (`3.10.0`, published 2026-08-31, then `3.9.3`, `3.9.2` and `3.9.1`) and none is flagged as a pre-release; (2) the Windows files of `3.10.0` are `ipscan-3.10.0-setup.exe` (24912120 bytes) and `ipscan-3.10.0-win.exe` (3009741 bytes); those of `3.9.3` are `ipscan-3.9.3-setup.exe` (22162953 bytes) and `ipscan-win64-3.9.3.exe` (3064425 bytes), and `3.9.2` and `3.9.1` have the same two kinds of name; (3) GitHub records a SHA-256 digest for every file of `3.10.0`, `3.9.3` and `3.9.2`, and for none of `3.9.1` (uploaded in 2023); (4) in each of the four the number in the installer's name is the release's tag (`3.10.0`, `3.9.3`, `3.9.2`, `3.9.1`). **Installer or portable program?** The release's text does not say in words which file is the installer (the `body` field of GitHub's answer holds the change list only, and neither of the words "installer" and "portable" is in it for `3.10.0` and `3.9.3`; the release's `README` file was not opened), so this is by name and size: the `-setup.exe` is the installer (18 to 25 MB; the change list of `3.10.0` says that Java 25 is bundled with the Windows builds), and the other Windows file (3 MB) is the stand-alone program, with no installer, that a silent switch would only start. Nobody opened either file, so even that is NOT established beyond the names and the sizes. The pattern of an earlier draft of this recipe, `ipscan-win64-[0-9.]+\.exe$`, names the stand-alone program of `3.9.3` and older and matches nothing in `3.10.0`: AutoPkg 2.9.0 takes the first release (in GitHub's order, newest first, a pre-release skipped) that has a file whose name the pattern matches from its start (`GitHubReleasesInfoProvider.py`, `select_asset`, `re.match`); the test file writes that down as a function, and run on the saved list it takes `ipscan-win64-3.9.3.exe` and skips `3.10.0`. The pattern is now `ipscan-([0-9]+(?:\.[0-9]+)+)-setup\.exe$`, which takes the installer of each of the four releases and no other file; its one group is the label. The label is neither the tag nor read from the file: `VersionFromName` takes it from the name (see "The label"). NOT established: that the switch `/S` installs silently on a PC; the architecture of the installed program and its install path (the template has none); the version that the installed program reports about itself (the installer has no version resource, and nobody installed it); that the next release keeps these names; any install on a PC. An install on a test PC is the check of each of them. When a run fails (no asset matches, the asset has no digest, the digest does not match, the file's name does not give a label of the right shape, the package tool refuses the label): stop; nothing was written. Read the real release page and the real asset list of the project, and correct the recipe or the template, never the trust information first. Where a line below says "expected", it is what the recipes and the other folders lead to, not something that was printed. Every override command here carries `--override-dir`: see the paragraph below.**
 
 | Recipe | Identifier | What it does |
 | --- | --- | --- |
-| `AngryIPScanner-Win.download.recipe` | `com.github.serrc-techops.download.AngryIPScanner-Win` | Takes the newest non-pre-release of `angryip/ipscan` on GitHub that has a file matching `SEARCH_PATTERN`. Downloads it under its own file name. Reads the SHA-256 that GitHub records for the file and stops when the file does not match. Last, reads the `ProductVersion` from the `.exe` itself and sets `version` to it |
-| `AngryIPScanner.cimian.recipe` | `com.github.serrc-techops.cimian.AngryIPScanner` | Parent: the download recipe. Hands the file to `CimianImporter`, which publishes it as a new version of the item into any Cimian repository (a copy of the repository's newest pkginfo of the item, with what belongs to the installer file replaced), or says that nothing is new. It passes the version label that the download recipe read from the `.exe` (`%version%`), because the installer is an `.exe` |
-| `AngryIPScanner.pcman.recipe` | `com.github.serrc-techops.pcman.AngryIPScanner` | Parent: the download recipe. Hands the file to the package tool (`pcman`), which publishes it as a new version of the template item, or says that nothing is new. It passes the version label that the download recipe read from the `.exe` (`%version%`), because the installer is an `.exe` |
+| `AngryIPScanner-Win.download.recipe` | `com.github.serrc-techops.download.AngryIPScanner-Win` | Takes the newest non-pre-release of `angryip/ipscan` on GitHub that has a file matching `SEARCH_PATTERN`. Downloads it under its own file name. Reads the SHA-256 that GitHub records for the file and stops when the file does not match. Last, takes the version label from the file's name (`VersionFromName`: the one group of `SEARCH_PATTERN`, checked for its shape) and sets `version` to it |
+| `AngryIPScanner.cimian.recipe` | `com.github.serrc-techops.cimian.AngryIPScanner` | Parent: the download recipe. Hands the file to `CimianImporter`, which publishes it as a new version of the item into any Cimian repository (a copy of the repository's newest pkginfo of the item, with what belongs to the installer file replaced), or says that nothing is new. It passes the version label that the download recipe took from the file's name (`%version%`), because the installer is an `.exe` |
+| `AngryIPScanner.pcman.recipe` | `com.github.serrc-techops.pcman.AngryIPScanner` | Parent: the download recipe. Hands the file to the package tool (`pcman`), which publishes it as a new version of the template item, or says that nothing is new. It passes the version label that the download recipe took from the file's name (`%version%`), because the installer is an `.exe` |
 
 **Three recipes.** The download recipe is the parent of both of the others. `AngryIPScanner.cimian.recipe` is for any Cimian repository: its last step is `CimianImporter`, and no other tool is needed. `AngryIPScanner.pcman.recipe` is the package tool's way, with `PcmanImporter`: it is what the `.cimian.recipe` was before the processors were separated from the package tool. The section "With any Cimian repository" comes first below, then "With the package tool (pcman)".
 
@@ -31,23 +31,32 @@ override's `Input`, and they would beat it.
 
 ## The label
 
-An `.exe` has no version that the package tool reads for itself, so the label is the
-file's own. AutoPkg's `GitHubReleasesInfoProvider` makes `version` from the release's
-tag (`3.10.0`, with no `v` to strip), and the last step of the download recipe,
-`WindowsExeVersion`, reads the `ProductVersion` of the downloaded installer and
-overwrites `version` with it (when that string is numbers and dots only; otherwise it
-takes the four numbers of the fixed file information; a label of zeros stops the run;
-see its section in the shared README). The cimian recipe passes that `version` as
-`pcman_version`. The tag is not used as the label: it belongs to the release and not to
-the file, and a release whose tag and file disagree would be published under the tag.
+An `.exe` has no version that the package tool reads for itself, so the recipe gives one. This
+installer has no version resource of its own: in the first dry run with AutoPkg 2.9.0
+(2026-10-04) `WindowsExeVersion` stopped on `ipscan-3.10.0-setup.exe` with "the file has no
+version resource (RT_VERSION)". So the label is the number in the file's name. AutoPkg's
+`GitHubReleasesInfoProvider` makes `version` from the release's tag (`3.10.0`, with no `v` to
+strip), and the last step of the download recipe, `VersionFromName` (see its section in the
+shared README), matches the downloaded file's name with `SEARCH_PATTERN`, whose one group is the
+label (`3.10.0` for `ipscan-3.10.0-setup.exe`), checks that the group is two to four numbers
+joined by dots, and overwrites `version` with it. The cimian recipe passes it as `version`, the
+pcman recipe as `pcman_version`. The tag is not the source: it belongs to the release and not to the file. In the
+four releases read the tag and the number in the installer's name are the same, so today the
+label is also the tag; if a later release has a name and a tag that differ, the label is the
+name's.
 
-The first dry run (with `-v`) prints two lines from that step: `... ProductVersion
-'...', product version numbers ..., file version '...', file version numbers ...` and
-`version is ..., taken from ...`. **Read them first.** Compare the label with the tag of
-the release and with the file's properties on a PC. The installer's ProductVersion is
-NOT known: it may be the tag, the tag with a fourth part, or something else. If its
-numbers are not the tag's, stop and tell the owner before anything is published. The
-first import (step a) must be made with the same label that the dry run prints.
+**What the label is not.** It is not the file's own version (the file has none) and it is not
+what the installed program says about itself: that is NOT established, because nobody has
+installed the program. The project sets the number in the name, and the label is only as good as
+that word.
+
+The first dry run (with `-v`) prints one line from that step: `version is ..., taken from the file
+name ...`. **Read it first.** (The way for any Cimian repository shows the same label in its line `Would write <CIMIAN_NAME> <version>: ...`.) Before the first import (step a): install the file by hand on a
+test PC, read the version that the program shows (its About box, or Apps & features), and compare
+it with that label. If they differ in their numbers, stop and
+tell the owner before anything is published: a label that the client orders differently from the
+program's own version would hide a newer version or offer an older one. The first import (step a)
+must be made with the same label that the dry run prints.
 
 Below, `pcman` stands for
 `<the package tool's folder>/.venv/bin/python3 <the package tool's folder>/bin/pcman`.
@@ -81,7 +90,7 @@ An override that was made from this recipe before the recipes were separated fro
    The root is the folder that has `pkgs/` and `pkgsinfo/`. Write the value as a string. The share must be mounted;
    `CimianImporter` never makes the root, `pkgs/` or `pkgsinfo/`. The input is named `cimian_repo`; the preference is the one name in upper case.
 
-3. **The version label** needs no program: the download recipe's step `WindowsExeVersion` reads it from the `.exe` itself, and this recipe passes it on as `%version%`.
+3. **The version label** needs no program: the download recipe's step `VersionFromName` takes it from the installer's file name, and this recipe passes it on as `%version%`.
 
 4. **The item.** The item's name is the recipe's input `CIMIAN_NAME`, `angryip`. If the repository has an item of that name, its newest pkginfo (by the client's order of versions) is the template: nothing is to be made, and its catalogs, arguments, scripts and checks are carried into the new version. The recipe's `pkginfo` does not change a template: a key that the template lacks is added, a key that the template has with another value keeps the template's, and a NOTE names each (the display name of the recipe does not rename an item that has another). `cimian_pkginfo_wins` set to true in the override lets the recipe's `pkginfo` win instead, for example `pkginfo: {catalogs: [Testing]}` to put new versions into another catalog first. If it has no item of that name, the first real run builds a pkginfo from the recipe's `pkginfo` (the display name and the developer) and the inputs, in the catalog `Development`; that pkginfo is then the template of every later version. If the repository has pkginfo files of the item for several architectures, the run stops until the override gives `cimian_architecture` (for example `x64`).
 
@@ -102,9 +111,9 @@ Each name must be listed once, from this repository. (Not run: the lines of the 
 
 ### 3. First try: a dry run
 
-Run the override BY PATH and with `--override-dir` (see above):
+Run the override BY PATH and with `--override-dir` (see above), with `-v` so that the lines of the provider and of the label step are printed:
 
-    autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/AngryIPScanner.cimian.recipe
+    autopkg run -v --override-dir=<the Windows overrides folder> <the Windows overrides folder>/AngryIPScanner.cimian.recipe
 
 **Why by path:** the recipe's name or identifier (`com.github.serrc-techops.cimian.AngryIPScanner`) runs the recipe itself, not the override. The recipe itself never leaves the dry run, so the real run of step 5 would never happen.
 
@@ -182,25 +191,27 @@ This way needs the owner's package tool, `pcman`, which is **not part of this re
    (the share mounted).
 
 3. **The template item, made once by a first import**, so that its pkginfo and
-   installer are in the repository. The command, with the real installer (NOT run;
-   the facts of the installer are marked):
+   installer are in the repository. The command, in the form that ran on 2026-10-04 (it worked as
+   written), with the real installer:
 
        pcman import <path of ipscan-3.10.0-setup.exe> --name angryip \
-           --version <the installer's own ProductVersion, as the file's properties or the first dry run show it> \
+           --version <the label that the first dry run prints> \
            --directory <the repository folder for this item> \
            --display-name "Angry IP Scanner" --category <the category> \
            --developer "Angry IP Scanner" --description "<one sentence>" \
-           --install-arguments '/VERYSILENT /NORESTART' \
-           --install-path '<the path of the installed ipscan.exe, read after a test install>' \
-           --architectures <the installer's architecture, read in the installer first> --no-prompt --build
+           --install-arguments /S --architectures x64 \
+           --icon <the file name of an icon that the repository has> --no-prompt --build
 
-   The silent switches `/VERYSILENT /NORESTART` are an Inno Setup installer's
-   (from the writer's knowledge, not read in the installer): confirm that the
-   installer is Inno Setup, and that the switches install without a window, on a
-   test PC first. The install path and the architecture are not given here: read them
-   on that PC. The label after `--version` is for an `.exe`: it must be the installer's
-   own version, as a person reads it in its properties, and the same that the first dry
-   run prints (see "The label"). Make the template from the `-setup.exe`, never from the
+   The installer is an NSIS installer, not an Inno Setup installer: the file has "Nullsoft" and "NSIS" strings and
+   NSIS's `.ndata` section. So the switch is NSIS's `/S`, and `/VERYSILENT /NORESTART` (an Inno Setup installer's) would
+   not make it silent. `/S` was **used on 2026-10-04, not tested on a PC**: test that it installs without a window on a
+   test PC. **Still to fill in:** the architecture and the install path. The file's stub is a 32-bit program that says nothing about
+   the architecture of what it installs, so `--architectures x64` is an expectation (from the project's older `win64`
+   file names and the bundled Java), and `--install-path` was left out because the path must be read on that PC after a
+   test install; the template then has no install check, and a wrong path would install again at every run, so add it
+   only after reading it. The label after `--version` is for an `.exe`: it must be the same that the
+   first dry run prints, the number in the file's name, once a person has compared it with
+   the installed program (see "The label"). Make the template from the `-setup.exe`, never from the
    other Windows file of the release (`-win.exe`, or `win64` in older names): by its name
    and size that is the stand-alone program, which a silent switch would only start. Give the flags `--category`,
    `--developer` and `--description` as the package tool's README describes. A person
@@ -227,7 +238,7 @@ The command takes the recipe's name, `AngryIPScanner.pcman`, not a path. It writ
 `<the Windows overrides folder>/AngryIPScanner.pcman.recipe` with the identifier
 `local.pcman.AngryIPScanner` and the trust information of the two recipes and the four
 processors that are not part of AutoPkg itself (`GitHubAssetDigest`, `ChecksumVerifier`,
-`WindowsExeVersion`, `PcmanImporter`). **Open the written file and read
+`VersionFromName`, `PcmanImporter`). **Open the written file and read
 `ParentRecipe`: it must be `com.github.serrc-techops.pcman.AngryIPScanner`**, the identifier of the recipe that the override was made from (AutoPkg writes the identifier of the recipe it found by that name). Another value
 means that AutoPkg found another recipe of the same name. (Whether another recipe of this name exists was NOT checked: the writer had no AutoPkg.)
 
@@ -287,8 +298,7 @@ every recipe of that run.
    marked "published by pcman import".
 
 3. **Build the catalogs: `pcman catalogs`.** Without it no PC sees the new
-   version. (Not rehearsed, for no program. The package tool prints "nothing to run" when its
-   catalogs command is not set.)
+   version. (Run on 2026-10-04: `pcman catalogs` ran twice that day, the second time after the first imports of this and three other programs. The tool's configured command ran `makecatalogs` on the repository's server and wrote the catalogs `All` and `Production`, 110 items each in the second run, with exit 0. The package tool prints "nothing to run" when its catalogs command is not set.)
 
 4. The second run, by path again:
 
@@ -326,6 +336,9 @@ Nothing was written; the folder stayed empty. Mount the share, then run again.
   template name in the override's `Input` (`PCMAN_TEMPLATE`), not in the recipe.
 - `-p` (a local file instead of the download) fails the checksum, because the
   digest is the one of the GitHub asset.
+- AutoPkg's provider takes the first release, newest first, that has a file whose name
+  matches `SEARCH_PATTERN`, however old. When a name changes, the recipe does not stop: it
+  goes back. Read the `Selected asset` line of every dry run (the run is made with `-v`).
 
 ## Tests
 

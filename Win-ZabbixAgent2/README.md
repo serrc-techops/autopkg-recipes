@@ -2,7 +2,7 @@
 
 A Windows recipe pair: Zabbix Agent 2, the 64-bit `.msi` with OpenSSL, of the 7.0 line.
 
-**Status. Rehearsed on 2026-10-01 with AutoPkg 2.9.0 in a scratch folder: the provider read the vendor's real page, the real file was downloaded and its hash checked, and with a template of the same version the run said "Nothing new". With a template of an older version (made by hand) a dry run, a real publish ("Published zabbix-agent2 7.0.31.2400") and a third run ("Nothing downloaded, packaged or imported") were run. NOT run: against the real share, `pcman catalogs`, a PC. Where a line below says "expected", it is what the code and the rehearsals lead to, not something that was printed. In the rehearsal the scratch overrides folder was one of AutoPkg's override folders; on the build machine the Windows overrides folder is not, so every override command here carries `--override-dir`: see the next paragraph.**
+**Status. Rehearsed on 2026-10-01 with AutoPkg 2.9.0 in a scratch folder: the provider read the vendor's real page, the real file was downloaded and its hash checked, and with a template of the same version the run said "Nothing new". With a template of an older version (made by hand) a dry run, a real publish ("Published zabbix-agent2 7.0.31.2400") and a third run ("Nothing downloaded, packaged or imported") were run. On 2026-10-04, under AutoPkg 2.9.0, the first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the item `zabbix-agent2` (an MSI item, version `7.0.31.2400` read from the MSI, architectures `x64`) in the package tool's repository, in the catalog `Production`. The first import went beside the Chocolatey item `zabbix-agent2` (version 1.0) without any option of the tool; the Chocolatey item file and its `zabbix-agent2-1.0` pkginfo remain until a person removes them by hand, and `pcman validate` warns that the item has two versions until then. The override of `ZabbixAgent2.pcman` (`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false) then ran for real against the repository: the provider read the vendor's page, the download was checked against the vendor's hash, and the run ended with `Nothing new: zabbix-agent2 7.0.31.2400 is in the repository already. Nothing was written.` `pcman catalogs` ran once for all the new items together (2026-10-04): the tool's configured command ran `makecatalogs` on the repository's server, with exit 0, and wrote the catalogs `All` and `Production`, 106 items each. **The new item has no MSI properties and none of the scripts of the Chocolatey item** (`preinstall_script`, `postinstall_script` and `pre_installcheck_script`; their content was not read). A note of 2026-10-01 says that the vendor's MSI writes a new configuration file on a command-line install unless properties are passed (not tried again here): so a PC that takes this item bare may have its agent configuration overwritten, and the properties or the scripts are to be added to the item before PCs get it. The silent install is the client's (`/qn /norestart` for an MSI) and was NOT tested on a PC. Still NOT established after those runs: that the MSI installs silently on a PC; any install; that a new release has the same upgrade code as the template. Where a line below says "expected", it is what the code and the rehearsals lead to, not something that was printed. In the rehearsal the scratch overrides folder was one of AutoPkg's override folders; on the build machine the Windows overrides folder is not, so every override command here carries `--override-dir`: see the next paragraph.**
 
 | Recipe | Identifier | What it does |
 | --- | --- | --- |
@@ -182,11 +182,13 @@ This way needs the owner's package tool, `pcman`, which is **not part of this re
    it replaces. The command, with a real MSI of the line:
 
        pcman import <path of zabbix_agent2-7.0.31-windows-amd64-openssl.msi> --name zabbix-agent2 \
-           --directory <the folder of the item> --architectures x64 --no-prompt --build
+           --directory <the folder of the item> --architectures x64 \
+           --display-name "Zabbix Agent 2" --category <the category of the item> --developer Zabbix \
+           --description <one sentence about the item> \
+           --icon <the file name of an icon that the repository has> --no-prompt --build
 
-   There is no `--version`: the package tool takes the MSI's own version. Add
-   `--display-name`, `--category`, `--developer`, `--description` and the icon as
-   the package tool's README describes. A person changes the template later;
+   This is the form that ran on 2026-10-04 (it worked as written); it made the item without MSI properties and without scripts (see the status line).
+   There is no `--version`: the package tool takes the MSI's own version (`7.0.31.2400` on that day). A person changes the template later;
    nothing else does. **If the template is made from the release that is current
    on the vendor's page, the first run says "Nothing new" (see step c). To see a
    dry run that would publish, make the template from an older release.**
@@ -278,7 +280,7 @@ of that run.
        autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/ZabbixAgent2.pcman.recipe
 
    Expected: `Nothing new: ... is in the repository already. Nothing was
-   written.` and `Nothing downloaded, packaged or imported.`
+   written.` and `Nothing downloaded, packaged or imported.` (On 2026-10-04 the first run of a fresh override printed the line `Nothing new: ...` after it had downloaded the file again, because a new override gets a new cache folder; `Nothing downloaded, packaged or imported.` was not seen in that run, and is the line of a later run of the same override.)
 
 ## f. When a recipe or a processor changes upstream
 

@@ -3,7 +3,7 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>Downloads the current release of Bambu Studio for Windows (the public .exe installer asset of the newest non-pre-release on GitHub that has a matching file, kept under the asset's own file name), checks it against the SHA-256 that GitHub records for the asset, and reads the version label from the .exe itself (its ProductVersion), because the release's tag belongs to the release and not to the file. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. The asset name pattern is from the writer's knowledge and was NOT checked against the real release page: the first run on the build Mac checks it. If no asset matches, the run stops and nothing is written. Pre-releases are skipped unless the override sets the input include_prereleases to true.</string>
+        <string>Downloads the current release of Bambu Studio for Windows (the public .exe installer asset of the newest non-pre-release on GitHub that has a matching file, kept under the asset's own file name), checks it against the SHA-256 that GitHub records for the asset, and takes the version label from the asset's file name: the one group of SEARCH_PATTERN, checked for its shape (two to four numbers joined by dots, leading zeros kept). The installer has no version resource of its own (the first run with AutoPkg 2.9.0, on 2026-10-04, stopped at WindowsExeVersion for that reason), and the release's tag is not the source because some tags differ from the version in the file's name. Whether the installed program reports the same version is NOT established: the first dry run is read as the README says. The asset names are those of GitHub's release list of 2026-10-04: the project has used four spellings, and the pattern takes all four. AutoPkg takes the first release that has a matching file however old it is, so a new spelling would send the recipe back to an older release: read the line that names the selected asset and release in the first dry run. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. Pre-releases are skipped unless the override sets the input include_prereleases to true.</string>
         <key>Identifier</key>
         <string>com.github.serrc-techops.download.BambuStudio-Win</string>
         <key>Input</key>
@@ -11,7 +11,7 @@
             <key>NAME</key>
             <string>BambuStudio</string>
             <key>SEARCH_PATTERN</key>
-            <string>Bambu_Studio_win_public-v[0-9.]+-[0-9]+\.exe$</string>
+            <string>Bambu_Studio_(?:win_public|win|public)[_-]v([0-9]+(?:\.[0-9]+)+)-[0-9]+\.exe$</string>
             <key>include_prereleases</key>
             <false/>
         </dict>
@@ -60,11 +60,13 @@
             </dict>
             <dict>
                 <key>Processor</key>
-                <string>com.github.serrc-techops.SharedProcessors/WindowsExeVersion</string>
+                <string>com.github.serrc-techops.SharedProcessors/VersionFromName</string>
                 <key>Arguments</key>
                 <dict>
                     <key>pathname</key>
                     <string>%pathname%</string>
+                    <key>version_pattern</key>
+                    <string>%SEARCH_PATTERN%</string>
                 </dict>
             </dict>
         </array>

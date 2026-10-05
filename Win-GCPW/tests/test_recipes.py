@@ -278,50 +278,49 @@ class NotVerifiedTests(unittest.TestCase):
         self.assertTrue(lines[0].startswith("# "))
         self.assertTrue(lines[1].startswith("A Windows recipe pair"))
         status, not_verified = lines[2], lines[3]
-        self.assertTrue(status.startswith("**Status. NOT rehearsed with AutoPkg. "
-                                          "Some facts of the source were fetched by the writer on 2026-10-02:"),
-                        status[:100])
+        self.assertTrue(status.startswith("**Status. Run on 2026-10-04 under AutoPkg 2.9.0, as follows."), status[:100])
         self.assertTrue(status.endswith("**"))
         self.assertTrue(not_verified.startswith("**Not verified. The download is NOT verified:"), not_verified[:60])
         self.assertTrue(not_verified.endswith("**"))
         for needle in ("signature check", "REFUSES a real run", "pcman_allow_unverified",
                        "Do not set it before the signature check exists",
                        "pcman import <file> --template gcpw", "no `--version` for an MSI",
-                       "has NOT been run by anyone"):
+                       "A real run of this recipe was REFUSED on 2026-10-04 (see the status line above), and nothing has been installed on a PC"):
             self.assertIn(needle, not_verified)
+        self.assertNotIn("has NOT been run by anyone", status)
+        self.assertNotIn("has NOT been run by anyone", not_verified)
 
     def test_the_status_line_says_what_was_fetched_and_what_was_not_established(self):
         status = [line for line in read(README).splitlines() if line.startswith("**Status.")][0]
         text = re.sub(r"\s+", " ", status)
         for needle in (
-                "no run of AutoPkg was made, and nothing was written to a repository",
+                "Some facts of the source were fetched by the writer on 2026-10-02, before those runs:",
                 "`https://dl.google.com/credentialprovider/gcpwstandaloneenterprise64.msi` answered 200 with no redirect, "
                 "47382528 bytes, last modified 2026-10-02 08:45 GMT",
                 "`gcpwstandaloneenterprise.msi`, is 25264128 bytes",
                 "the recipe takes the 64-bit file only",
-                "NOT established:",
-                "its name is not known to the writer",
-                "`gcpw` in the recipe is a PLACEHOLDER",
+                "NOT established: that Google publishes no hash for this file",
                 "that Google publishes no hash for this file",
                 "the writer knows of none",
                 "that Google's server answers the questions that AutoPkg asks about a changed file",
-                "the silent install of the MSI",
-                "`pcman catalogs`", "any run with AutoPkg",
-                "The first run on the build Mac is the check of everything that is NOT established",
-                "When it fails, STOP: nothing was written",
+                "the silent install of the MSI on a PC",
+                "The first install on a test PC is the check of what is NOT established",
+                "When a run fails, STOP: nothing was written",
                 "correct the recipe, and only then look at the trust information",
                 "Never accept new trust information first"):
             self.assertIn(needle, text)
         self.assertNotIn("Rehearsed on", read(README))
+        for gone in ("its name is not known to the writer", "`gcpw` in the recipe is a PLACEHOLDER", "any run with AutoPkg"):
+            self.assertNotIn(gone, text)
 
     def test_the_readme_says_how_to_find_and_set_the_real_template_name(self):
         text = re.sub(r"\s+", " ", read(README))
-        self.assertIn("Find the real name first", text)
+        self.assertIn("Find out first whether one exists now", text)
         self.assertIn("pcman versions <a name>", text)
         self.assertIn("do not make a second item", text)
         self.assertIn("Set :Input:PCMAN_TEMPLATE <the name of the item>", text)
         self.assertIn("set it in the override, not in the recipe", text)
-        self.assertLess(text.index("Find the real name first"), text.index("## b."))
+        self.assertLess(text.index("Find out first whether one exists now"), text.index("## b."))
         self.assertGreater(text.index("Set :Input:PCMAN_TEMPLATE"), text.index("## b."))
         self.assertLess(text.index("Set :Input:PCMAN_TEMPLATE"), text.index("## c."))
 
@@ -551,10 +550,10 @@ class ReadmeTests(unittest.TestCase):
 
     def test_the_readme_does_not_claim_a_rehearsal_of_this_folder(self):
         self.assertNotIn("Rehearsed on", self.raw)
-        self.assertIn("`pcman catalogs` was NOT run either", self.text)
+        self.assertNotIn("`pcman catalogs` was NOT run either", self.text)
         self.assertIn("carries `--override-dir`", self.text)
-        self.assertIn("A real run of this recipe has NOT been run by anyone, not against a share and not on a PC, "
-                      "and neither has a dry run", self.text)
+        self.assertIn("A real run of this recipe was REFUSED on 2026-10-04 (see the status line above), and nothing has been installed on a PC", self.text)
+        self.assertNotIn("has NOT been run by anyone", self.text)
         self.assertIn("they were NOT seen for this recipe", self.text)
 
     def test_the_readme_says_what_to_do_when_the_server_does_not_answer_the_changed_file_question(self):
@@ -565,6 +564,47 @@ class ReadmeTests(unittest.TestCase):
 def _text(path):
     with open(path, "r", encoding="utf-8") as handle:
         return handle.read()
+
+
+class RealRunReadmeTests(unittest.TestCase):
+    """What the README says of the first import and the real run of 2026-10-04 (AutoPkg 2.9.0). """
+
+    def setUp(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            self.raw = handle.read()
+        self.text = re.sub(r"\s+", " ", self.raw)
+        self.status = re.sub(r"\s+", " ", [line for line in self.raw.splitlines() if line.startswith("**Status.")][0])
+
+    def test_the_status_line_says_what_ran_on_2026_10_04(self):
+        for needle in ("No item with the GCPW installer existed in the package tool's repository, so the first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the item `gcpw` (an MSI item, version `150.0.7871.100` read from the MSI, architectures `x64`, no icon because the repository had none for it)", '`gcpw` was the right name, and the override needed no change of `PCMAN_TEMPLATE`', '`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false', 'the importer REFUSED the run with `The download was not verified:', '(exit 70)', '`pcman_allow_unverified` was not set', "The override downloaded the file again about ten minutes after the first import, and its hash was the imported file's", '`Nothing new: gcpw <version> exists already ...` with exit 3', '`pcman catalogs` ran once for all the new items together (2026-10-04)', '`All` and `Production`, 106 items each', "the silent install is the client's (`/qn /norestart` for an MSI) and was NOT tested on a PC", 'Still NOT established after those runs: that the MSI installs silently on a PC; any install'):
+            self.assertIn(needle, self.status)
+
+    def test_the_readme_says_the_rest_of_it(self):
+        for needle in ('the name of the item that the first import of 2026-10-04 made; no GCPW item existed before', '`PCMAN_TEMPLATE` in the recipe is `gcpw`, the name of the item that the first import of 2026-10-04 made, and the override of that day needed no change of it'):
+            self.assertIn(needle, self.text)
+
+    def test_the_first_import_step_says_what_worked(self):
+        step = re.sub(r"\s+", " ", self.raw[self.raw.index("3. **The template item"):self.raw.index("## b.")])
+        for needle in ('On 2026-10-04 none existed, and the first import below made `gcpw`', 'This is the form that ran on 2026-10-04 (it worked as written)', 'the client runs `msiexec /i <file> /qn /norestart` itself (not tested on a PC)', 'No icon was given because the repository had none for this item'):
+            self.assertIn(needle, step)
+
+    def test_nothing_that_was_not_tested_is_called_tested(self):
+        for claim in ('was tested on a PC', '`gcpw` in the recipe is a PLACEHOLDER'):
+            self.assertNotIn(claim, self.text)
+
+    def test_the_second_run_line_is_not_promised_for_a_fresh_override(self):
+        self.assertIn("the first run of a fresh override printed the line `Nothing new: ...` after it had downloaded the file again", self.text)
+        self.assertIn("a new override gets a new cache folder", self.text)
+
+
+class FlagNameTests(unittest.TestCase):
+    """The cimian recipe's flag for an unverified download is `cimian_allow_unverified`; `pcman_allow_unverified` is the package tool's."""
+
+    def test_the_download_description_names_the_flag_of_each_recipe_correctly(self):
+        text = re.sub(r"\s+", " ", load(DOWNLOAD)["Description"])
+        self.assertIn("refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true "
+                      "(pcman_allow_unverified for the package tool's recipe)", text)
+        self.assertNotIn("of the cimian recipe unless the override sets pcman_allow_unverified", text)
 
 
 class CimianRecipeTests(unittest.TestCase):

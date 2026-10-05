@@ -440,7 +440,7 @@ class ReadmeTests(unittest.TestCase):
         """The models say "Rehearsed on ...". This folder was NOT run with AutoPkg. The writer fetched
         some facts of the source on 2026-10-02: the README opens with a bold paragraph that lists what
         was verified and what is still not."""
-        opening = "**Status. NOT rehearsed with AutoPkg. Some facts of the source were fetched by the writer on 2026-10-02:"
+        opening = "**Status. Run on 2026-10-04 under AutoPkg 2.9.0, as follows."
         start = self.raw.index(opening)
         self.assertLess(start, self.raw.index("| Recipe |"))
         self.assertLess(self.raw.index("# Win-TemurinJRE8"), start)
@@ -450,8 +450,8 @@ class ReadmeTests(unittest.TestCase):
         self.assertTrue(paragraph.endswith("**"))
         verified, _, not_established = paragraph.partition("NOT established:")
         self.assertTrue(not_established)
-        for needle in ("no run of AutoPkg was made",
-                       "https://api.adoptium.net/v3/assets/latest/8/hotspot?os=windows&architecture=x64&image_type=jre&vendor=eclipse",
+        self.assertIn("Some facts of the source were fetched by the writer on 2026-10-02, before those runs:", paragraph)
+        for needle in ("https://api.adoptium.net/v3/assets/latest/8/hotspot?os=windows&architecture=x64&image_type=jre&vendor=eclipse",
                        "answered 200 with no redirect", "a JSON array of one element",
                        "`release_name` `jdk8u504-b01`", "`version.semver` `8.0.504+1`",
                        "`image_type` is `jre`", "`os` is `windows`", "`architecture` is `x64`",
@@ -462,22 +462,21 @@ class ReadmeTests(unittest.TestCase):
                        "ran end to end on the saved real answer",
                        "the `version` `jdk8u504-b01` and an installer SHA-256 beginning 087a6724"):
             self.assertIn(needle, verified)
-        for needle in ("that the file at that link can be downloaded and that its hash equals the checksum",
-                       "the writer did not request GitHub",
-                       "`URLDownloader` follows without trouble",
-                       "what the API answers for another feature version, image type or architecture (never read)",
-                       "the MSI's own ProductVersion, its UpgradeCode, its features and its properties",
-                       "that the upgrade code differs from Oracle's JRE",
-                       "what kind of item `jre8` is today", "`pcman catalogs`", "any run with AutoPkg",
-                       "the Chocolatey item file of Oracle's JRE",
+        for needle in ("what the API answers for another feature version, image type or architecture (never read)",
+                       "the MSI's features and its properties (its ProductVersion and its UpgradeCode were read at the first import of 2026-10-04)",
+                       "that the upgrade code differs from Oracle's JRE", "any install on a PC",
                        "how Oracle's JRE 8 is removed on a PC, and whether a preinstall step of the template can do it, "
                        "is NOT established and is read on the test PC first"):
             self.assertIn(needle, not_established)
+        for gone in ("that the file at that link can be downloaded and that its hash equals the checksum",
+                     "the writer did not request GitHub", "`URLDownloader` follows without trouble",
+                     "what kind of item `jre8` is today", "`pcman catalogs`", "any run with AutoPkg"):
+            self.assertNotIn(gone, not_established)
         self.assertIn("The owner decided on 2026-10-02 that Temurin replaces Oracle's JRE 8 "
                       "(the new item is named `temurin`)", paragraph)
         self.assertNotIn("has NOT been taken", paragraph)
         for needle in ("wrote by hand after the real answer of 2026-10-02, with made-up digits for the checksums",
-                       "The first run on the build Mac is the check of everything that is NOT established",
+                       "An install on a test PC is the check of what is NOT established",
                        "STOP: nothing was written", "correct the processor or the recipe",
                        "and only then look at the trust information",
                        "Never accept new trust information first"):
@@ -616,6 +615,37 @@ class ChainTests(_pcman_support.ToolTestCase):
 def _text(path):
     with open(path, "r", encoding="utf-8") as handle:
         return handle.read()
+
+
+class RealRunReadmeTests(unittest.TestCase):
+    """What the README says of the first import and the real run of 2026-10-04 (AutoPkg 2.9.0). """
+
+    def setUp(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            self.raw = handle.read()
+        self.text = re.sub(r"\s+", " ", self.raw)
+        self.status = re.sub(r"\s+", " ", [line for line in self.raw.splitlines() if line.startswith("**Status.")][0])
+
+    def test_the_status_line_says_what_ran_on_2026_10_04(self):
+        for needle in ("The first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the item `temurin` (an MSI item, version `8.0.504` with a fourth part `1` read from the MSI, which is the project's own `8.0.504+1`, architectures `x64`)", '`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false', "the API's answer, the download from GitHub and the check against the API's checksum went through", '`Nothing new: temurin <the label> is in the repository already. Nothing was written.`', '`pcman catalogs` ran once for all the new items together (2026-10-04)', '`All` and `Production`, 106 items each', "**Oracle's item `jre8` was NOT touched** (its item file and its `jre8-1.0` pkginfo remain, in the catalogs)", "the template has NO preinstall step that removes Oracle's JRE 8: a PC that gets both has both", "The silent install is the client's (`/qn /norestart` for an MSI) and was NOT tested on a PC", 'Still NOT established after those runs: that the MSI installs silently on a PC; any install; that a new release has the same upgrade code as the template'):
+            self.assertIn(needle, self.status)
+
+    def test_the_readme_says_the_rest_of_it(self):
+        for needle in ('it did NOT remove `jre8`',):
+            self.assertIn(needle, self.text)
+
+    def test_the_first_import_step_says_what_worked(self):
+        step = re.sub(r"\s+", " ", self.raw[self.raw.index("3. **The template item"):self.raw.index("## b.")])
+        for needle in ('This is the form that ran on 2026-10-04 (it worked as written), and it did NOT remove `jre8`', '--icon <the file name of an icon that the repository has>'):
+            self.assertIn(needle, step)
+
+    def test_nothing_that_was_not_tested_is_called_tested(self):
+        for claim in ('was tested on a PC',):
+            self.assertNotIn(claim, self.text)
+
+    def test_the_second_run_line_is_not_promised_for_a_fresh_override(self):
+        self.assertIn("the first run of a fresh override printed the line `Nothing new: ...` after it had downloaded the file again", self.text)
+        self.assertIn("a new override gets a new cache folder", self.text)
 
 
 class CimianRecipeTests(unittest.TestCase):

@@ -2,9 +2,9 @@
 
 A Windows recipe pair: Google Drive for desktop, the `.exe` installer, with the version label read from the EXE itself.
 
-**Status. NOT rehearsed with AutoPkg. Some facts of the source were fetched by the writer on 2026-10-02: no run of AutoPkg was made, and nothing was written to a repository. Read from Google's server on that day: `https://dl.google.com/drive-file-stream/GoogleDriveSetup.exe` answered 200 with no redirect, 291173528 bytes, last modified 2026-10-01 14:26 GMT; the address holds no version, and no hash was found for the file. The real file (291173528 bytes, downloaded from that address) was also read with `WindowsExeVersion` on 2026-10-02: it has a version resource, `exe_product_version` and `exe_file_version` are both the four numbers 131, 0, 2 and 0 joined by dots, the fixed file information holds the same four numbers, `exe_product_name` is `Google Drive`, and so `version` is those four numbers, with no text in them. NOT established: that Google publishes no hash or signature check for this file (the writer saw none and knows of none); that the EXE's own ProductVersion (the four numbers above) equals the version number that Google publishes for Drive; that the package tool has a check of the product for an EXE (for an MSI it refuses another upgrade code); the silent switch of the installer and the path of the installed program (the first import below leaves both as placeholders); the name of the template item (`googledrive` is the proposed name, and the writer did not look whether the repository has an item of that name); that Google's server answers the questions that AutoPkg asks about a changed file (a last-modified date was seen, nothing else was looked at); `pcman catalogs`; any run with AutoPkg. The first run on the build Mac is the check of everything that is NOT established. When it fails, STOP: nothing was written (a run that fails before the import writes nothing). Read the real address in a browser, and the file's properties on a Windows PC, correct the recipe, and only then look at the trust information. Never accept new trust information first to make a failure go away.**
+**Status. Run on 2026-10-04 under AutoPkg 2.9.0, as follows. The first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the template `googledrive` (an EXE item, label of four numbers read from the file's fixed file information, the first of them `131`, architectures `x64`) in the package tool's repository, in the catalog `Production`. The first import went beside the Chocolatey item `googledrive` (version 1.0) without any option of the tool; the Chocolatey item file and its `googledrive-1.0` pkginfo remain until a person removes them by hand, and `pcman validate` warns that the item has two versions until then. The override of `GoogleDrive.pcman` (`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false) then ran for real: the download and the label step went through, and the importer REFUSED the run with `The download was not verified: no step of the recipe set checksum_verified together with the checksum_sha256 of this file. Nothing was published. ...` (exit 70), which is what an unverified download must get; `pcman_allow_unverified` was not set. The override downloaded the file again about ten minutes after the first import, and its hash was the imported file's. The hand-import form `pcman import <file> --template googledrive --version <the label> --no-prompt --if-new --dry-run` printed `Nothing new: googledrive <label> exists already ...` with exit 3. `pcman catalogs` ran once for all the new items together (2026-10-04): the tool's configured command ran `makecatalogs` on the repository's server, with exit 0, and wrote the catalogs `All` and `Production`, 106 items each. The file is a 64-bit PE file (read from its header). The silent switch `--silent` was used on 2026-10-04: the operator took it from Google's help page for administrators ("Set up Drive for desktop"); it was NOT tested on a PC. A switch that begins with `-` must be given as `--install-arguments=--silent`: `--install-arguments --silent` fails with `argument --install-arguments: expected one argument` (exit 2). No `--install-path` was given (the installed program's folder carries the version), so the template has NO install check until a person adds one; the client then relies on the ManagedInstalls registry. Still NOT established after those runs: that the switch installs silently on a PC; an install check; any install. Some facts of the source were fetched by the writer on 2026-10-02, before those runs: Read from Google's server on that day: `https://dl.google.com/drive-file-stream/GoogleDriveSetup.exe` answered 200 with no redirect, 291173528 bytes, last modified 2026-10-01 14:26 GMT; the address holds no version, and no hash was found for the file. The real file (291173528 bytes, downloaded from that address) was also read with `WindowsExeVersion` on 2026-10-02: it has a version resource, `exe_product_version` and `exe_file_version` are both the four numbers 131, 0, 2 and 0 joined by dots, the fixed file information holds the same four numbers, `exe_product_name` is `Google Drive`, and so `version` is those four numbers, with no text in them. NOT established: that Google publishes no hash or signature check for this file (the writer saw none and knows of none); that the EXE's own ProductVersion (the four numbers above) equals the version number that Google publishes for Drive; that the package tool has a check of the product for an EXE (for an MSI it refuses another upgrade code); the silent switch on a PC and the path of the installed program (the switch was used on 2026-10-04 and not tested; no install path was given); that Google's server answers the questions that AutoPkg asks about a changed file (a last-modified date was seen, nothing else was looked at); any install on a PC. The first install on a test PC is the check of what is NOT established. When a run fails, STOP: nothing was written (a run that fails before the import writes nothing). Read the real address in a browser, and the file's properties on a Windows PC, correct the recipe, and only then look at the trust information. Never accept new trust information first to make a failure go away.**
 
-**Not verified. The download is NOT verified: Google publishes no hash for the file, and a check of the signature is not built. Because of this the shared importer REFUSES a real run of this recipe (nothing is published) unless the override sets `pcman_allow_unverified` to true. Do not set it before the signature check exists. Until then run the dry run only, and import by hand after a person has checked the file: `pcman import <file> --template googledrive --version <label>` (the label of an EXE: see "The label" below). A real run of this recipe has NOT been run by anyone, not against a share and not on a PC, and neither has a dry run. `pcman catalogs` was NOT run either. The Windows overrides folder is not one of AutoPkg's override folders, so every override command here carries `--override-dir`: see the paragraph below.**
+**Not verified. The download is NOT verified: Google publishes no hash for the file, and a check of the signature is not built. Because of this the shared importer REFUSES a real run of this recipe (nothing is published) unless the override sets `pcman_allow_unverified` to true. Do not set it before the signature check exists. Until then run the dry run only, and import by hand after a person has checked the file: `pcman import <file> --template googledrive --version <label>` (the label of an EXE: see "The label" below). A real run of this recipe was REFUSED on 2026-10-04 (see the status line above), and nothing has been installed on a PC. The Windows overrides folder is not one of AutoPkg's override folders, so every override command here carries `--override-dir`: see the paragraph below.**
 
 | Recipe | Identifier | What it does |
 | --- | --- | --- |
@@ -16,8 +16,8 @@ A Windows recipe pair: Google Drive for desktop, the `.exe` installer, with the 
 
 The steps of the download recipe are `URLDownloader`, `EndOfCheckPhase` and then
 `WindowsExeVersion`, which is a shared processor: it reads the ProductVersion of the
-downloaded EXE and outputs it as `version`, and the cimian recipe passes that as the
-package tool's `pcman_version`. How the processor reads the file and which string it
+downloaded EXE and outputs it as `version`; the cimian recipe passes that as `version`, and the
+pcman recipe as the package tool's `pcman_version`. How the processor reads the file and which string it
 takes is in the README of `../Win-SharedProcessors/`.
 
 Neither recipe stops on an unchanged download, so an import that failed is tried
@@ -218,24 +218,29 @@ This way needs the owner's package tool, `pcman`, which is **not part of this re
 3. **The template item, made once by a first import**, so that its pkginfo and
    installer are in the repository. The template keeps the name of the item that
    it replaces. If the package tool's repository has an item for Google Drive
-   already, look at it first: it must be an item for this EXE, and this step is
-   not needed; set its name in the override (step b). The command, with a real
-   installer:
+   already, look at it first: an item of the kind `choco` is not the template (see the status line: the
+   first import of 2026-10-04 went beside it without any option, and a person removes the Chocolatey item
+   by hand); an item that an earlier run of this step made is, and this step is then not needed; set its name in the override (step b).
+   The command, in the form that ran on 2026-10-04, with a real installer:
 
        pcman import <path of GoogleDriveSetup.exe> --name googledrive \
-           --version <the ProductVersion of that file, as its properties show it> \
+           --version <the label that the first dry run prints> \
            --directory <the folder of the item> \
-           --install-arguments <the installer's silent switch, read in the vendor's documentation first> \
-           --install-path <the path of the installed program, read on one PC after an install> \
-           --architectures <the architectures of the installer, NOT read by the writer> \
+           --install-arguments=--silent \
+           --architectures x64 \
            --display-name "Google Drive" --category <the category of the item> --developer Google \
-           --description "<one line about the item>" --no-prompt --build
+           --description "<one line about the item>" \
+           --icon <the file name of an icon that the repository has> --no-prompt --build
 
+   Give the switch as `--install-arguments=--silent`, with the equals sign: a switch that begins with `-` is
+   taken for an option of the tool when it stands as a separate word, and `--install-arguments --silent` fails
+   with `argument --install-arguments: expected one argument` (exit 2). The switch `--silent` was **used on 2026-10-04, not tested on a PC**:
+   it is from Google's help page for administrators, "Set up Drive for desktop". `--architectures x64` is from the PE header
+   (the file is a 64-bit program). `--install-path` was left out because the installed program's folder carries the version; the template then has
+   no install check, and a wrong path would install again at every run, so add it only after reading it on a PC.
    The label after `--version` is the version of the installer as its properties show
-   it. For an EXE the package tool is given it; here it is the same text that the recipe
-   passes (see "The label"). The install arguments, the install path and the
-   architectures are facts of the installer that the writer has NOT read: Google's
-   documentation for administrators, and one PC, give them before this command is run.
+   it (a label of four numbers). For an EXE the package tool is given it; here it is the same text that the recipe
+   passes (see "The label").
    A person changes the template later; nothing else does. **If the template is made
    from the installer that is current at the vendor, the first run says "Nothing new"
    (see step c). To see a dry run that would publish, make the template from an older
@@ -347,7 +352,7 @@ row says `published, NOT verified`.
        autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/GoogleDrive.pcman.recipe
 
    Expected: `Nothing new: ... is in the repository already. Nothing was
-   written.` and `Nothing downloaded, packaged or imported.`
+   written.` and `Nothing downloaded, packaged or imported.` (On 2026-10-04 the first run of a fresh override printed the line `Nothing new: ...` after it had downloaded the file again, because a new override gets a new cache folder; `Nothing downloaded, packaged or imported.` was not seen in that run, and is the line of a later run of the same override.)
 
 ## f. When a recipe or a processor changes upstream
 

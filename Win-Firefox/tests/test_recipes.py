@@ -439,14 +439,14 @@ class ReadmeTests(unittest.TestCase):
                      "--install-path", "--architectures x64", "--no-prompt"):
             self.assertIn(flag, command)
         # The silent switch and the install path are facts of the installer, from knowledge.
-        i = self.text.index("--install-arguments /S")
+        i = self.text.index("--install-arguments /S", self.text.index("3. **The template item"))
         self.assertIn("(from the writer's knowledge, not read in the installer)", self.text[i:i + 1500])
 
     def test_the_status_line_says_what_was_fetched_and_what_was_not(self):
         """The models say "Rehearsed on ...". This folder was NOT run with AutoPkg. The writer fetched
         the source's facts on 2026-10-02: the README opens with a bold paragraph that lists what was
         verified and what is still not."""
-        opening = "**Status. NOT rehearsed with AutoPkg. The facts of the source were fetched by the writer on 2026-10-02:"
+        opening = "**Status. Run on 2026-10-04 under AutoPkg 2.9.0, as follows."
         start = self.raw.index(opening)
         self.assertLess(start, self.raw.index("| Recipe |"))
         self.assertLess(self.raw.index("# Win-Firefox"), start)
@@ -454,10 +454,12 @@ class ReadmeTests(unittest.TestCase):
         paragraph = re.sub(r"\s+", " ", self.raw[start:end + 2])
         self.assertTrue(paragraph.startswith(opening))
         self.assertTrue(paragraph.endswith("**"))
-        verified, _, not_established = paragraph.partition("NOT established:")
+        ran, _, fetched = paragraph.partition("Facts of the source that the writer fetched on 2026-10-02, before those runs:")
+        self.assertTrue(fetched)
+        verified, _, not_established = fetched.partition("NOT established: that the ESR")
         self.assertTrue(not_established)
-        for needle in ("no run of AutoPkg was made",
-                       "https://product-details.mozilla.org/1.0/firefox_versions.json",
+        not_established = "that the ESR" + not_established
+        for needle in ("https://product-details.mozilla.org/1.0/firefox_versions.json",
                        "answered 200 with no redirect", "`LATEST_FIREFOX_VERSION` (`157.0`)",
                        "`FIREFOX_ESR` (`140.17.0esr`, so the ESR value does end in `esr`)",
                        "https://download-installer.cdn.mozilla.net/pub/firefox/releases/157.0/SHA256SUMS",
@@ -469,11 +471,13 @@ class ReadmeTests(unittest.TestCase):
             self.assertIn(needle, verified)
         for needle in ("the ESR release folder and its file carry the suffix",
                        "the version label `157.0` is what the installer itself shows",
-                       "the silent switch `/S`", "distribution\\policies.json",
-                       "the template item `firefox` exists", "`pcman catalogs`", "any run with AutoPkg"):
+                       "the silent switch `/S` and the install path on a PC (used on 2026-10-04, not tested)",
+                       "distribution\\policies.json", "any install on a PC"):
             self.assertIn(needle, not_established)
+        for needle in ("the template item `firefox` exists", "any run with AutoPkg"):
+            self.assertNotIn(needle, not_established)
         for needle in ("wrote by hand after the real files of 2026-10-02, with made-up digits",
-                       "The first run on the build Mac is the check of everything that is NOT established",
+                       "The first install on a test PC is the check of what is NOT established",
                        "STOP: nothing was written", "correct the processor or the recipe",
                        "and only then look at the trust information",
                        "Never accept new trust information first"):
@@ -563,6 +567,37 @@ class ChainTests(_pcman_support.ToolTestCase):
 def _text(path):
     with open(path, "r", encoding="utf-8") as handle:
         return handle.read()
+
+
+class RealRunReadmeTests(unittest.TestCase):
+    """What the README says of the first import and the real run of 2026-10-04 (AutoPkg 2.9.0). """
+
+    def setUp(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            self.raw = handle.read()
+        self.text = re.sub(r"\s+", " ", self.raw)
+        self.status = re.sub(r"\s+", " ", [line for line in self.raw.splitlines() if line.startswith("**Status.")][0])
+
+    def test_the_status_line_says_what_ran_on_2026_10_04(self):
+        for needle in ('The first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the template `firefox` (an EXE item, label `157.0`, `--install-arguments /S`, the install path of that step, architectures `x64`)', '`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false', "the version file, the download and Mozilla's `SHA256SUMS` check went through", '`PcmanImporter: Nothing new: firefox 157.0 is in the repository already. Nothing was written.`', 'went beside the Chocolatey item `firefox` (version 1.0) without any option of the tool', 'the Chocolatey item file and its `firefox-1.0` pkginfo remain until a person removes them by hand', '`pcman validate` warns that the item has two versions until then', '`pcman catalogs` ran once for all the new items together (2026-10-04)', '`All` and `Production`, 106 items each', '**used on 2026-10-04, not tested on a PC**', 'Still NOT established after those runs: the switch and the install check on a PC; any install'):
+            self.assertIn(needle, self.status)
+
+    def test_the_readme_says_the_rest_of_it(self):
+        for needle in ('an item of the kind `choco` is not the template', 'in the form that ran on 2026-10-04'):
+            self.assertIn(needle, self.text)
+
+    def test_the_first_import_step_says_what_worked(self):
+        step = re.sub(r"\s+", " ", self.raw[self.raw.index("3. **The template item"):self.raw.index("## b.")])
+        for needle in ('in the form that ran on 2026-10-04', '`--icon <the file name of an icon that the repository has>`', '**used on 2026-10-04 as written, not tested on a PC**', 'an item of the kind `choco` is not the template'):
+            self.assertIn(needle, step)
+
+    def test_nothing_that_was_not_tested_is_called_tested(self):
+        for claim in ('was tested on a PC', 'the switch is established'):
+            self.assertNotIn(claim, self.text)
+
+    def test_the_second_run_line_is_not_promised_for_a_fresh_override(self):
+        self.assertIn("the first run of a fresh override printed the line `Nothing new: ...` after it had downloaded the file again", self.text)
+        self.assertIn("a new override gets a new cache folder", self.text)
 
 
 class CimianRecipeTests(unittest.TestCase):

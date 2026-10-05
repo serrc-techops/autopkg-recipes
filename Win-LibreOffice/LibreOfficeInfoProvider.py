@@ -5,14 +5,15 @@ download server of The Document Foundation.
 The index was read on 2026-10-02 (a mirrorbrain HTML index, status 200, no
 redirect). The name, path and format of the hash file below were NOT read: the
 one answer the server gave for it was a 404, so they are the writer's
-knowledge. The first run on the build Mac is the check of each of them.
+knowledge. The first run with AutoPkg 2.9.0 (2026-10-04) got as far as the hash file
+and stopped there; nothing after it has run.
 
 THE HASH FILE DOES NOT EXIST (checked 2026-10-02). The listing of
 .../stable/26.8.1/win/x86_64/ holds, for the MSI and for every helppack and
 langpack, only <name>.msi, <name>.msi.mirrorlist, <name>.msi.asc and
 <name>.msi.asc.mirrorlist: no .sha256, .md5 or .sha1 file. The address that
-hash_url() builds answered 404 once and 500 once. So this processor stops at
-the hash file today. Its code and its tests are kept as the shape of the next
+hash_url() builds answered 404 once and 500 once, and 404 again in the first run of 2026-10-04. So this
+processor stops at the hash file today. Its code and its tests are kept as the shape of the next
 step (the owner reads the .mirrorlist page of the MSI, where mirrorbrain
 usually shows the hashes, and the processor is then changed to read the hash
 from wherever it is shown). Until then the recipe is a dry run that fails here

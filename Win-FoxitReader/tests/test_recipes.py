@@ -623,27 +623,28 @@ class ReadmeTests(unittest.TestCase):
         self.assertTrue(match)
         command = re.sub(r"\s+", " ", match.group(1))
         self.assertIn("--name foxitreader", command)
-        self.assertIn("--version <the ProductVersion that the file's properties show>", command)  # an EXE has a label
+        self.assertIn("--version <the label that the first dry run prints>", command)  # an EXE has a label
         for flag in ("--display-name", "--category", "--developer", "--description", "--install-arguments",
-                     "--install-path", "--architectures x64", "--no-prompt"):
+                     "--architectures x64", "--no-prompt", "--icon"):
             self.assertIn(flag, command)
+        self.assertNotIn("--install-path", command)
 
-    def test_the_silent_switch_and_the_install_path_are_placeholders_not_values(self):
-        """The Foxit installer's silent switch was NOT read: the README does not invent one."""
+    def test_the_silent_switch_is_the_one_used_on_2026_10_04_and_marked_untested_and_there_is_no_install_path(self):
+        """The switch is from Foxit's documentation and was used on 2026-10-04; it was not tested on a PC. No
+        install path was given, so the template has no install check."""
         command = re.sub(r"\s+", " ", re.search(r"pcman import ([^`]*?--build)", self.raw, re.S).group(1))
-        self.assertIn("--install-arguments <the installer's silent switch, read in the vendor's documentation first>", command)
-        self.assertIn("--install-path <the path of the installed program, read on one PC after an install>", command)
-        self.assertNotIn("/S ", command)
+        self.assertIn("--install-arguments '/quiet /norestart'", command)
+        self.assertNotIn("--install-path", command)
         self.assertNotIn("/VERYSILENT", command)
-        self.assertNotIn("/quiet", command)
-        i = self.text.index("The silent switch and the install path are facts of the installer.")
-        self.assertIn("The writer did NOT read them", self.text[i:i + 300])
+        i = self.text.index("The silent switch `/quiet /norestart` was **used on 2026-10-04, not tested on a PC**")
+        self.assertIn("Foxit's documentation of command-line installation for EXE installers", self.text[i:i + 300])
+        self.assertIn("`--install-path` was left out because the path must be read on one PC after an install", self.text[i:i + 600])
 
     def test_the_status_line_says_what_was_fetched_and_what_was_not(self):
         """The models say "Rehearsed on ...". This folder was NOT run with AutoPkg. The writer's
         facts were fetched on 2026-10-02: the README opens with a bold paragraph that lists what
         was verified and what is still not."""
-        opening = "**Status. NOT rehearsed with AutoPkg. Some facts of the source were fetched by the writer on 2026-10-02:"
+        opening = "**Status. Run on 2026-10-04 under AutoPkg 2.9.0, as follows."
         start = self.raw.index(opening)
         self.assertLess(start, self.raw.index("| Recipe |"))
         self.assertLess(self.raw.index("# Win-FoxitReader"), start)
@@ -653,8 +654,8 @@ class ReadmeTests(unittest.TestCase):
         self.assertTrue(paragraph.endswith("**"))
         verified, _, not_established = paragraph.partition("NOT established:")
         self.assertTrue(not_established)
-        for needle in ("no run of AutoPkg was made",
-                       "with no browser identity",
+        self.assertIn("Some facts of the source were fetched by the writer on 2026-10-02, before those runs.", paragraph)
+        for needle in ("with no browser identity",
                        "answered 301 to `https://www.foxit.com/downloads/latest/?product=...` (the same query)",
                        "that address answered 307 to `https://cdn01.foxitsoftware.com/product/reader/desktop/win/2026.2.1/FoxitPDFReader202621_L10N_Setup_Prom_x64.exe`",
                        "that address answered 302 to a signed, short-lived address on a cloud storage host",
@@ -670,11 +671,12 @@ class ReadmeTests(unittest.TestCase):
                        "that the signature of the file is valid (nothing checks it)",
                        "the host and the lifetime of the signed address",
                        "that another product, language or package type than the defaults has the same layout",
-                       "the silent switch and the install path of the installer",
-                       "that the template item `foxitreader` exists", "`pcman catalogs`", "any run with AutoPkg"):
+                       "the silent switch on a PC, the install path and an install check", "any install on a PC"):
             self.assertIn(needle, not_established)
+        for needle in ("that the template item `foxitreader` exists", "any run with AutoPkg"):
+            self.assertNotIn(needle, not_established)
         for needle in ("wrote by hand after the real addresses of 2026-10-02",
-                       "The first run on the build Mac is the check of everything that is NOT established",
+                       "The first install on a test PC is the check of what is NOT established",
                        "STOP: nothing was written", "correct the processor or the recipe",
                        "and only then look at the trust information",
                        "Never accept new trust information first"):
@@ -841,6 +843,59 @@ class ChainTests(_pcman_support.ToolTestCase):
 def _text(path):
     with open(path, "r", encoding="utf-8") as handle:
         return handle.read()
+
+
+class RealRunReadmeTests(unittest.TestCase):
+    """What the README says of the first import and the real run of 2026-10-04 (AutoPkg 2.9.0). """
+
+    def setUp(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            self.raw = handle.read()
+        self.text = re.sub(r"\s+", " ", self.raw)
+        self.status = re.sub(r"\s+", " ", [line for line in self.raw.splitlines() if line.startswith("**Status.")][0])
+
+    def test_the_status_line_says_what_ran_on_2026_10_04(self):
+        for needle in ('The first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the template `foxitreader` (an EXE item, label `2026.2.1.39815`, architectures `x64`)', '`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false', 'the importer REFUSED the run with `The download was not verified:', '(exit 70)', '`pcman_allow_unverified` was not set', "The override downloaded the file again about ten minutes after the first import, and its hash was the imported file's", '`Nothing new: foxitreader <label> exists already ...` with exit 3', 'went beside the Chocolatey item `foxitreader` (version 1.0) without any option of the tool', 'the Chocolatey item file and its `foxitreader-1.0` pkginfo remain until a person removes them by hand', '`pcman validate` warns that the item has two versions until then', '`pcman catalogs` ran once for all the new items together (2026-10-04)', '`All` and `Production`, 106 items each', 'The file is a WiX Burn bundle', 'it was NOT tested on a PC', 'has NO install check until a person adds one', 'Still NOT established after those runs: that the switch installs silently on a PC; an install check; any install'):
+            self.assertIn(needle, self.status)
+
+    def test_the_readme_says_the_rest_of_it(self):
+        for needle in ('an item of the kind `choco` is not the template',):
+            self.assertIn(needle, self.text)
+
+    def test_the_first_import_step_says_what_worked(self):
+        step = re.sub(r"\s+", " ", self.raw[self.raw.index("3. **The template item"):self.raw.index("## b.")])
+        for needle in ('in the form that ran on 2026-10-04', "--install-arguments '/quiet /norestart'", '--icon <the file name of an icon that the repository has>', 'an item of the kind `choco` is not the template', '**used on 2026-10-04, not tested on a PC**'):
+            self.assertIn(needle, step)
+
+    def test_nothing_that_was_not_tested_is_called_tested(self):
+        for claim in ('was tested on a PC', 'the switch is established'):
+            self.assertNotIn(claim, self.text)
+
+    def test_the_second_run_line_is_not_promised_for_a_fresh_override(self):
+        self.assertIn("the first run of a fresh override printed the line `Nothing new: ...` after it had downloaded the file again", self.text)
+        self.assertIn("a new override gets a new cache folder", self.text)
+
+
+class FlagNameTests(unittest.TestCase):
+    """The cimian recipe's flag for an unverified download is `cimian_allow_unverified`; `pcman_allow_unverified` is the package tool's."""
+
+    def test_the_download_description_names_the_flag_of_each_recipe_correctly(self):
+        text = re.sub(r"\s+", " ", load(DOWNLOAD)["Description"])
+        self.assertIn("refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true "
+                      "(pcman_allow_unverified for the package tool's recipe)", text)
+        self.assertNotIn("of the cimian recipe unless the override sets pcman_allow_unverified", text)
+
+
+class CimianVersionArgumentTextTests(unittest.TestCase):
+    """The cimian recipe passes the label to `CimianImporter` as `version`; only the pcman recipe passes `pcman_version`."""
+
+    def test_no_sentence_says_that_the_cimian_recipe_passes_pcman_version(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            text = re.sub(r"\s+", " ", handle.read())
+        for sentence in re.split(r"(?<=[.;])\s", text):
+            if re.search(r"cimian recipe passes", sentence) and "pcman_version" in sentence:
+                self.assertIn("pcman recipe", sentence)  # `pcman_version` is named only as the pcman recipe's argument
+        self.assertEqual(text.count("the cimian recipe passes that `version` as `pcman_version`"), 0)
 
 
 class CimianRecipeTests(unittest.TestCase):

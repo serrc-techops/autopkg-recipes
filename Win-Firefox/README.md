@@ -2,7 +2,7 @@
 
 A Windows recipe pair: Mozilla Firefox, the 64-bit `.exe` installer, `en-US`, release channel, upgraded in place (not the MSI).
 
-**Status. NOT rehearsed with AutoPkg. The facts of the source were fetched by the writer on 2026-10-02: no run of AutoPkg was made, and nothing was written to a repository. Read from Mozilla's servers on that day (the files were saved and the processor's functions were run on them): (1) `https://product-details.mozilla.org/1.0/firefox_versions.json` answered 200 with no redirect, and holds the keys `LATEST_FIREFOX_VERSION` (`157.0`) and `FIREFOX_ESR` (`140.17.0esr`, so the ESR value does end in `esr`); the beta key holds a `b` version, which the processor never reads; (2) `https://download-installer.cdn.mozilla.net/pub/firefox/releases/157.0/SHA256SUMS` answered 200 with no redirect (about 540 KB, far under the limit of 8 MB); every one of its lines is 64 hex digits, two spaces and a path; it holds both `win64/en-US/Firefox Setup 157.0.exe` and `win64/en-US/Firefox Setup 157.0.msi`, and the processor takes the `.exe` line only; (3) a HEAD request for `https://download-installer.cdn.mozilla.net/pub/firefox/releases/157.0/win64/en-US/Firefox%20Setup%20157.0.exe` answered 200 with no redirect (the spaces of the file name are `%20`). NOT established: that the ESR release folder and its file carry the suffix (`140.17.0esr`) as the processor assumes (only the version file was read for ESR); that the version label `157.0` is what the installer itself shows as its version; the silent switch `/S`, the install path of the first import and that an upgrade in place keeps `distribution\policies.json` (the owner's decision note, not tried); that the template item `firefox` exists and is an EXE item; `pcman catalogs`; any run with AutoPkg. The tests use a version file and a SHA256SUMS excerpt that the writer wrote by hand after the real files of 2026-10-02, with made-up digits, so they prove what the code does with answers of that form and nothing about Mozilla today. The first run on the build Mac is the check of everything that is NOT established. When it fails, STOP: nothing was written (a run that fails before the import writes nothing). Read the real version file, the real release folder and the real SHA256SUMS in a browser, correct the processor or the recipe, and only then look at the trust information. Never accept new trust information first to make a failure go away.**
+**Status. Run on 2026-10-04 under AutoPkg 2.9.0, as follows. The first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the template `firefox` (an EXE item, label `157.0`, `--install-arguments /S`, the install path of that step, architectures `x64`) in the package tool's repository, in the catalog `Production`. The first import went beside the Chocolatey item `firefox` (version 1.0) without any option of the tool; the Chocolatey item file and its `firefox-1.0` pkginfo remain until a person removes them by hand, and `pcman validate` warns that the item has two versions until then. The override of `Firefox.pcman` (`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false) then ran for real: the version file, the download and Mozilla's `SHA256SUMS` check went through and the run ended with `PcmanImporter: Nothing new: firefox 157.0 is in the repository already. Nothing was written.` `pcman catalogs` ran once for all the new items together (2026-10-04): the tool's configured command ran `makecatalogs` on the repository's server, with exit 0, and wrote the catalogs `All` and `Production`, 106 items each. The switch `/S` and the install path are the ones that this README proposed from the writer's knowledge; they were **used on 2026-10-04, not tested on a PC** (the file is a 7-Zip self-extracting stub). Still NOT established after those runs: the switch and the install check on a PC; any install; that an upgrade in place keeps `distribution\policies.json`. Facts of the source that the writer fetched on 2026-10-02, before those runs: Read from Mozilla's servers on that day (the files were saved and the processor's functions were run on them): (1) `https://product-details.mozilla.org/1.0/firefox_versions.json` answered 200 with no redirect, and holds the keys `LATEST_FIREFOX_VERSION` (`157.0`) and `FIREFOX_ESR` (`140.17.0esr`, so the ESR value does end in `esr`); the beta key holds a `b` version, which the processor never reads; (2) `https://download-installer.cdn.mozilla.net/pub/firefox/releases/157.0/SHA256SUMS` answered 200 with no redirect (about 540 KB, far under the limit of 8 MB); every one of its lines is 64 hex digits, two spaces and a path; it holds both `win64/en-US/Firefox Setup 157.0.exe` and `win64/en-US/Firefox Setup 157.0.msi`, and the processor takes the `.exe` line only; (3) a HEAD request for `https://download-installer.cdn.mozilla.net/pub/firefox/releases/157.0/win64/en-US/Firefox%20Setup%20157.0.exe` answered 200 with no redirect (the spaces of the file name are `%20`). NOT established: that the ESR release folder and its file carry the suffix (`140.17.0esr`) as the processor assumes (only the version file was read for ESR); that the version label `157.0` is what the installer itself shows as its version; the silent switch `/S` and the install path on a PC (used on 2026-10-04, not tested); that an upgrade in place keeps `distribution\policies.json` (the owner's decision note, not tried); any install on a PC. The tests use a version file and a SHA256SUMS excerpt that the writer wrote by hand after the real files of 2026-10-02, with made-up digits, so they prove what the code does with answers of that form and nothing about Mozilla today. The first install on a test PC is the check of what is NOT established. When a run fails, STOP: nothing was written (a run that fails before the import writes nothing). Read the real version file, the real release folder and the real SHA256SUMS in a browser, correct the processor or the recipe, and only then look at the trust information. Never accept new trust information first to make a failure go away.**
 
 
 | Recipe | Identifier | What it does |
@@ -190,20 +190,23 @@ This way needs the owner's package tool, `pcman`, which is **not part of this re
 3. **The template item, made once by a first import**, so that its pkginfo and
    installer are in the repository. The template keeps the name of the item that
    it replaces. If the package tool's repository has an item `firefox` already, look
-   at it first: it must be an item for the EXE, and this step is not needed. The command,
-   with a real installer of the current release:
+   at it first: an item of the kind `choco` is not the template (see the status line: the first
+   import of 2026-10-04 went beside it without any option, and a person removes the Chocolatey item
+   by hand); an item that an earlier run of this step made is, and this step is then not needed. The command,
+   in the form that ran on 2026-10-04 (with `--icon <the file name of an icon that the repository has>` added), with a real installer of the current release:
 
        pcman import <path of "Firefox Setup 141.0.exe"> --name firefox --version 141.0 \
            --directory <the folder of the item> --install-arguments /S \
            --install-path 'C:\Program Files\Mozilla Firefox\firefox.exe' --architectures x64 \
            --display-name Firefox --category <the category of the item> --developer Mozilla \
-           --description <one sentence about the item> --no-prompt --build
+           --description <one sentence about the item> --icon <the file name of an icon that the repository has> --no-prompt --build
 
    The label after `--version` is the version of the installer as the installer shows it
    (for an EXE the package tool is given it; here it is the same text that the recipe
    passes). `--install-arguments /S` and the install path are the writer's knowledge of
-   the Firefox installer (from the writer's knowledge, not read in the installer): check
-   both in Mozilla's documentation and on one PC before this command is run. A person
+   the Firefox installer (from the writer's knowledge, not read in the installer); they were
+   **used on 2026-10-04 as written, not tested on a PC**: check both in Mozilla's documentation and
+   on one PC before PCs get the item. A person
    changes the template later; nothing else does. **If the template is made from the
    release that is current on Mozilla's server, the first run says "Nothing new" (see
    step c). To see a dry run that would publish, make the template from an older release.**
@@ -298,7 +301,7 @@ of that run.
        autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/Firefox.pcman.recipe
 
    Expected: `Nothing new: ... is in the repository already. Nothing was
-   written.` and `Nothing downloaded, packaged or imported.`
+   written.` and `Nothing downloaded, packaged or imported.` (On 2026-10-04 the first run of a fresh override printed the line `Nothing new: ...` after it had downloaded the file again, because a new override gets a new cache folder; `Nothing downloaded, packaged or imported.` was not seen in that run, and is the line of a later run of the same override.)
 
 ## f. When a recipe or a processor changes upstream
 

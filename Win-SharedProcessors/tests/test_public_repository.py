@@ -57,7 +57,7 @@ class PublicRepositoryTests(unittest.TestCase):
             description = plistlib.load(handle)["Description"]
         self.assertIn("None of them needs the package tool or any other tool", description)
         self.assertIn("they work with any Cimian repository", description)
-        for name in ("CimianImporter", "ChecksumVerifier", "GitHubAssetDigest", "WindowsExeVersion"):
+        for name in ("CimianImporter", "ChecksumVerifier", "GitHubAssetDigest", "WindowsExeVersion", "VersionFromName"):
             self.assertIn("/" + name if name != "CimianImporter" else "SharedProcessors/" + name, description)
         self.assertNotIn("PcmanImporter", description)
 
@@ -83,16 +83,16 @@ class PublicRepositoryTests(unittest.TestCase):
         names = sorted(os.path.relpath(path, PROCESSOR_DIR) for path in folder_files())
         expected = [
             "ChecksumVerifier.py", "CimianImporter.py", "GitHubAssetDigest.py", "README.md",
-            "SharedProcessors.recipe", "WindowsExeVersion.py",
+            "SharedProcessors.recipe", "VersionFromName.py", "WindowsExeVersion.py",
             os.path.join("tests", "__init__.py"), os.path.join("tests", "_win_support.py"),
             os.path.join("tests", "test_checksum.py"), os.path.join("tests", "test_cimian_importer.py"),
             os.path.join("tests", "test_digest.py"), os.path.join("tests", "test_exe_version.py"),
-            os.path.join("tests", "test_readme.py"),
+            os.path.join("tests", "test_readme.py"), os.path.join("tests", "test_version_name.py"),
         ]  # this file is not listed: it is not scanned
         self.assertEqual(names, sorted(expected))
 
     def test_each_processor_file_has_a_class_of_the_same_name(self):
-        for name in ("CimianImporter", "ChecksumVerifier", "GitHubAssetDigest", "WindowsExeVersion"):
+        for name in ("CimianImporter", "ChecksumVerifier", "GitHubAssetDigest", "WindowsExeVersion", "VersionFromName"):
             with open(os.path.join(PROCESSOR_DIR, name + ".py"), "r", encoding="utf-8") as handle:
                 self.assertIn("class %s(Processor):" % name, handle.read())
 

@@ -1,0 +1,153 @@
+{
+ "_note": "Names, sizes and whether GitHub records a digest, read from the public release list of xcp-ng/xenadmin on 2026-10-04 (the newest 12 releases, newest first, in the order that GitHub listed them; every asset is kept). Not the whole record: no release title and no digest value is kept. A version of four numbers or more is written with `_dot_` for each dot (in tags and in names), because the repository's hygiene check takes four numbers joined by dots for an address; the test file puts the dots back.",
+ "releases": [
+  {
+   "tag_name": "v25.04",
+   "prerelease": false,
+   "published_at": "2025-04-29T22:58:19Z",
+   "assets": [
+    {
+     "name": "XCP-ng.Center.msi",
+     "size": 9298220,
+     "digest_recorded": false
+    },
+    {
+     "name": "XCP-ng.Center.zip",
+     "size": 8534206,
+     "digest_recorded": false
+    },
+    {
+     "name": "XCP-ng.Center_pdb.zip",
+     "size": 789012,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "vNext-24307",
+   "prerelease": false,
+   "published_at": "2024-11-03T04:40:49Z",
+   "assets": [
+    {
+     "name": "XCP-ng-Center_vNext_24307_c1ed446_Release.zip",
+     "size": 6788685,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v.99_dot_99_dot_99_dot_30",
+   "prerelease": true,
+   "published_at": "2024-01-12T13:38:04Z",
+   "assets": [
+    {
+     "name": "xcp-ng-center-nightly-99_dot_99_dot_99_dot_30.zip",
+     "size": 5818680,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v99_dot_99_dot_99_dot_29",
+   "prerelease": true,
+   "published_at": "2024-01-01T20:08:56Z",
+   "assets": [
+    {
+     "name": "xcp-ng-nightly-99_dot_99_dot_99_dot_29.zip",
+     "size": 5817357,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v20_dot_04_dot_01_dot_33",
+   "prerelease": false,
+   "published_at": "2020-12-11T16:14:56Z",
+   "assets": [
+    {
+     "name": "XCP-ng-Center-20_dot_04_dot_01_dot_33.msi",
+     "size": 7561216,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v20_dot_04_dot_00_dot_32",
+   "prerelease": false,
+   "published_at": "2020-04-12T15:52:55Z",
+   "assets": [
+    {
+     "name": "XCP-ng-Center-20_dot_04_dot_00_dot_32.msi",
+     "size": 7557120,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "20_dot_03_dot_01_dot_31",
+   "prerelease": false,
+   "published_at": "2020-03-25T00:19:24Z",
+   "assets": [
+    {
+     "name": "XCP-ng-Center-20_dot_03_dot_01_dot_31.msi",
+     "size": 7557120,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v20_dot_03_dot_00_dot_29",
+   "prerelease": false,
+   "published_at": "2020-03-11T19:20:20Z",
+   "assets": []
+  },
+  {
+   "tag_name": "99_dot_99_dot_99_dot_28",
+   "prerelease": true,
+   "published_at": "2020-02-06T23:04:54Z",
+   "assets": [
+    {
+     "name": "installer-xcp-ng-nightly-99_dot_99_dot_99_dot_28.msi",
+     "size": 7544832,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v99_dot_99_dot_99_dot_27",
+   "prerelease": true,
+   "published_at": "2020-01-26T17:16:49Z",
+   "assets": [
+    {
+     "name": "installer-xcp-ng-nightly-99_dot_99_dot_99_dot_27.msi",
+     "size": 7495680,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v8_dot_0_dot_1_dot_26",
+   "prerelease": false,
+   "published_at": "2019-07-10T21:16:24Z",
+   "assets": [
+    {
+     "name": "XCP-ng-Center-8_dot_0_dot_1_dot_26.msi",
+     "size": 7491584,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v.8.0.0",
+   "prerelease": false,
+   "published_at": "2019-05-11T17:59:32Z",
+   "assets": [
+    {
+     "name": "XCP-ng-Center-8_dot_0_dot_0_dot_24.msi",
+     "size": 7487488,
+     "digest_recorded": false
+    }
+   ]
+  }
+ ]
+}

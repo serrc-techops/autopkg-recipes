@@ -1,0 +1,956 @@
+{
+ "_note": "Names, sizes and whether GitHub records a digest, read from the public release list of bambulab/BambuStudio on 2026-10-04 (the newest 28 releases, newest first, in the order that GitHub listed them). Not the whole record: no release title and no digest value is kept.",
+ "releases": [
+  {
+   "tag_name": "v02.08.04.57",
+   "prerelease": true,
+   "published_at": "2026-09-22T11:56:36Z",
+   "assets": [
+    {
+     "name": "BambuStudio_ubu22-v02.08.04.57-20260922164607.AppImage",
+     "size": 242571768,
+     "digest_recorded": true
+    },
+    {
+     "name": "BambuStudio_ubu24-v02.08.04.57-20260922164607.AppImage",
+     "size": 243841528,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_linux_fedora-v02.08.04.57.AppImage",
+     "size": 255740408,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac_v02.08.04.57-20260922164607.dmg",
+     "size": 308270960,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac_v02.08.04.61-20260929132640.dmg",
+     "size": 308267416,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win_v02.08.04.57-20260922164607.exe",
+     "size": 444135296,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win_v02.08.04.57-20260922164607.zip",
+     "size": 472832292,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.08.03.66",
+   "prerelease": true,
+   "published_at": "2026-09-08T13:02:55Z",
+   "assets": [
+    {
+     "name": "BambuStudio_ubu22-v02.08.03.66-20260909013025.AppImage",
+     "size": 241281528,
+     "digest_recorded": true
+    },
+    {
+     "name": "BambuStudio_ubu24-v02.08.03.66-20260909013025.AppImage",
+     "size": 242448888,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.08.03.66-20260908195535.dmg",
+     "size": 306237994,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.08.03.66-20260908195535.exe",
+     "size": 443072408,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.08.03.66-20260908195535.zip",
+     "size": 486368430,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.08.02.61",
+   "prerelease": false,
+   "published_at": "2026-08-21T06:31:50Z",
+   "assets": [
+    {
+     "name": "BambuStudio_ubuntu22.04-v02.08.02.61-20260820225108.AppImage",
+     "size": 229153272,
+     "digest_recorded": true
+    },
+    {
+     "name": "BambuStudio_ubuntu24.04-v02.08.02.61-20260820225108.AppImage",
+     "size": 230025720,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.08.02.61-20260820225108.dmg",
+     "size": 288329156,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.08.02.61-20260820225108.exe",
+     "size": 429020440,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.08.02.61-20260820225108.zip",
+     "size": 473534359,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.08.02.60",
+   "prerelease": false,
+   "published_at": "2026-08-14T12:00:42Z",
+   "assets": [
+    {
+     "name": "BambuStudio_ubuntu22.04-v02.08.02.60-20260814171356.AppImage",
+     "size": 229132792,
+     "digest_recorded": true
+    },
+    {
+     "name": "BambuStudio_ubuntu24.04-v02.08.02.60-20260814171356.AppImage",
+     "size": 230021624,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.08.02.60-20260814163036.dmg",
+     "size": 288293176,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.08.02.60-20260814163036.exe",
+     "size": 429037864,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.08.02.60-20260814163036.zip",
+     "size": 473014652,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.08.01.55",
+   "prerelease": true,
+   "published_at": "2026-07-14T14:22:27Z",
+   "assets": [
+    {
+     "name": "BambuStudio_ubuntu22.04-v02.08.01.55-20260715113557.AppImage",
+     "size": 228243960,
+     "digest_recorded": true
+    },
+    {
+     "name": "BambuStudio_ubuntu24.04-v02.08.01.55-20260715113557.AppImage",
+     "size": 229009912,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.08.01.55-20260714203731.dmg",
+     "size": 286015393,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.08.01.55-20260714203731.exe",
+     "size": 428186312,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.08.01.55-20260714203731.zip",
+     "size": 468902312,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.08.00.50",
+   "prerelease": true,
+   "published_at": "2026-06-25T13:39:38Z",
+   "assets": [
+    {
+     "name": "BambuStudio_ubuntu22.04-v02.08.00.50-20260625193201.AppImage",
+     "size": 227744248,
+     "digest_recorded": true
+    },
+    {
+     "name": "BambuStudio_ubuntu24.04-v02.08.00.50-20260625193201.AppImage",
+     "size": 228583928,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.08.00.50-20260625193201.dmg",
+     "size": 284444308,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.08.00.50-20260625193201.exe",
+     "size": 427575200,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.08.00.50-20260625193201.zip",
+     "size": 465478706,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.07.01.62",
+   "prerelease": false,
+   "published_at": "2026-06-16T14:41:56Z",
+   "assets": [
+    {
+     "name": "BambuStudio_ubuntu22.04-v02.07.01.62-20260616195227.AppImage",
+     "size": 226286072,
+     "digest_recorded": true
+    },
+    {
+     "name": "BambuStudio_ubuntu24.04-v02.07.01.62-20260616195227.AppImage",
+     "size": 227047928,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.07.01.62-20260616174358.dmg",
+     "size": 283034195,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.07.01.62-20260616174358.exe",
+     "size": 427113504,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.07.01.62-20260616174358.zip",
+     "size": 461747465,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.07.01.57",
+   "prerelease": false,
+   "published_at": "2026-06-01T13:51:54Z",
+   "assets": [
+    {
+     "name": "BambuStudio_ubuntu-22.04-v02.07.01.57-20260601192128.AppImage",
+     "size": 227084792,
+     "digest_recorded": true
+    },
+    {
+     "name": "BambuStudio_ubuntu-24.04-v02.07.01.57-20260601192128.AppImage",
+     "size": 227875320,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.07.01.57-20260601165745.dmg",
+     "size": 283033384,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.07.01.57-pre_release.dmg",
+     "size": 283036456,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.07.01.57-20260601165745.exe",
+     "size": 427087680,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.07.01.57-20260601165745.zip",
+     "size": 461875461,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.07.00.55",
+   "prerelease": true,
+   "published_at": "2026-05-14T12:39:59Z",
+   "assets": [
+    {
+     "name": "BambuStudio_ubuntu-22.04-v02.07.00.55-20260514170313.AppImage",
+     "size": 226769400,
+     "digest_recorded": true
+    },
+    {
+     "name": "BambuStudio_ubuntu-24.04-v02.07.00.55-20260514170313.AppImage",
+     "size": 227482104,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.07.00.55-20260514170313.dmg",
+     "size": 276927186,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.07.00.55-20260514170313.exe",
+     "size": 421121976,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.07.00.55-20260514170313.zip",
+     "size": 455121623,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.06.01.55",
+   "prerelease": true,
+   "published_at": "2026-04-28T14:09:02Z",
+   "assets": [
+    {
+     "name": "BambuStudio_ubuntu22.04-v02.06.01.55-20260429100944.AppImage",
+     "size": 224864760,
+     "digest_recorded": true
+    },
+    {
+     "name": "BambuStudio_ubuntu24.04-v02.06.01.55-20260429100944.AppImage",
+     "size": 225581560,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_linux_fedora-v02.06.01.55.AppImage",
+     "size": 223111672,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.06.01.55-20260428201229.dmg",
+     "size": 272741678,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.06.01.55-20260428201229.exe",
+     "size": 338771760,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.06.01.55-20260428201229.zip",
+     "size": 446235247,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.06.00.51",
+   "prerelease": false,
+   "published_at": "2026-04-17T13:02:58Z",
+   "assets": [
+    {
+     "name": "BambuStudio_ubuntu-22.04-v02.06.00.51-20260417160415.AppImage",
+     "size": 223988216,
+     "digest_recorded": true
+    },
+    {
+     "name": "BambuStudio_ubuntu-24.04-v02.06.00.51-20260417160415.AppImage",
+     "size": 224688632,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_linux_fedora-v02.06.00.51.AppImage",
+     "size": 222226936,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.06.00.51-20260417160415.dmg",
+     "size": 271399797,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.06.00.51-20260417160415.exe",
+     "size": 337999248,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.06.00.51-20260417160415.zip",
+     "size": 426009578,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.05.03.62",
+   "prerelease": false,
+   "published_at": "2026-04-14T15:11:55Z",
+   "assets": [
+    {
+     "name": "BambuStudio_ubuntu-22.04-v02.05.03.61-20260414220857.AppImage",
+     "size": 223980024,
+     "digest_recorded": true
+    },
+    {
+     "name": "BambuStudio_ubuntu-24.04-v02.05.03.61-20260414220857.AppImage",
+     "size": 224668152,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_linux_fedora-v02.05.03.61.AppImage",
+     "size": 222247416,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.05.03.61-20260414213734.dmg",
+     "size": 271437838,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.05.03.61-20260414213734.exe",
+     "size": 337998224,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.05.03.61-20260414213734.zip",
+     "size": 430855744,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.05.02.51",
+   "prerelease": true,
+   "published_at": "2026-03-27T15:41:50Z",
+   "assets": [
+    {
+     "name": "BambuStudio_ubuntu-22.04_v02.05.02.51-20260327222803.AppImage",
+     "size": 185543160,
+     "digest_recorded": true
+    },
+    {
+     "name": "BambuStudio_ubuntu-24.04_v02.05.02.51-20260327222803.AppImage",
+     "size": 186333688,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.05.02.51-20260327222803.dmg",
+     "size": 231038007,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win_public-v02.05.02.51-20260327222803.exe",
+     "size": 302378464,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win_public-v02.05.02.51-20260327222803.zip",
+     "size": 387920415,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.05.01.52",
+   "prerelease": true,
+   "published_at": "2026-02-05T12:30:58Z",
+   "assets": [
+    {
+     "name": "Bambu_Studio_mac-v02.05.01.52-20260205192213.dmg",
+     "size": 230811735,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-22.04_V02.05.01.52.AppImage",
+     "size": 185743864,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-24.04_V02.05.01.52.AppImage",
+     "size": 186354168,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.05.01.52-20260205192213.zip",
+     "size": 387791349,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win_public-v02.05.01.52-20260205192213.exe",
+     "size": 302315232,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.05.00.67",
+   "prerelease": false,
+   "published_at": "2026-01-28T15:53:02Z",
+   "assets": [
+    {
+     "name": "Bambu_Studio_linux_fedora-v02.05.00.66.AppImage",
+     "size": 173521400,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.05.00.66-20260128215914.dmg",
+     "size": 220198738,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.05.00.66-20260128215914.zip",
+     "size": 376310298,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win_public-v02.05.00.66-20260128215914.exe",
+     "size": 292001872,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.05.00.65",
+   "prerelease": false,
+   "published_at": "2026-01-27T11:43:18Z",
+   "assets": [
+    {
+     "name": "Bambu_Studio_linux_fedora-v02.05.00.64.AppImage",
+     "size": 173537784,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.05.00.64-20260127150645.dmg",
+     "size": 220195703,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-22.04_PR-9504.AppImage",
+     "size": 175278584,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-24.04_PR-9504.AppImage",
+     "size": 175888888,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.05.00.64-20260127141326.zip",
+     "size": 376746426,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win_public-v02.05.00.64-20260127141326.exe",
+     "size": 292000520,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.04.00.70",
+   "prerelease": false,
+   "published_at": "2025-11-18T14:00:15Z",
+   "assets": [
+    {
+     "name": "Bambu_Studio_linux_fedora-v02.04.00.70.AppImage",
+     "size": 164923896,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.04.00.70-20251118194119.dmg",
+     "size": 210679944,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-22.04_PR-8834.AppImage",
+     "size": 166681080,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-24.04_PR-8834.AppImage",
+     "size": 167307768,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.04.00.70-20251118194119.zip",
+     "size": 363856014,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win_public-v02.04.00.70-20251118194119.exe",
+     "size": 284106912,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.03.01.51",
+   "prerelease": false,
+   "published_at": "2025-10-30T08:29:24Z",
+   "assets": [
+    {
+     "name": "Bambu_Studio_mac-v02.03.01.51-20251029114602.dmg",
+     "size": 189416169,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-22.04_PR-8583.AppImage",
+     "size": 147229176,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-24.04_PR-8583.AppImage",
+     "size": 147839480,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.03.01.51-20251029114602.zip",
+     "size": 339369331,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win_public-v02.03.01.51-20251029114602.exe",
+     "size": 266520768,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.03.00.70",
+   "prerelease": false,
+   "published_at": "2025-10-14T14:34:07Z",
+   "assets": [
+    {
+     "name": "Bambu_Studio_mac-v02.03.00.70-20251014214058.dmg",
+     "size": 189411247,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-22.04_PR-8184.AppImage",
+     "size": 147237368,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-24.04_PR-8184.AppImage",
+     "size": 147827192,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.03.00.70-20251014214058.zip",
+     "size": 339413886,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win_public-v02.03.00.70-20251014214058.exe",
+     "size": 266505992,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.02.02.56",
+   "prerelease": false,
+   "published_at": "2025-09-15T09:15:27Z",
+   "assets": [
+    {
+     "name": "Bambu_Studio_mac-v02.02.02.56-20250915154409.dmg",
+     "size": 182998077,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-22.04_PR-8184.AppImage",
+     "size": 142268920,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-24.04_PR-8184.AppImage",
+     "size": 142813688,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.02.02.56-20250915154409.zip",
+     "size": 329470214,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win_public-v02.02.02.56-20250915154409.exe",
+     "size": 261769216,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.02.01.60",
+   "prerelease": false,
+   "published_at": "2025-08-28T12:08:56Z",
+   "assets": [
+    {
+     "name": "BambuStudio_ubuntu-22.04_PR-8017.zip",
+     "size": 141242687,
+     "digest_recorded": true
+    },
+    {
+     "name": "BambuStudio_ubuntu-24.04_PR-8017.zip",
+     "size": 141779682,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio-v02.02.01.60-20250828183151.zip",
+     "size": 328673808,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_linux_fedora-v02.02.01.60.AppImage",
+     "size": 140265976,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.02.01.60-20250828183151.dmg",
+     "size": 182681298,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_public-v02.02.01.60-20250828183151.exe",
+     "size": 261435600,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.02.01.58",
+   "prerelease": false,
+   "published_at": "2025-08-26T15:08:03Z",
+   "assets": [
+    {
+     "name": "Bambu_Studio_mac-v02.02.01.58-20250826220055.dmg",
+     "size": 182664521,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.02.01.58-20250826220055.zip",
+     "size": 328711185,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win_public-v02.02.01.58-20250826220055.exe",
+     "size": 261410880,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.02.00.85",
+   "prerelease": false,
+   "published_at": "2025-08-12T13:44:37Z",
+   "assets": [
+    {
+     "name": "Bambu_Studio_mac-v02.02.00.85-20250812192329.dmg",
+     "size": 176243244,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-22.04_PR-7829.AppImage",
+     "size": 135879160,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-24.04_PR-7829.AppImage",
+     "size": 136436216,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.02.00.85-20250812192329.zip",
+     "size": 322079932,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win_public-v02.02.00.85-20250812192329.exe",
+     "size": 255529760,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.02.00.68",
+   "prerelease": true,
+   "published_at": "2025-07-31T13:55:42Z",
+   "assets": [
+    {
+     "name": "Bambu_Studio_mac-v02.02.00.68-20250731204809.dmg",
+     "size": 168080229,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-22.04_PR-7606.AppImage",
+     "size": 127904248,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-24.04_PR-7606.AppImage",
+     "size": 128416248,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.02.00.68-20250731204809.zip",
+     "size": 313737030,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win_public-v02.02.00.68-20250731204809.exe",
+     "size": 247746360,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.02.00.60",
+   "prerelease": true,
+   "published_at": "2025-07-17T12:32:40Z",
+   "assets": [
+    {
+     "name": "Bambu_Studio_linux_fedora-v02.02.00.60.AppImage",
+     "size": 133199040,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.02.00.60-20250717193059.dmg",
+     "size": 167688655,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-22.04_PR-7606.AppImage",
+     "size": 135431360,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-24.04_PR-7606.AppImage",
+     "size": 135906496,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.02.00.60-20250717193059.zip",
+     "size": 312135994,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win_public-v02.02.00.60-20250717193059.exe",
+     "size": 247618832,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Suite_Public_MAC_01.03.00.01.dmg",
+     "size": 833564843,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.01.01.52",
+   "prerelease": false,
+   "published_at": "2025-06-16T12:12:01Z",
+   "assets": [
+    {
+     "name": "BambuStudio_ubuntu-22.04_PR-7292.zip",
+     "size": 130451229,
+     "digest_recorded": true
+    },
+    {
+     "name": "BambuStudio_ubuntu-24.04_PR-7292.zip",
+     "size": 130367045,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_linux_fedora-v02.01.01.52.AppImage",
+     "size": 129066176,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.01.01.52-20250616155614.dmg",
+     "size": 163812527,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.01.01.52-20250616155614.zip",
+     "size": 297865417,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win_public-v02.01.01.52-20250616155614.exe",
+     "size": 241536672,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v02.01.00.59",
+   "prerelease": false,
+   "published_at": "2025-06-03T09:26:27Z",
+   "assets": [
+    {
+     "name": "Bambu_Studio_linux_fedora-v02.01.00.59.AppImage",
+     "size": 129057984,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.01.00.59-20250530092153.dmg",
+     "size": 163841891,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-22.04_PR-7080.AppImage",
+     "size": 131515584,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_ubuntu-24.04_PR-7080.AppImage",
+     "size": 131404992,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win-v02.01.00.59-20250530092153.zip",
+     "size": 297782263,
+     "digest_recorded": true
+    },
+    {
+     "name": "Bambu_Studio_win_public-v02.01.00.59-20250530092153.exe",
+     "size": 241536424,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "V02.00.03.54",
+   "prerelease": false,
+   "published_at": "2025-04-24T13:16:35Z",
+   "assets": [
+    {
+     "name": "BambuStudio_ubuntu-22.04_PR-6688.zip",
+     "size": 130276889,
+     "digest_recorded": false
+    },
+    {
+     "name": "BambuStudio_ubuntu-24.04_PR-6688.zip",
+     "size": 130175499,
+     "digest_recorded": false
+    },
+    {
+     "name": "Bambu_Studio_linux_fedora-v02.00.03.54.AppImage",
+     "size": 128881856,
+     "digest_recorded": false
+    },
+    {
+     "name": "Bambu_Studio_mac-v02.00.03.54-20250424182834.dmg",
+     "size": 163418236,
+     "digest_recorded": false
+    },
+    {
+     "name": "Bambu_Studio_win-v02.00.03.54-20250424182834.zip",
+     "size": 296844193,
+     "digest_recorded": false
+    },
+    {
+     "name": "Bambu_Studio_win_public-v02.00.03.54-20250424182834.exe",
+     "size": 241450328,
+     "digest_recorded": false
+    }
+   ]
+  }
+ ]
+}

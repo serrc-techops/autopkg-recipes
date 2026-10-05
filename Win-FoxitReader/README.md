@@ -2,7 +2,7 @@
 
 A Windows recipe pair: Foxit PDF Reader, the 64-bit multi-language `.exe` installer, with the version label read from the file.
 
-**Status. NOT rehearsed with AutoPkg. Some facts of the source were fetched by the writer on 2026-10-02: no run of AutoPkg was made, and nothing was written to a repository. The download is NOT verified: Foxit publishes no hash for the file, and a check of the signature is not built. Because of this the shared importer REFUSES a real run of this recipe (nothing is published) unless the override sets `pcman_allow_unverified` to true. Do not set it before the signature check exists. Until then run the dry run only, and import by hand after a person has checked the file: `pcman import <file> --template foxitreader --version <the label>` (an EXE needs `--version`). Read from Foxit's servers on 2026-10-02, with no browser identity: (1) `https://www.foxit.com/downloads/latest.html?product=Foxit-Reader&platform=Windows&version=&package_type=exe&language=L10N` answered 301 to `https://www.foxit.com/downloads/latest/?product=...` (the same query); (2) that address answered 307 to `https://cdn01.foxitsoftware.com/product/reader/desktop/win/2026.2.1/FoxitPDFReader202621_L10N_Setup_Prom_x64.exe`; (3) that address answered 302 to a signed, short-lived address on a cloud storage host. Verified on the same day: the file at that address, downloaded through its signed redirect (291221048 bytes), was read with the shared `WindowsExeVersion`: `ProductVersion` `2026.2.1.39815`, `FileVersion` the same, the numbers of the fixed file information the same, `ProductName` `Foxit PDF Reader`. So the label that the recipe passes is `2026.2.1.39815`, and the version in the address, `2026.2.1`, is its first three parts (one release was compared). NOT established: that the next release keeps that relation between the address and the file; that the signature of the file is valid (nothing checks it); the host and the lifetime of the signed address (the processor never reads that answer: the downloader follows it); that another product, language or package type than the defaults has the same layout (only the defaults were read); the silent switch and the install path of the installer (not read: the first import's command below has placeholders); that the template item `foxitreader` exists; `pcman catalogs`; any run with AutoPkg. The tests use answers that the writer wrote by hand after the real addresses of 2026-10-02, so they prove what the code does with answers of that form and nothing about Foxit today. The first run on the build Mac is the check of everything that is NOT established. When it fails, STOP: nothing was written (a run that fails before the import writes nothing). Read Foxit's real addresses with a header request or in a browser, correct the processor or the recipe, and only then look at the trust information. Never accept new trust information first to make a failure go away.**
+**Status. Run on 2026-10-04 under AutoPkg 2.9.0, as follows. The first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the template `foxitreader` (an EXE item, label `2026.2.1.39815`, architectures `x64`) in the package tool's repository, in the catalog `Production`. The first import went beside the Chocolatey item `foxitreader` (version 1.0) without any option of the tool; the Chocolatey item file and its `foxitreader-1.0` pkginfo remain until a person removes them by hand, and `pcman validate` warns that the item has two versions until then. The override of `FoxitReader.pcman` (`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false) then ran for real: the address, the download and the label step went through, and the importer REFUSED the run with `The download was not verified: no step of the recipe set checksum_verified together with the checksum_sha256 of this file. Nothing was published. ...` (exit 70), which is what an unverified download must get; `pcman_allow_unverified` was not set. The override downloaded the file again about ten minutes after the first import, and its hash was the imported file's. The hand-import form `pcman import <file> --template foxitreader --version <the label> --no-prompt --if-new --dry-run` printed `Nothing new: foxitreader <label> exists already ...` with exit 3. `pcman catalogs` ran once for all the new items together (2026-10-04): the tool's configured command ran `makecatalogs` on the repository's server, with exit 0, and wrote the catalogs `All` and `Production`, 106 items each. The file is a WiX Burn bundle (it has a `.wixburn` section), and the silent switch `/quiet /norestart` was used on 2026-10-04: the operator took it from Foxit's page on command-line installation for EXE installers; it was NOT tested on a PC. No `--install-path` was given (it must be read on a PC after an install), so the template has NO install check until a person adds one; the client then relies on the ManagedInstalls registry. Still NOT established after those runs: that the switch installs silently on a PC; an install check; any install. Some facts of the source were fetched by the writer on 2026-10-02, before those runs. The download is NOT verified: Foxit publishes no hash for the file, and a check of the signature is not built. Because of this the shared importer REFUSES a real run of this recipe (nothing is published) unless the override sets `pcman_allow_unverified` to true. Do not set it before the signature check exists. Until then run the dry run only, and import by hand after a person has checked the file: `pcman import <file> --template foxitreader --version <the label>` (an EXE needs `--version`). Read from Foxit's servers on 2026-10-02, with no browser identity: (1) `https://www.foxit.com/downloads/latest.html?product=Foxit-Reader&platform=Windows&version=&package_type=exe&language=L10N` answered 301 to `https://www.foxit.com/downloads/latest/?product=...` (the same query); (2) that address answered 307 to `https://cdn01.foxitsoftware.com/product/reader/desktop/win/2026.2.1/FoxitPDFReader202621_L10N_Setup_Prom_x64.exe`; (3) that address answered 302 to a signed, short-lived address on a cloud storage host. Verified on the same day: the file at that address, downloaded through its signed redirect (291221048 bytes), was read with the shared `WindowsExeVersion`: `ProductVersion` `2026.2.1.39815`, `FileVersion` the same, the numbers of the fixed file information the same, `ProductName` `Foxit PDF Reader`. So the label that the recipe passes is `2026.2.1.39815`, and the version in the address, `2026.2.1`, is its first three parts (one release was compared). NOT established: that the next release keeps that relation between the address and the file; that the signature of the file is valid (nothing checks it); the host and the lifetime of the signed address (the processor never reads that answer: the downloader follows it); that another product, language or package type than the defaults has the same layout (only the defaults were read); the silent switch on a PC, the install path and an install check (the switch was used on 2026-10-04 and not tested; no install path was given); any install on a PC. The tests use answers that the writer wrote by hand after the real addresses of 2026-10-02, so they prove what the code does with answers of that form and nothing about Foxit today. The first install on a test PC is the check of what is NOT established. When a run fails, STOP: nothing was written (a run that fails before the import writes nothing). Read Foxit's real addresses with a header request or in a browser, correct the processor or the recipe, and only then look at the trust information. Never accept new trust information first to make a failure go away.**
 
 
 | Recipe | Identifier | What it does |
@@ -229,22 +229,25 @@ This way needs the owner's package tool, `pcman`, which is **not part of this re
 3. **The template item, made once by a first import**, so that its pkginfo and
    installer are in the repository. The template keeps the name of the item that
    it replaces. If the package tool's repository has an item `foxitreader` already, look
-   at it first: it must be an item for the EXE, and this step is not needed. The command,
-   with a real installer of the current release:
+   at it first: an item of the kind `choco` is not the template (see the status line: the first
+   import of 2026-10-04 went beside it without any option, and a person removes the Chocolatey item
+   by hand); an item that an earlier run of this step made is, and this step is then not needed. The command,
+   in the form that ran on 2026-10-04, with a real installer of the current release:
 
        pcman import <path of the installer> --name foxitreader \
-           --version <the ProductVersion that the file's properties show> \
+           --version <the label that the first dry run prints> \
            --directory <the folder of the item> \
-           --install-arguments <the installer's silent switch, read in the vendor's documentation first> \
-           --install-path <the path of the installed program, read on one PC after an install> \
+           --install-arguments '/quiet /norestart' \
            --architectures x64 --display-name "Foxit PDF Reader" \
            --category <the category of the item> --developer "Foxit Software" \
-           --description <one sentence about the item> --no-prompt --build
+           --description <one sentence about the item> \
+           --icon <the file name of an icon that the repository has> --no-prompt --build
 
-   The silent switch and the install path are facts of the installer. The writer did NOT
-   read them: the Foxit installer's documentation was not read, so the command has no
-   value for them. Read the vendor's documentation first, and try both on one PC before
-   this command is run. The label after `--version` is the version of the file as its
+   The silent switch `/quiet /norestart` was **used on 2026-10-04, not tested on a PC**: it is from Foxit's
+   documentation of command-line installation for EXE installers, and the file is a WiX Burn bundle.
+   `--install-path` was left out because the path must be read on one PC after an install; the template then has
+   no install check, and a wrong path would install again at every run, so add it only after reading it.
+   The label after `--version` is the version of the file as its
    properties show it (the same text that `WindowsExeVersion` reads from the file; for the
    file of 2026-10-02 it is `2026.2.1.39815`).
    Add the icon as the package tool's README describes. A person changes the template
@@ -372,7 +375,7 @@ row says `published, NOT verified`.
        autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/FoxitReader.pcman.recipe
 
    Expected: `Nothing new: ... is in the repository already. Nothing was
-   written.` and `Nothing downloaded, packaged or imported.`
+   written.` and `Nothing downloaded, packaged or imported.` (On 2026-10-04 the first run of a fresh override printed the line `Nothing new: ...` after it had downloaded the file again, because a new override gets a new cache folder; `Nothing downloaded, packaged or imported.` was not seen in that run, and is the line of a later run of the same override.)
 
 ## f. When a recipe or a processor changes upstream
 
@@ -424,7 +427,7 @@ They check that the processor handles every kind of answer (the addresses in `te
 written by hand after the real answers of 2026-10-02, not saved from the real server),
 that both recipes are property lists, that every argument is an input that the processors
 declare, that the version step comes after the end of the check phase and the cimian
-recipe passes its label as `pcman_version`, that the descriptions and the top of this
+recipe passes its label as `version` and the pcman recipe as `pcman_version`, that the descriptions and the top of this
 README say that the download is not verified and that a real run is refused, that this
 README states no hash and has no `make-override` without `--override-dir` and runs no
 recipe by its identifier, that it says what was NOT done, and that nothing site-specific is

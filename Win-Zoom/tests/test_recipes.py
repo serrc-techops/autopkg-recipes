@@ -261,8 +261,9 @@ class NotVerifiedTests(unittest.TestCase):
         for needle in ("NOT verified", "signature check", "REFUSES a real run", "pcman_allow_unverified",
                        "Do not set it before the signature check exists",
                        "pcman import <file> --template zoom", "no `--version` for an MSI",
-                       "has NOT been run by anyone"):
+                       "the importer REFUSED the run with"):
             self.assertIn(needle, status)
+        self.assertNotIn("has NOT been run by anyone", status)
 
     def test_the_readme_says_what_still_protects_and_that_it_is_not_enough(self):
         text = re.sub(r"\s+", " ", read(README))
@@ -482,15 +483,57 @@ class ReadmeTests(unittest.TestCase):
     def test_the_status_line_says_what_was_rehearsed_and_what_was_not(self):
         for needle in ("On 2026-10-01 it ran with the real AutoPkg 2.9.0 in a scratch folder up to \"Nothing new\"",
                        "against a template of the same version", "carries `--override-dir`",
-                       "A real run of this recipe has NOT been run by anyone, not against a share and not on a PC"):
+                       "the importer REFUSED the run with", "`pcman_allow_unverified` was not set"):
             self.assertIn(needle, self.text)
-        self.assertIn("`pcman catalogs` was NOT rehearsed", self.text)
+        self.assertNotIn("has NOT been run by anyone", self.text)
+        self.assertNotIn("`pcman catalogs` was NOT rehearsed", self.text)
         self.assertNotIn("Rehearsed on", self.raw)
 
 
 def _text(path):
     with open(path, "r", encoding="utf-8") as handle:
         return handle.read()
+
+
+class RealRunReadmeTests(unittest.TestCase):
+    """What the README says of the first import and the real run of 2026-10-04 (AutoPkg 2.9.0). """
+
+    def setUp(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            self.raw = handle.read()
+        self.text = re.sub(r"\s+", " ", self.raw)
+        self.status = re.sub(r"\s+", " ", [line for line in self.raw.splitlines() if line.startswith("**Status.")][0])
+
+    def test_the_status_line_says_what_ran_on_2026_10_04(self):
+        for needle in ('On 2026-10-04, under AutoPkg 2.9.0, the first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the item `zoom` (an MSI item, version `7.2.48556` read from the MSI, architectures `x64`)', '`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false', 'the importer REFUSED the run with `The download was not verified:', '(exit 70)', '`pcman_allow_unverified` was not set', "The override downloaded the file again about ten minutes after the first import, and its hash was the imported file's", '`Nothing new: zoom <version> exists already ...` with exit 3', 'went beside the Chocolatey item `zoom` (version 1.0) without any option of the tool', 'the Chocolatey item file and its `zoom-1.0` pkginfo remain until a person removes them by hand', '`pcman validate` warns that the item has two versions until then', '`pcman catalogs` ran once for all the new items together (2026-10-04)', '`All` and `Production`, 106 items each', "The silent install is the client's (`/qn /norestart` for an MSI) and was NOT tested on a PC", 'Still NOT established after those runs: that the MSI installs silently on a PC; any install; that a new release has the same upgrade code as the template'):
+            self.assertIn(needle, self.status)
+
+    def test_the_readme_says_the_rest_of_it(self):
+        for needle in ('On 2026-10-01 it ran with the real AutoPkg 2.9.0 in a scratch folder up to "Nothing new"',):
+            self.assertIn(needle, self.text)
+
+    def test_the_first_import_step_says_what_worked(self):
+        step = re.sub(r"\s+", " ", self.raw[self.raw.index("3. **The template item"):self.raw.index("## b.")])
+        for needle in ('This is the form that ran on 2026-10-04 (it worked as written)', '--icon <the file name of an icon that the repository has>', 'the client runs `msiexec /i <file> /qn /norestart` itself (not tested on a PC)', '--display-name'):
+            self.assertIn(needle, step)
+
+    def test_nothing_that_was_not_tested_is_called_tested(self):
+        for claim in ('was tested on a PC',):
+            self.assertNotIn(claim, self.text)
+
+    def test_the_second_run_line_is_not_promised_for_a_fresh_override(self):
+        self.assertIn("the first run of a fresh override printed the line `Nothing new: ...` after it had downloaded the file again", self.text)
+        self.assertIn("a new override gets a new cache folder", self.text)
+
+
+class FlagNameTests(unittest.TestCase):
+    """The cimian recipe's flag for an unverified download is `cimian_allow_unverified`; `pcman_allow_unverified` is the package tool's."""
+
+    def test_the_download_description_names_the_flag_of_each_recipe_correctly(self):
+        text = re.sub(r"\s+", " ", load(DOWNLOAD)["Description"])
+        self.assertIn("refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true "
+                      "(pcman_allow_unverified for the package tool's recipe)", text)
+        self.assertNotIn("of the cimian recipe unless the override sets pcman_allow_unverified", text)
 
 
 class CimianRecipeTests(unittest.TestCase):

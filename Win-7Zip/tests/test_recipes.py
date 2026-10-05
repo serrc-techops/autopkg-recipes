@@ -326,7 +326,7 @@ class ReadmeTests(unittest.TestCase):
         self.assertLess(i, self.raw.index("## a."))
 
     def test_the_steps_of_the_rehearsal_are_there(self):
-        for needle in ("rehearsed", "NOT yet run",
+        for needle in ("rehearsed", "NOT against the real share",
                        "pcman catalogs", "pcman versions 7zip", "PlistBuddy", "verify-trust-info",
                        "update-trust-info", "Failed local trust verification", "Nothing new",
                        "DRY RUN", "--build", "repo-add", "-string"):
@@ -334,9 +334,9 @@ class ReadmeTests(unittest.TestCase):
 
     def test_the_status_line_is_at_the_top(self):
         self.assertLess(self.raw.index("Rehearsed on 2026-10-01"), self.raw.index("## a."))
-        self.assertIn("`pcman catalogs` was NOT rehearsed", self.text)
+        self.assertNotIn("`pcman catalogs` was NOT rehearsed", self.text)
         for needle in ("a dry run, a publish", "a trust failure (a changed processor)", "a missing repository",
-                       "NOT yet run against the real share", "carries `--override-dir`",
+                       "The first rehearsal was NOT against the real share", "carries `--override-dir`",
                        "After the rehearsal the pre-release switch moved from the step into the `Input` (2026-10-04)",
                        "checked against AutoPkg 2.9.0's source and not run on the build machine"):
             self.assertIn(needle, self.text)
@@ -387,6 +387,40 @@ class ChainTests(_pcman_support.ToolTestCase):
 def _text(path):
     with open(path, "r", encoding="utf-8") as handle:
         return handle.read()
+
+
+class CleanRunReadmeTests(unittest.TestCase):
+    """What the README says of the dry run of both recipes on 2026-10-04 (AutoPkg 2.9.0): each ended in "Nothing new"."""
+
+    def setUp(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            self.raw = handle.read()
+        self.text = re.sub(r"\s+", " ", self.raw)
+
+    def test_both_recipes_ran_clean_as_a_dry_run_under_autopkg_2_9_0(self):
+        for needle in ('On 2026-10-04, under AutoPkg 2.9.0, both recipes of this folder (`7Zip.cimian.recipe` and `7Zip.pcman.recipe`) ran as a dry run, the default, against the real repository, whose template had been imported before, and **each ended clean**:', "the package tool's recipe with `PcmanImporter: Nothing new: 7zip 26.03 is in the repository already.`", 'the generic recipe with `CimianImporter: Nothing new: 7zip 26.03 is in the repository already (it has this very installer file).`'):
+            self.assertIn(needle, self.text)
+
+    def test_no_real_run_and_no_install_is_claimed(self):
+        self.assertIn("No real run of this program was made that day, and nothing has been installed on a PC.", self.text)
+        for claim in ("was installed on a PC", "a real run published"):
+            self.assertNotIn(claim, self.text)
+
+
+class CatalogsStepReadmeTests(unittest.TestCase):
+    """The step that builds the catalogs says what happened on 2026-10-04 and no longer says "Not rehearsed"."""
+
+    def test_the_catalogs_step_names_the_run_of_2026_10_04(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            text = re.sub(r"\s+", " ", handle.read())
+        i = text.index("3. **Build the catalogs: `pcman catalogs`.**")
+        step = text[i:text.index("4. The second run, by path again:", i)]
+        for needle in ("(On 2026-10-04 `pcman catalogs` ran once for other programs' new items:", "the tool's configured command ran `makecatalogs` on the repository's server",
+                       "wrote the catalogs `All` and `Production`, with exit 0",
+                       "The package tool prints \"nothing to run\" when its catalogs command is not set"):
+            self.assertIn(needle, step)
+        self.assertNotIn("Not rehearsed", step)
+        self.assertNotIn("for no program", step)
 
 
 class CimianRecipeTests(unittest.TestCase):

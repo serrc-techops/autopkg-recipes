@@ -39,6 +39,9 @@ PCMAN = os.path.join(RECIPE_DIR, "AngryIPScanner.pcman.recipe")
 RELEASES = os.path.join(TESTS_DIR, "releases_excerpt.json")
 # The pattern of an earlier draft of the recipe: the stand-alone program of the older releases.
 OLD_PATTERN = r"ipscan-win64-[0-9.]+\.exe$"
+# The pattern of the recipe before the label was taken from the name: it had no group.
+GROUPLESS_PATTERN = r"ipscan-[0-9.]+-setup\.exe$"
+PATTERN = r"ipscan-([0-9]+(?:\.[0-9]+)+)-setup\.exe$"
 # Required inputs that a recipe must NOT pass: they come from AutoPkg's
 # preferences or the override on the machine that runs it.
 SUPPLIED_BY_THE_MACHINE = {"PcmanImporter": {"pcman_root"}}
@@ -55,7 +58,8 @@ def load(path):
 def processor_classes():
     import importlib
     classes = {}
-    for name in ("PcmanImporter", "CimianImporter", "ChecksumVerifier", "GitHubAssetDigest", "WindowsExeVersion"):
+    for name in ("PcmanImporter", "CimianImporter", "ChecksumVerifier", "GitHubAssetDigest", "VersionFromName",
+                 "WindowsExeVersion"):
         classes[name] = getattr(importlib.import_module(name), name)
     return classes
 
@@ -77,6 +81,13 @@ def selected(pattern, include_prereleases=False):
             if re.match(pattern, asset["name"]):
                 return release["tag_name"], asset["name"]
     return None
+
+
+def selected_in(pattern, release):
+    """The asset that a pattern takes in one saved release: (tag, name). One asset, or the test stops."""
+    hits = [asset["name"] for asset in release["assets"] if re.match(pattern, asset["name"])]
+    assert len(hits) == 1, (release["tag_name"], hits)
+    return release["tag_name"], hits[0]
 
 
 def shared_steps(recipe):
@@ -111,7 +122,7 @@ class RecipeFileTests(unittest.TestCase):
         self.assertEqual(steps, [
             "GitHubReleasesInfoProvider", "URLDownloader", "EndOfCheckPhase",
             SHARED_PREFIX + "GitHubAssetDigest", SHARED_PREFIX + "ChecksumVerifier",
-            SHARED_PREFIX + "WindowsExeVersion",
+            SHARED_PREFIX + "VersionFromName",
         ])
 
     def test_the_pcman_recipe_has_one_step(self):
@@ -123,7 +134,7 @@ class RecipeFileTests(unittest.TestCase):
         self.assertEqual(args["github_repo"], "angryip/ipscan")
         self.assertEqual(args["asset_regex"], "%SEARCH_PATTERN%")
         self.assertNotIn("include_prereleases", args)
-        self.assertEqual(load(DOWNLOAD)["Input"]["SEARCH_PATTERN"], r"ipscan-[0-9.]+-setup\.exe$")
+        self.assertEqual(load(DOWNLOAD)["Input"]["SEARCH_PATTERN"], PATTERN)
 
     def test_pre_releases_are_a_switch_of_the_input_that_an_override_can_change(self):
         """AutoPkg 2.9.0 puts the Input of the recipe and of the override into the run first and
@@ -202,13 +213,53 @@ class RecipeFileTests(unittest.TestCase):
         self.assertEqual(args, {"pathname": "%pathname%", "pcman_template": "%PCMAN_TEMPLATE%",
                                 "pcman_version": "%version%"})
 
-    def test_the_exe_version_step_is_last_and_reads_the_downloaded_file(self):
+    def test_the_label_step_is_last_and_reads_the_name_of_the_downloaded_file(self):
         steps = load(DOWNLOAD)["Process"]
         names = [step["Processor"] for step in steps]
-        self.assertEqual(names[-1], SHARED_PREFIX + "WindowsExeVersion")
+        self.assertEqual(names[-1], SHARED_PREFIX + "VersionFromName")
         self.assertLess(names.index("EndOfCheckPhase"), names.index(SHARED_PREFIX + "ChecksumVerifier"))
         self.assertLess(names.index(SHARED_PREFIX + "ChecksumVerifier"), len(names) - 1)
-        self.assertEqual(steps[-1]["Arguments"], {"pathname": "%pathname%"})  # set_version stays at its default
+        self.assertEqual(steps[-1]["Arguments"], {"pathname": "%pathname%", "version_pattern": "%SEARCH_PATTERN%"})
+
+    def test_no_step_reads_a_version_resource_because_the_installer_has_none(self):
+        """The first run with AutoPkg 2.9.0 (2026-10-04) stopped at WindowsExeVersion: the installer has no
+        RT_VERSION resource."""
+        for path in (DOWNLOAD, CIMIAN, PCMAN):
+            for step in load(path)["Process"]:
+                self.assertFalse(step["Processor"].endswith("/WindowsExeVersion"), os.path.basename(path))
+
+    def test_the_search_pattern_has_one_group_and_it_is_the_label(self):
+        """The same pattern chooses the asset (AutoPkg's `re.match`) and gives the label (the processor's
+        `re.match`), so the label is the version in the name of the file that was chosen."""
+        pattern = re.compile(load(DOWNLOAD)["Input"]["SEARCH_PATTERN"])
+        self.assertEqual(pattern.groups, 1)
+        self.assertEqual(re.compile(GROUPLESS_PATTERN).groups, 0)
+        for release in releases():
+            tag, name = selected_in(pattern.pattern, release)
+            self.assertEqual(pattern.match(name).group(1), tag, name)
+
+    def test_the_label_step_gives_the_number_in_the_name_for_every_saved_release(self):
+        """What the recipe's last step does with the file that the recipe chooses in each saved release. A
+        step that read the file instead could not: the installer has no version resource."""
+        arguments = load(DOWNLOAD)["Process"][-1]["Arguments"]
+        run = {"SEARCH_PATTERN": load(DOWNLOAD)["Input"]["SEARCH_PATTERN"]}
+        for release in releases():
+            _, name = selected_in(run["SEARCH_PATTERN"], release)
+            env = {key: value.replace("%pathname%", "/cache/downloads/" + name).replace("%SEARCH_PATTERN%", run["SEARCH_PATTERN"])
+                   for key, value in arguments.items()}
+            env["version"] = "the tag of the release"
+            processor, _ = _win_support.run_processor(_win_support.version_name.VersionFromName, env)
+            self.assertEqual(processor.env["version"], release["tag_name"], release["tag_name"])
+
+    def test_a_name_without_a_version_stops_the_recipe_and_a_wrong_group_cannot_take_a_date(self):
+        arguments = load(DOWNLOAD)["Process"][-1]["Arguments"]
+        pattern = load(DOWNLOAD)["Input"]["SEARCH_PATTERN"]
+        for name in ("ipscan-setup.exe", "ipscan--setup.exe", "ipscan-3.10.0-win.exe"):
+            with self.subTest(name=name):
+                env = {"pathname": "/cache/" + name, "version_pattern": pattern}
+                with self.assertRaises(_win_support.ProcessorError):
+                    _win_support.run_processor(_win_support.version_name.VersionFromName, env)
+        self.assertEqual(set(arguments), {"pathname", "version_pattern"})
 
     def test_the_digest_and_the_checksum_arguments(self):
         steps = dict(shared_steps(load(DOWNLOAD)))
@@ -233,10 +284,13 @@ class RecipeFileTests(unittest.TestCase):
     def test_the_description_says_what_a_reader_must_know(self):
         self.assertIn("newest non-pre-release", load(DOWNLOAD)["Description"])
         self.assertIn("matching file", load(DOWNLOAD)["Description"])
-        self.assertIn("reads the version label from the .exe itself (its ProductVersion)", load(DOWNLOAD)["Description"])
+        self.assertIn("takes the version label from the asset's file name", load(DOWNLOAD)["Description"])
+        self.assertIn("The installer has no version resource of its own", load(DOWNLOAD)["Description"])
         self.assertIn("2026-10-04", load(DOWNLOAD)["Description"])
-        self.assertIn("NOT rehearsed", load(DOWNLOAD)["Description"])
-        self.assertIn("with the version label that the download recipe read from the .exe itself",
+        self.assertIn("is NOT established", load(DOWNLOAD)["Description"])
+        self.assertNotIn("ProductVersion", load(DOWNLOAD)["Description"])
+        self.assertNotIn("NOT rehearsed", load(DOWNLOAD)["Description"])
+        self.assertIn("with the version label that the download recipe took from the installer's file name",
                       load(PCMAN)["Description"])
         self.assertIn("dry run", load(PCMAN)["Description"])
         self.assertIn("pcman_dry_run", load(PCMAN)["Description"])
@@ -269,7 +323,7 @@ class SharedProcessorTests(unittest.TestCase):
             "ChecksumVerifier": {"pathname", "expected_sha256"},
             "GitHubAssetDigest": set(),
             "PcmanImporter": {"pathname"},
-            "WindowsExeVersion": {"pathname"},
+            "VersionFromName": {"pathname"},
         }
         for path in (DOWNLOAD, PCMAN):
             for name, args in shared_steps(load(path)):
@@ -408,12 +462,14 @@ class ReadmeTests(unittest.TestCase):
             self.assertIn(needle, self.text)
 
     def test_the_status_line_says_what_was_read_and_what_was_not(self):
-        """Read from GitHub's release list on 2026-10-04 (read only); nothing was run."""
-        self.assertLess(self.raw.index("**Status. NOT rehearsed"), self.raw.index("## a."))
-        start = self.raw.index("**Status. NOT rehearsed")
+        """The first dry run (2026-10-04) stopped at the label step; the facts of the source were read from
+        GitHub's release list on the same day (read only); the recipes ran again after the change, and the
+        first import and the real run of the package tool's recipe followed (all 2026-10-04)."""
+        opening = "**Status. Changed after the first dry run with AutoPkg 2.9.0, and run again after the change (2026-10-04)."
+        self.assertLess(self.raw.index(opening), self.raw.index("## a."))
+        start = self.raw.index(opening)
         paragraph = re.sub(r"\s+", " ", self.raw[start:self.raw.index("\n\n", start)])
-        self.assertTrue(paragraph.startswith(
-            "**Status. NOT rehearsed with AutoPkg: nothing in this folder has run with AutoPkg"))
+        self.assertTrue(paragraph.startswith(opening))
         self.assertTrue(paragraph.endswith("**"))
         for needle in ("2026-10-04", "`https://api.github.com/repos/angryip/ipscan/releases`", "no file was downloaded",
                        "plain numbers without a `v`", "none is flagged as a pre-release",
@@ -422,12 +478,32 @@ class ReadmeTests(unittest.TestCase):
                        "**Installer or portable program?**", "so this is by name and size",
                        "the `-setup.exe` is the installer", "the stand-alone program",
                        "Nobody opened either file", "NOT established beyond the names and the sizes",
-                       "`ipscan-win64-[0-9.]+\\.exe$`", "AutoPkg 2.9.0 takes the first release", "`select_asset`", "`re.match`", "skips `3.10.0`", "`ipscan-[0-9.]+-setup\\.exe$`",
-                       "The label is no longer the tag", "`WindowsExeVersion`",
-                       "`/VERYSILENT /NORESTART`", "writer's knowledge", "its ProductVersion",
-                       "first run on the build Mac", "stop", "nothing was written",
+                       "`ipscan-win64-[0-9.]+\\.exe$`", "AutoPkg 2.9.0 takes the first release", "`select_asset`", "`re.match`", "skips `3.10.0`",
+                       "`ipscan-([0-9]+(?:\\.[0-9]+)+)-setup\\.exe$`", "its one group is the label",
+                       "`WindowsExeVersion` said that `ipscan-3.10.0-setup.exe` has no version resource (RT_VERSION)",
+                       "the installer carries no version of its own", "`VersionFromName`",
+                       "The label is neither the tag nor read from the file",
+                       "in each of the four the number in the installer's name is the release's tag",
+                       "that run's log was not kept",
+                       "After the change a dry run under AutoPkg 2.9.0 selected `ipscan-3.10.0-setup.exe` of `3.10.0`, passed the digest and checksum steps and took the label `3.10.0` from the file name",
+                       "the first import with the package tool (the command of step a.3 below, run with `--no-prompt` and `--build`) made the template `angryip` "
+                       "(an EXE item, label `3.10.0`, `--install-arguments /S`, architectures `x64`, the catalog `Production`, no install path)",
+                       "`PcmanImporter: Nothing new: angryip 3.10.0 is in the repository already. Nothing was written.`",
+                       "went beside the Chocolatey item `angryip` (version 1.0) without any option of the tool",
+                       "the Chocolatey item file and its `angryip-1.0` pkginfo remain until a person removes them by hand",
+                       "`pcman catalogs` ran a second time later on 2026-10-04", "110 items each (106 before)",
+                       "**The installer is an NSIS installer, not an Inno Setup installer**", "\"Nullsoft\" and \"NSIS\" strings and NSIS's `.ndata` section",
+                       "the switch used was `/S` and not `/VERYSILENT /NORESTART`", "**used on 2026-10-04, not tested on a PC**",
+                       "a 32-bit program that says nothing about the architecture of what it installs",
+                       "has NO install check until a person adds one", "Nothing has been installed on a PC",
+                       "that the switch `/S` installs silently on a PC; the architecture of the installed program and its install path (the template has none)",
+                       "the version that the installed program reports about itself",
+                       "An install on a test PC is the check of each of them", "stop", "nothing was written",
                        "never the trust information first", "carries `--override-dir`"):
             self.assertIn(needle, paragraph)
+        for gone in ("NOT rehearsed since", "Since this change nothing in this folder has run", "any run with AutoPkg after this change",
+                     "that the installer is built with Inno Setup", "(from the writer's knowledge, the installer was not opened)"):
+            self.assertNotIn(gone, paragraph)
         self.assertNotIn("Rehearsed on", self.raw)
         self.assertNotIn("NOT fetched by the writer", self.raw)
 
@@ -441,24 +517,48 @@ class ReadmeTests(unittest.TestCase):
         step = self.raw[self.raw.index("## a."):self.raw.index("## b.")]
         text = re.sub(r"\s+", " ", step)
         for needle in ("--name angryip", "<path of ipscan-3.10.0-setup.exe>",
-                       "--version <the installer's own ProductVersion", "--display-name", "--category", "--developer",
-                       "--description", "--install-arguments", "/VERYSILENT /NORESTART",
-                       "(from the writer's knowledge, not read in the installer)",
+                       "--version <the label that the first dry run prints>", "--display-name", "--category", "--developer",
+                       "--description", "--install-arguments /S --architectures x64", "--icon", "in the form that ran on 2026-10-04 (it worked as written)",
+                       "The installer is an NSIS installer, not an Inno Setup installer",
+                       "NSIS's `/S`, and `/VERYSILENT /NORESTART` (an Inno Setup installer's) would not make it silent",
+                       "`/S` was **used on 2026-10-04, not tested on a PC**",
+                       "**Still to fill in:** the architecture and the install path",
+                       "`--architectures x64` is an expectation", "`--install-path` was left out because the path must be read on that PC after a test install",
                        "never from the other Windows file of the release", "a silent switch would only start"):
             self.assertIn(needle, text)
         self.assertEqual(len(re.findall(r"--version ", text)), 1)
-        self.assertNotIn("--architectures x64", text)
+        self.assertNotIn("--install-path '", text)
+        self.assertNotIn("--install-arguments '/VERYSILENT", text)
 
     def test_the_label_section_says_where_the_label_comes_from(self):
         section = self.raw[self.raw.index("## The label"):self.raw.index("Below, `pcman` stands for")]
         text = re.sub(r"\s+", " ", section)
-        for needle in ("`WindowsExeVersion`", "`ProductVersion`", "overwrites `version`", "`pcman_version`",
-                       "numbers and dots only", "a label of zeros stops the run",
-                       "belongs to the release and not to the file", "published under the tag",
-                       "`version is ..., taken from ...`", "**Read them first.**",
-                       "Compare the label with the tag", "NOT known", "tell the owner",
-                       "The first import (step a)"):
+        for needle in ("`WindowsExeVersion` stopped on `ipscan-3.10.0-setup.exe`", "no version resource (RT_VERSION)",
+                       "So the label is the number in the file's name", "`VersionFromName`", "`SEARCH_PATTERN`",
+                       "whose one group is the label", "two to four numbers joined by dots", "overwrites `version`",
+                       "`pcman_version`", "belongs to the release and not to the file",
+                       "the label is also the tag", "the label is the name's",
+                       "It is not the file's own version (the file has none)",
+                       "what the installed program says about itself: that is NOT established",
+                       "`version is ..., taken from the file name ...`", "**Read it first.**",
+                       "install the file by hand on a test PC", "compare it with that label", "tell the owner",
+                       "The first import (step a)", "must be made with the same label that the dry run prints"):
             self.assertIn(needle, text)
+        for needle in ("`ProductVersion` of the downloaded installer", "Compare the label with the tag",
+                       "numbers and dots only", "a label of zeros stops the run"):
+            self.assertNotIn(needle, text)
+
+    def test_the_readme_says_that_the_provider_goes_back_when_a_name_changes(self):
+        self.assertIn("takes the first release, newest first, that has a file whose name matches `SEARCH_PATTERN`, however old",
+                      self.text)
+        self.assertIn("Read the `Selected asset` line of every dry run", self.text)
+
+    def test_the_readme_says_the_installer_has_no_version_resource_and_names_no_other_source_for_the_label(self):
+        for needle in ("no version resource", "VersionFromName"):
+            self.assertIn(needle, self.text)
+        self.assertEqual(self.text.count("`WindowsExeVersion`"), self.text.count("`WindowsExeVersion` said") + self.text.count("`WindowsExeVersion` stopped"))
+        self.assertNotIn("the installer's own ProductVersion", self.text)
+        self.assertNotIn("reads the `ProductVersion`", self.text)
 
     def test_the_dry_run_is_run_with_v_so_that_the_label_lines_are_printed(self):
         step = self.raw[self.raw.index("## c."):self.raw.index("## d.")]
@@ -468,7 +568,8 @@ class ReadmeTests(unittest.TestCase):
 
     def test_no_label_is_invented(self):
         """The label is read from the file at the first run; the README gives a placeholder."""
-        self.assertNotRegex(self.raw, r"angryip\s+[0-9]")
+        # The only label that the README writes out is the one of the real run of 2026-10-04.
+        self.assertNotRegex(self.raw.replace("Nothing new: angryip 3.10.0 is in", ""), r"angryip\s+[0-9]")
         self.assertNotRegex(self.raw, r"--version [0-9]")
         self.assertNotIn("It passes the version label (the tag)", self.text)
 
@@ -476,33 +577,32 @@ class ReadmeTests(unittest.TestCase):
 class ChainTests(_pcman_support.ToolTestCase):
     """The chain of this program counts as verified for the importer: the real
     ChecksumVerifier hashes the file, and the importer hashes it again and
-    compares. The stand-in package tool is used; nothing else is run."""
+    compares. The stand-in package tool is used; nothing else is run. The
+    installer of these tests has the name of the real one and, like the real
+    one, no version resource."""
 
-    TAG_VERSION = "3.10.0"          # the newest tag of 2026-10-04
-    PRODUCT_VERSION = "9.8.7"       # made up: the real ProductVersion is NOT known
+    NAME = "ipscan-3.10.0-setup.exe"
+    LABEL = "3.10.0"  # the number in the name, and the newest tag of 2026-10-04
 
     def setUp(self):
         super().setUp()
-        # The installer is a small PE file with a version resource, so that the
-        # recipe's own WindowsExeVersion step can read it.
-        built = exe_tests.build_pe(exe_tests.version_info(
-            product=self.PRODUCT_VERSION, file=self.PRODUCT_VERSION, name="Example App",
-            file_numbers=(9, 8, 7, 0), product_numbers=(9, 8, 7, 0)))
+        built = exe_tests.build_pe(exe_tests.version_info(), types=(3,))  # a resource, but not RT_VERSION
+        self.exe = os.path.join(self.downloads, self.NAME)
         with open(self.exe, "wb") as handle:
             handle.write(bytes(built.data))
 
     def chain_env(self, installer):
         """What the steps of the two recipes leave in the run, with the
         arguments of the recipe's own steps. The download recipe's last step
-        is run with the recipe's own arguments."""
+        is run with the recipe's own arguments and the recipe's own pattern."""
         run = {"pathname": installer, "expected_sha256": _win_support.sha256_hex(installer)}
         verifier, _ = _win_support.run_processor(_win_support.checksum.ChecksumVerifier, run)
         steps = {step["Processor"][len(SHARED_PREFIX):]: step.get("Arguments", {})
                  for step in load(DOWNLOAD)["Process"] if step["Processor"].startswith(SHARED_PREFIX)}
-        values = {"%pathname%": installer}
-        reader_env = {name: values.get(value, value) for name, value in steps["WindowsExeVersion"].items()}
-        reader_env["version"] = self.TAG_VERSION
-        reader, _ = _win_support.run_processor(_win_support.exe_version.WindowsExeVersion, reader_env)
+        values = {"%pathname%": installer, "%SEARCH_PATTERN%": load(DOWNLOAD)["Input"]["SEARCH_PATTERN"]}
+        reader_env = {name: values.get(value, value) for name, value in steps["VersionFromName"].items()}
+        reader_env["version"] = "the tag of the release"
+        reader, _ = _win_support.run_processor(_win_support.version_name.VersionFromName, reader_env)
         values.update({"%PCMAN_TEMPLATE%": load(PCMAN)["Input"]["PCMAN_TEMPLATE"],
                        "%version%": reader.env["version"]})
         env = {"pathname": installer, "pcman_root": self.root, "pcman_dry_run": False,
@@ -514,13 +614,18 @@ class ChainTests(_pcman_support.ToolTestCase):
             env[name] = values.get(value, value)
         return env
 
-    def test_the_label_is_the_exe_s_own_version_and_not_the_tag(self):
+    def test_the_installer_has_no_version_resource_and_the_old_step_stopped_on_it(self):
+        """The first run with AutoPkg 2.9.0 (2026-10-04): the step that reads the file's version stops."""
+        with self.assertRaises(_win_support.ProcessorError) as caught:
+            _win_support.run_processor(_win_support.exe_version.WindowsExeVersion, {"pathname": self.exe})
+        self.assertIn("the file has no version resource (RT_VERSION)", str(caught.exception))
+
+    def test_the_label_is_the_number_in_the_file_name(self):
         env = self.chain_env(self.exe)
-        self.assertEqual(env["pcman_version"], self.PRODUCT_VERSION)
-        self.assertNotEqual(env["pcman_version"], self.TAG_VERSION)
+        self.assertEqual(env["pcman_version"], self.LABEL)
         _win_support.run_processor(_pcman_support.importer.PcmanImporter, env)
         argv = self.record()["argv"]
-        self.assertEqual(argv[argv.index("--version") + 1], self.PRODUCT_VERSION)
+        self.assertEqual(argv[argv.index("--version") + 1], self.LABEL)
 
     def test_the_chain_counts_as_verified_and_nothing_is_warned(self):
         env = self.chain_env(self.exe)
@@ -546,6 +651,35 @@ class ChainTests(_pcman_support.ToolTestCase):
 def _text(path):
     with open(path, "r", encoding="utf-8") as handle:
         return handle.read()
+
+
+class CatalogsStepReadmeTests(unittest.TestCase):
+    """The step that builds the catalogs says what happened on 2026-10-04 and no longer says "Not rehearsed"."""
+
+    def test_the_catalogs_step_names_the_run_of_2026_10_04(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            text = re.sub(r"\s+", " ", handle.read())
+        i = text.index("3. **Build the catalogs: `pcman catalogs`.**")
+        step = text[i:text.index("4. The second run, by path again:", i)]
+        for needle in ("(Run on 2026-10-04: `pcman catalogs` ran twice that day, the second time after the first imports of this and three other programs.",
+                       "The tool's configured command ran `makecatalogs` on the repository's server",
+                       "wrote the catalogs `All` and `Production`, 110 items each in the second run, with exit 0",
+                       "The package tool prints \"nothing to run\" when its catalogs command is not set"):
+            self.assertIn(needle, step)
+        self.assertNotIn("Not rehearsed", step)
+        self.assertNotIn("for no program", step)
+
+
+class CimianVersionArgumentTextTests(unittest.TestCase):
+    """The cimian recipe passes the label to `CimianImporter` as `version`; only the pcman recipe passes `pcman_version`."""
+
+    def test_no_sentence_says_that_the_cimian_recipe_passes_pcman_version(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            text = re.sub(r"\s+", " ", handle.read())
+        for sentence in re.split(r"(?<=[.;])\s", text):
+            if re.search(r"cimian recipe passes", sentence) and "pcman_version" in sentence:
+                self.assertIn("pcman recipe", sentence)  # `pcman_version` is named only as the pcman recipe's argument
+        self.assertEqual(text.count("the cimian recipe passes that `version` as `pcman_version`"), 0)
 
 
 class CimianRecipeTests(unittest.TestCase):
@@ -816,7 +950,7 @@ class CimianChainTests(_win_support.RepoTestCase):
     def run_chain(self, installer, tag="9.9.9", label="1.2.3", **extra):
         """What the recipe's step is given, with the substitutions that AutoPkg makes. `tag` is a version that an
         earlier step of the download recipe may have left in the run (a release tag, say); `label` is what
-        WindowsExeVersion leaves in `version` for an .exe."""
+        VersionFromName leaves in `version` for an .exe."""
         recipe = load(CIMIAN)
         run = {"pathname": installer, "version": label if "exe" == "exe" else tag}
         if self.VERIFIED:

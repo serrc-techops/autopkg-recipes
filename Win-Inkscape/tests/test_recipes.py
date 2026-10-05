@@ -433,7 +433,7 @@ class ReadmeTests(unittest.TestCase):
         self.assertIn("--no-prompt", command)
 
     def test_the_status_line_says_what_was_fetched_and_what_was_not(self):
-        opening = "**Status. NOT rehearsed with AutoPkg. The facts of the source were fetched by the writer on 2026-10-02:"
+        opening = "**Status. Run on 2026-10-04 under AutoPkg 2.9.0, as follows."
         self.assertLess(self.raw.index("# Win-Inkscape"), self.raw.index("**Status."))
         self.assertLess(self.raw.index("**Status."), self.raw.index("| Recipe |"))
         self.assertTrue(self.raw.split("\n\n")[2].startswith(opening))
@@ -443,8 +443,8 @@ class ReadmeTests(unittest.TestCase):
         self.assertTrue(paragraph.endswith("**"))
         verified, _, not_known = paragraph.partition("What is still NOT known:")
         self.assertTrue(not_known)
+        self.assertIn("The facts of the source were fetched by the writer on 2026-10-02, before those runs.", paragraph)
         for needle in (
-            "no recipe, no processor and no test of this folder has run with AutoPkg",
             "`inkscape.org` and `media.inkscape.org` are one publisher",
             "`https://inkscape.org/release/` answers 302 with a `Location` of `https://inkscape.org/release/inkscape-1.4.4/`",
             "the version is the last path element after `inkscape-`",
@@ -468,19 +468,18 @@ class ReadmeTests(unittest.TestCase):
             with self.subTest(needle=needle):
                 self.assertIn(needle, verified)
         for needle in (
-            "the MSI's own ProductVersion and UpgradeCode",
             "the file names of the 32-bit installer (they were not read, and the processor refuses `32-bit`)",
             "that the publisher keeps these addresses and file names for the next releases",
-            "how the package tool handles this MSI, the template item `inkscape`, `pcman catalogs`",
-            "anything about a run with AutoPkg",
         ):
             with self.subTest(needle=needle):
                 self.assertIn(needle, not_known)
+        for gone in ("the MSI's own ProductVersion and UpgradeCode", "the template item `inkscape`", "anything about a run with AutoPkg"):
+            self.assertNotIn(gone, not_known)
         for needle in (
             "written by hand from the real link lines of 2026-10-02 with everything else cut",
             "the hash line of the tests is made up",
-            "The first run on the build Mac (step c) is the check of what is still not known",
-            "When it fails, stop",
+            "An install on a test PC is the check of what is NOT established, and the next dry run (step c) of what is still not known",
+            "When a run fails, stop",
             "writes nothing",
             "correct the processor or the recipe, and only then touch the trust information",
             "never accept a trust change to make a failing run go through",
@@ -582,6 +581,37 @@ class ChainTests(_pcman_support.ToolTestCase):
 def _text(path):
     with open(path, "r", encoding="utf-8") as handle:
         return handle.read()
+
+
+class RealRunReadmeTests(unittest.TestCase):
+    """What the README says of the first import and the real run of 2026-10-04 (AutoPkg 2.9.0). """
+
+    def setUp(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README.md"), "r", encoding="utf-8") as handle:
+            self.raw = handle.read()
+        self.text = re.sub(r"\s+", " ", self.raw)
+        self.status = re.sub(r"\s+", " ", [line for line in self.raw.splitlines() if line.startswith("**Status.")][0])
+
+    def test_the_status_line_says_what_ran_on_2026_10_04(self):
+        for needle in ('The first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the item `inkscape` (an MSI item, version `1.4.4` read from the MSI, a version of three parts, architectures `x64`)', '`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false', "the download was checked against the publisher's `.sha256` file by the processor", '`Nothing new: inkscape 1.4.4 is in the repository already. Nothing was written.`', 'went beside the Chocolatey item `inkscape` (version 1.0) without any option of the tool', 'the Chocolatey item file and its `inkscape-1.0` pkginfo remain until a person removes them by hand', '`pcman validate` warns that the item has two versions until then', '`pcman catalogs` ran once for all the new items together (2026-10-04)', '`All` and `Production`, 106 items each', "The silent install is the client's (`/qn /norestart` for an MSI) and was NOT tested on a PC", 'Still NOT established after those runs: that the MSI installs silently on a PC; any install; that a new release has the same upgrade code as the template'):
+            self.assertIn(needle, self.status)
+
+    def test_the_readme_says_the_rest_of_it(self):
+        for needle in ('If the repository has an item `inkscape` of the kind `choco`, it is not the template: see the status line.',):
+            self.assertIn(needle, self.text)
+
+    def test_the_first_import_step_says_what_worked(self):
+        step = re.sub(r"\s+", " ", self.raw[self.raw.index("3. **The template item"):self.raw.index("## b.")])
+        for needle in ('This is the form that ran on 2026-10-04 (it worked as written)', '--icon <the file name of an icon that the repository has>', '(`1.4.4` on that day)'):
+            self.assertIn(needle, step)
+
+    def test_nothing_that_was_not_tested_is_called_tested(self):
+        for claim in ('was tested on a PC',):
+            self.assertNotIn(claim, self.text)
+
+    def test_the_second_run_line_is_not_promised_for_a_fresh_override(self):
+        self.assertIn("the first run of a fresh override printed the line `Nothing new: ...` after it had downloaded the file again", self.text)
+        self.assertIn("a new override gets a new cache folder", self.text)
 
 
 class CimianRecipeTests(unittest.TestCase):

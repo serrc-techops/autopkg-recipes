@@ -3,7 +3,7 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>Hands the downloaded Angry IP Scanner installer, with the version label that the download recipe read from the .exe itself, to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false.</string>
+        <string>Hands the downloaded Angry IP Scanner installer, with the version label that the download recipe took from the installer's file name, to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false.</string>
         <key>Identifier</key>
         <string>com.github.serrc-techops.pcman.AngryIPScanner</string>
         <key>Input</key>
