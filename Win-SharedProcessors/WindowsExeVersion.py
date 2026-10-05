@@ -2,7 +2,7 @@
 """Read the version of a downloaded Windows .exe from the file itself.
 
 Several installers are EXE files at a fixed address, with no version in the
-address and no vendor hash. The package tool needs a version label for an EXE,
+address and no vendor hash. An importer needs a version label for an EXE,
 and the label must be the one that a person reads in the file's properties:
 the ProductVersion. This processor reads it from the PE file's version
 resource (RT_VERSION, a VS_VERSIONINFO block), in pure Python. It runs no
@@ -20,7 +20,7 @@ when the label that would be chosen has no digit other than zero (a file whose
 version resource says zeros has no version). A value is never guessed.
 
 The version proves nothing about where the file came from: it is data in the
-file. It only gives the label that the package tool and the client compare.
+file. It only gives the label that the importer and the client compare.
 """
 import os
 import re
@@ -425,7 +425,7 @@ class WindowsExeVersion(Processor):
             "description": "The ProductName string, or an empty string.",
         },
         "version": {
-            "description": "Set only when set_version is true: the label for the package tool.",
+            "description": "Set only when set_version is true: the label for the importer.",
         },
     }
 

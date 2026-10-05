@@ -1,6 +1,6 @@
 """Tests of PcmanImporter against a stand-in for the package tool.
 
-The stand-in (see _win_support.py) is a small script that writes a result
+The stand-in (see _pcman_support.py) is a small script that writes a result
 file and exits with a chosen code. It records what it was given: its argument
 list, its whole environment, what its standard input looked like. The real
 package tool is tested in test_importer_real_tool.py.
@@ -13,7 +13,7 @@ import time
 import unittest
 from unittest import mock
 
-from _win_support import (
+from _pcman_support import (
     ADDED_BY_THE_SYSTEM,
     ProcessorError,
     ToolTestCase,
@@ -1342,7 +1342,7 @@ class InterruptTests(ToolTestCase):
         "import json, signal, sys\n"
         "sys.path.insert(0, %(tests)r)\n"
         "signal.signal(signal.SIGINT, signal.default_int_handler)\n"
-        "from _win_support import importer\n"
+        "from _pcman_support import importer\n"
         "env = json.load(open(sys.argv[1]))\n"
         "importer.PcmanImporter(env).main()\n"
     )

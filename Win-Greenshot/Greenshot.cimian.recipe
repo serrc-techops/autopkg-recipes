@@ -3,15 +3,24 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>Hands the downloaded Greenshot installer, with the version label that the download recipe read from the .exe itself, to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false.</string>
+        <string>Hands the downloaded Greenshot installer, with the version label that the download recipe read from the .exe itself, to CimianImporter, which publishes it as a new version of the item into a Cimian repository (as a copy of the item's newest pkginfo, with what belongs to the installer file replaced), or says that nothing is new. This is a dry run, which writes nothing, until the recipe's override sets cimian_dry_run to false. The repository is the input cimian_repo or the AutoPkg preference CIMIAN_REPO.</string>
         <key>Identifier</key>
         <string>com.github.serrc-techops.cimian.Greenshot</string>
         <key>Input</key>
         <dict>
+            <key>CIMIAN_NAME</key>
+            <string>greenshot</string>
+            <key>CIMIAN_SUBDIRECTORY</key>
+            <string></string>
             <key>NAME</key>
             <string>Greenshot</string>
-            <key>PCMAN_TEMPLATE</key>
-            <string>greenshot</string>
+            <key>pkginfo</key>
+            <dict>
+                <key>developer</key>
+                <string>Greenshot</string>
+                <key>display_name</key>
+                <string>Greenshot</string>
+            </dict>
         </dict>
         <key>MinimumVersion</key>
         <string>1.0.0</string>
@@ -21,14 +30,16 @@
         <array>
             <dict>
                 <key>Processor</key>
-                <string>com.github.serrc-techops.SharedProcessors/PcmanImporter</string>
+                <string>com.github.serrc-techops.SharedProcessors/CimianImporter</string>
                 <key>Arguments</key>
                 <dict>
                     <key>pathname</key>
                     <string>%pathname%</string>
-                    <key>pcman_template</key>
-                    <string>%PCMAN_TEMPLATE%</string>
-                    <key>pcman_version</key>
+                    <key>cimian_name</key>
+                    <string>%CIMIAN_NAME%</string>
+                    <key>cimian_subdirectory</key>
+                    <string>%CIMIAN_SUBDIRECTORY%</string>
+                    <key>version</key>
                     <string>%version%</string>
                 </dict>
             </dict>

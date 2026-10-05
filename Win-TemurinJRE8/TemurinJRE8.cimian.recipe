@@ -3,15 +3,24 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>Hands the downloaded Eclipse Temurin JRE installer (an MSI) to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. The recipe gives no version label: for an MSI the package tool takes the MSI's own ProductVersion. The owner decided on 2026-10-02 that Temurin replaces Oracle's JRE 8 under the new item name temurin. The template temurin must be made from a Temurin MSI first, and it must remove Oracle's JRE 8 before the install, because Temurin is another product than Oracle's JRE. This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false.</string>
+        <string>Hands the downloaded Eclipse Temurin JRE installer (an MSI) to CimianImporter, which publishes it as a new version of the item into a Cimian repository (as a copy of the item's newest pkginfo, with what belongs to the installer file replaced), or says that nothing is new. The recipe gives no version label: for an MSI CimianImporter takes the MSI's own ProductVersion (read with msiinfo). The owner decided on 2026-10-02 that Temurin replaces Oracle's JRE 8 under the new item name temurin. The item temurin must be made from a Temurin MSI first, and it must remove Oracle's JRE 8 before the install, because Temurin is another product than Oracle's JRE. This is a dry run, which writes nothing, until the recipe's override sets cimian_dry_run to false. The repository is the input cimian_repo or the AutoPkg preference CIMIAN_REPO.</string>
         <key>Identifier</key>
         <string>com.github.serrc-techops.cimian.TemurinJRE8</string>
         <key>Input</key>
         <dict>
+            <key>CIMIAN_NAME</key>
+            <string>temurin</string>
+            <key>CIMIAN_SUBDIRECTORY</key>
+            <string></string>
             <key>NAME</key>
             <string>TemurinJRE8</string>
-            <key>PCMAN_TEMPLATE</key>
-            <string>temurin</string>
+            <key>pkginfo</key>
+            <dict>
+                <key>developer</key>
+                <string>Eclipse Adoptium</string>
+                <key>display_name</key>
+                <string>Eclipse Temurin JRE 8</string>
+            </dict>
         </dict>
         <key>MinimumVersion</key>
         <string>1.0.0</string>
@@ -21,13 +30,17 @@
         <array>
             <dict>
                 <key>Processor</key>
-                <string>com.github.serrc-techops.SharedProcessors/PcmanImporter</string>
+                <string>com.github.serrc-techops.SharedProcessors/CimianImporter</string>
                 <key>Arguments</key>
                 <dict>
                     <key>pathname</key>
                     <string>%pathname%</string>
-                    <key>pcman_template</key>
-                    <string>%PCMAN_TEMPLATE%</string>
+                    <key>cimian_name</key>
+                    <string>%CIMIAN_NAME%</string>
+                    <key>cimian_subdirectory</key>
+                    <string>%CIMIAN_SUBDIRECTORY%</string>
+                    <key>version</key>
+                    <string></string>
                 </dict>
             </dict>
         </array>

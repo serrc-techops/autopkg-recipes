@@ -1,5 +1,5 @@
-"""Shared test support: import the four processors with or without a real
-AutoPkg install, and build stand-ins for the package tool.
+"""Shared test support: import the processors with or without a real AutoPkg
+install, and build a temporary Cimian repository with a stand-in `msiinfo`.
 
 The processor modules import `from autopkglib import Processor,
 ProcessorError`. AutoPkg is not installed on every machine that runs these
@@ -7,7 +7,7 @@ tests, so this module installs a minimal stand-in for `autopkglib` only when a
 real one cannot be imported (the same approach as ReportMateClientMac/tests).
 A real AutoPkg install, when present, is used instead.
 
-Nothing here touches the network, the repository tree or a real package
+Nothing here touches the network, the repository tree or a real Cimian
 repository. Every file is made in a temporary folder.
 """
 import hashlib
@@ -56,11 +56,19 @@ def _install_autopkglib_stub():
 _install_autopkglib_stub()
 
 import ChecksumVerifier as checksum  # noqa: E402
+import CimianImporter as cimian  # noqa: E402
 import GitHubAssetDigest as digest  # noqa: E402
-import PcmanImporter as importer  # noqa: E402
 import WindowsExeVersion as exe_version  # noqa: E402
 
 ProcessorError = sys.modules["autopkglib"].ProcessorError
+
+try:
+    import yaml  # noqa: E402
+except ImportError:  # AutoPkg's Python has PyYAML; the interpreter of a test run may not
+    yaml = None
+
+needs_yaml = unittest.skipUnless(yaml is not None, "PyYAML is not installed in this Python")
+
 
 def sha256_hex(path):
     """The SHA-256 of a file, by hashlib directly (not by a function of the
@@ -95,112 +103,70 @@ def run_processor(cls, env):
     return processor, messages
 
 
-# The stand-in for `pcman`. It is run by `<python> <root>/bin/pcman ...`.
-# Its behaviour comes from behaviour.json next to the `bin` folder:
-#   exit      exit code
-#   result    the content of the result file (dict), or null for no file
-#   raw_result  text to write instead of JSON (for a broken file)
+# The stand-in for `msiinfo` (msitools). It is run as `msiinfo export <file>
+# Property`. What it does comes from msiinfo.json next to it:
 #   stdout / stderr   text to print
-#   sleep     seconds to wait before it ends
-#   grandchild  true: start a child that sleeps 30 seconds, quiet
-# It writes record.json: argv, the whole environment, what standard input
-# looked like, the working folder and its process ids.
-STAND_IN_PCMAN = """#!{python}
-import json, os, select, subprocess, sys, time
+#   exit              exit code
+# It appends every call's arguments to calls.log.
+STAND_IN_MSIINFO = """#!{python}
+import json, os, sys
 
-here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-with open(os.path.join(here, "behaviour.json")) as handle:
+here = os.path.dirname(os.path.abspath(__file__))
+with open(os.path.join(here, "msiinfo.json")) as handle:
     behaviour = json.load(handle)
-
-try:
-    ready, _, _ = select.select([0], [], [], 0.5)
-    if ready:
-        stdin_state = "eof" if os.read(0, 1) == b"" else "data"
-    else:
-        stdin_state = "open"
-except OSError:
-    stdin_state = "closed"
-
-record = {{
-    "argv": sys.argv[1:],
-    "env": dict(os.environ),
-    "stdin": stdin_state,
-    "cwd": os.getcwd(),
-    "pid": os.getpid(),
-    "grandchild_pid": None,
-}}
-if behaviour.get("grandchild"):
-    child = subprocess.Popen(
-        [sys.executable, "-c", "import time; time.sleep(30)"],
-        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
-    record["grandchild_pid"] = child.pid
-with open(os.path.join(here, "record.json"), "w") as handle:
-    json.dump(record, handle)
-
-if behaviour.get("sleep"):
-    time.sleep(behaviour["sleep"])
-
-args = sys.argv[1:]
-if "--result-file" in args:
-    path = args[args.index("--result-file") + 1]
-    if behaviour.get("raw_result") is not None:
-        with open(path, "w") as handle:
-            handle.write(behaviour["raw_result"])
-    elif behaviour.get("result") is not None:
-        with open(path, "w") as handle:
-            json.dump(behaviour["result"], handle)
-
-sys.stdout.buffer.write(behaviour.get("stdout", "").encode("utf-8"))
-sys.stdout.buffer.write(bytes.fromhex(behaviour.get("stdout_hex", "")))
-sys.stderr.buffer.write(behaviour.get("stderr", "").encode("utf-8"))
-sys.stderr.buffer.write(bytes.fromhex(behaviour.get("stderr_hex", "")))
-sys.stdout.flush()
-sys.stderr.flush()
+with open(os.path.join(here, "calls.log"), "a") as log:
+    log.write(json.dumps(sys.argv[1:]) + chr(10))
+sys.stdout.write(behaviour.get("stdout", ""))
+sys.stderr.write(behaviour.get("stderr", ""))
 sys.exit(behaviour.get("exit", 0))
 """
 
-STAND_IN_MSIINFO = """#!{python}
-import sys
-sys.exit(0)
-"""
+PRODUCT_CODE = "{5A1B2C3D-0000-4000-8000-00000000A001}"
+UPGRADE_CODE = "{5A1B2C3D-0000-4000-8000-00000000A002}"
 
 
-def result_file_content(result="published", name="Example App", version="2.5.0",
-                        catalogs=("Production",), **extra):
-    """What the tool's result file holds (the keys of its README)."""
-    content = {
-        "result": result,
-        "name": name,
-        "version": version,
-        "item_path": "/example/items/Example.yaml",
-        "installer_path": "/example/pkgs/apps/Example-%s.exe" % version,
-        "pkginfo_path": "/example/pkgsinfo/apps/Example-%s.yaml" % version,
-        "catalogs": list(catalogs),
-        "unreadable_pkginfo": 0,
-        "message": "Published %s %s." % (name, version),
-    }
-    content.update(extra)
-    return content
+def property_export(version="2.5.0", product_code=PRODUCT_CODE, upgrade_code=UPGRADE_CODE):
+    """What the stand-in prints for `msiinfo export <file> Property`: a header
+    row, then one row per property, the two columns separated by a tab."""
+    rows = ["Property\tValue"]
+    if product_code:
+        rows.append("ProductCode\t%s" % product_code)
+    if version:
+        rows.append("ProductVersion\t%s" % version)
+    rows.append("ProductName\tExample Program")
+    rows.append("Manufacturer\tExample Maker")
+    if upgrade_code:
+        rows.append("UpgradeCode\t%s" % upgrade_code)
+    return "\n".join(rows) + "\n"
 
 
-class ToolTestCase(unittest.TestCase):
-    """A temporary folder with a stand-in tool, a stand-in msiinfo in its own
-    folder, and an installer."""
+def tree_of(root):
+    """Every file and folder below `root`, as {relative path: SHA-256 of the
+    file, or None for a folder}. Two equal trees mean that nothing was written,
+    made or removed."""
+    found = {}
+    for folder, dirs, files in os.walk(root):
+        for name in dirs:
+            found[os.path.relpath(os.path.join(folder, name), root)] = None
+        for name in files:
+            path = os.path.join(folder, name)
+            found[os.path.relpath(path, root)] = sha256_hex(path)
+    return found
+
+
+class RepoTestCase(unittest.TestCase):
+    """A temporary Cimian repository (with pkgs/ and pkgsinfo/), a stand-in
+    msiinfo in a folder of its own, a folder without one, and two installers
+    that are only files with bytes in them."""
 
     def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory(prefix="win-shared-tests-")
+        self._tmp = tempfile.TemporaryDirectory(prefix="win-cimian-tests-")
         self.addCleanup(self._tmp.cleanup)
         self.tmp = os.path.realpath(self._tmp.name)
 
-        self.root = os.path.join(self.tmp, "tool root")  # a space on purpose
-        os.makedirs(os.path.join(self.root, "bin"))
-        self.script = os.path.join(self.root, "bin", "pcman")
-        self.write_executable(self.script, STAND_IN_PCMAN.format(python=sys.executable))
-        venv_bin = os.path.join(self.root, ".venv", "bin")
-        os.makedirs(venv_bin)
-        self.python = os.path.join(venv_bin, "python3")
-        os.symlink(sys.executable, self.python)
+        self.repo = os.path.join(self.tmp, "cimian repo")  # a space on purpose
+        os.makedirs(os.path.join(self.repo, "pkgs"))
+        os.makedirs(os.path.join(self.repo, "pkgsinfo"))
 
         self.msi_bin = os.path.join(self.tmp, "msi-bin")
         os.makedirs(self.msi_bin)
@@ -209,13 +175,12 @@ class ToolTestCase(unittest.TestCase):
         )
         self.empty_bin = os.path.join(self.tmp, "empty-bin")
         os.makedirs(self.empty_bin)
+        self.msiinfo_says()
 
         self.downloads = os.path.join(self.tmp, "my downloads")  # a space on purpose
         os.makedirs(self.downloads)
-        self.exe = self.make_installer("Example App-2.5.0.exe")
-        self.msi = self.make_installer("Example App-2.5.0.msi")
-
-        self.behave()
+        self.exe = self.make_installer("Example App-2.5.0.exe", b"MZ" + bytes(range(256)) * 8)
+        self.msi = self.make_installer("Example App-2.5.0.msi", b"\xd0\xcf\x11\xe0" + bytes(range(255, 0, -1)) * 8)
 
     @staticmethod
     def write_executable(path, text):
@@ -223,48 +188,66 @@ class ToolTestCase(unittest.TestCase):
             handle.write(text)
         os.chmod(path, 0o755)
 
-    def make_installer(self, name):
+    def make_installer(self, name, content):
         path = os.path.join(self.downloads, name)
         with open(path, "wb") as handle:
-            handle.write(b"not a real installer")
+            handle.write(content)
         return path
 
-    def behave(self, **behaviour):
-        """Set what the stand-in does. Default: exit 0 with a `published` result."""
-        if "result" not in behaviour and "raw_result" not in behaviour:
-            behaviour["result"] = result_file_content()
-        behaviour.setdefault("exit", 0)
-        with open(os.path.join(self.root, "behaviour.json"), "w") as handle:
+    def msiinfo_says(self, **behaviour):
+        """Set what the stand-in msiinfo does. Default: the properties of an
+        MSI of version 2.5.0."""
+        if "stdout" not in behaviour:
+            behaviour["stdout"] = property_export()
+        with open(os.path.join(self.msi_bin, "msiinfo.json"), "w") as handle:
             json.dump(behaviour, handle)
 
-    def record(self):
-        with open(os.path.join(self.root, "record.json")) as handle:
-            return json.load(handle)
-
-    def was_run(self):
-        return os.path.exists(os.path.join(self.root, "record.json"))
+    def msiinfo_calls(self):
+        path = os.path.join(self.msi_bin, "calls.log")
+        if not os.path.exists(path):
+            return []
+        with open(path) as handle:
+            return [json.loads(line) for line in handle if line.strip()]
 
     def env(self, installer=None, **overrides):
         """A complete input set for a real run of an .exe. The download counts as
         verified (checksum_verified is true and checksum_sha256 is the real hash
         of the file), as after a ChecksumVerifier step. A test of an unverified
         download passes checksum_verified=None; a test of another hash passes
-        checksum_sha256."""
+        checksum_sha256. A value of None leaves the input out."""
         env = {
             "checksum_verified": True,
             "pathname": installer or self.exe,
-            "pcman_template": "Example-App",
-            "pcman_version": "2.5.0",
-            "pcman_root": self.root,
-            "pcman_dry_run": False,
-            "pcman_path": self.msi_bin,
+            "cimian_repo": self.repo,
+            "cimian_name": "Example-App",
+            "version": "2.5.0",
+            "cimian_dry_run": False,
+            "cimian_path": self.msi_bin,
         }
         env.update(overrides)
         if "checksum_sha256" not in overrides:
-            # The real hash of the file that is named in the end (none when it
-            # does not exist: a test of that case).
             try:
                 env["checksum_sha256"] = sha256_hex(env["pathname"])
             except OSError:
                 pass
         return {key: value for key, value in env.items() if value is not None}
+
+    def put_pkginfo(self, relpath, text):
+        path = os.path.join(self.repo, "pkgsinfo", *relpath.split("/"))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        return path
+
+    def read_text(self, *parts):
+        with open(os.path.join(self.repo, *parts), "r", encoding="utf-8") as handle:
+            return handle.read()
+
+    def read_pkginfo(self, relpath):
+        """A pkginfo of the repository, read the way the processor reads it
+        (the loader that keeps the text of a version)."""
+        loader, _ = cimian.make_yaml_classes(yaml)
+        return yaml.load(self.read_text("pkgsinfo", *relpath.split("/")), Loader=loader)
+
+    def repo_tree(self):
+        return tree_of(self.repo)

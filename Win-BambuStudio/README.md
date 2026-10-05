@@ -7,11 +7,13 @@ A Windows recipe pair: Bambu Studio, the public Windows `.exe` installer, with t
 | Recipe | Identifier | What it does |
 | --- | --- | --- |
 | `BambuStudio-Win.download.recipe` | `com.github.serrc-techops.download.BambuStudio-Win` | Takes the newest non-pre-release of `bambulab/BambuStudio` on GitHub that has a file matching `SEARCH_PATTERN`. Downloads it under its own file name. Reads the SHA-256 that GitHub records for the file and stops when the file does not match. Last, reads the `ProductVersion` from the `.exe` itself and sets `version` to it |
-| `BambuStudio.cimian.recipe` | `com.github.serrc-techops.cimian.BambuStudio` | Parent: the download recipe. Hands the file to the package tool (`pcman`), which publishes it as a new version of the template item, or says that nothing is new. It passes the version label that the download recipe read from the `.exe` (`%version%`) |
+| `BambuStudio.cimian.recipe` | `com.github.serrc-techops.cimian.BambuStudio` | Parent: the download recipe. Hands the file to `CimianImporter`, which publishes it as a new version of the item into any Cimian repository (a copy of the repository's newest pkginfo of the item, with what belongs to the installer file replaced), or says that nothing is new. It passes the version label that the download recipe read from the `.exe` (`%version%`) |
+| `BambuStudio.pcman.recipe` | `com.github.serrc-techops.pcman.BambuStudio` | Parent: the download recipe. Hands the file to the package tool (`pcman`), which publishes it as a new version of the template item, or says that nothing is new. It passes the version label that the download recipe read from the `.exe` (`%version%`) |
+
+**Three recipes.** The download recipe is the parent of both of the others. `BambuStudio.cimian.recipe` is for any Cimian repository: its last step is `CimianImporter`, and no other tool is needed. `BambuStudio.pcman.recipe` is the package tool's way, with `PcmanImporter`: it is what the `.cimian.recipe` was before the processors were separated from the package tool. The section "With any Cimian repository" comes first below, then "With the package tool (pcman)".
 
 Neither recipe stops on an unchanged download, so an import that failed is tried
-again at the next run. The processors are in `../Win-SharedProcessors/` (see its
-README).
+again at the next run. The processors are in `../Win-SharedProcessors/` (`CimianImporter` and the checks) and `../Win-PcmanProcessors/` (`PcmanImporter`, for the package tool); see their READMEs.
 
 **Pre-releases.** The download recipe takes the newest release that GitHub does not
 flag as a pre-release. The switch is the key `include_prereleases` in the recipe's
@@ -64,6 +66,109 @@ file's properties on a PC.
 
 As an alternative the operator may set the AutoPkg preference `FAIL_RECIPES_WITHOUT_TRUST_INFO` to true: then any recipe without verified trust information fails. It is not set on the build machine today, and it would also change how the Mac recipes run, so it is the owner's decision.
 
+## With any Cimian repository
+
+This way needs AutoPkg and nothing of the owner's: no package tool. It uses `BambuStudio.cimian.recipe` and the processor `CimianImporter` of `../Win-SharedProcessors/` (its README says how the template is chosen, which keys of the pkginfo are replaced, and what a person completes by hand). PyYAML is needed in the Python that runs AutoPkg; AutoPkg's own Python has it.
+
+An override that was made from this recipe before the recipes were separated from the package tool belongs to the package tool's way: see the paragraph at the start of that section.
+
+**Line numbers.** A file and a line of the Cimian client that this section names (for example `InstallerService.cs:936`) are from `windowsadmins/cimian` at commit `e10498b`, read on 2026-10-04 and not checked against a later version.
+
+### 1. What must exist first
+
+1. **The recipe repository is added to AutoPkg**, so that its folders are in AutoPkg's search directories:
+
+       autopkg repo-add <the URL of the recipe repository>
+
+   This matters because `make-override` (step 2) takes a recipe NAME and refuses a path.
+
+2. **The repository's root, as an AutoPkg preference** (or later in the override):
+
+       defaults write com.github.autopkg CIMIAN_REPO -string "<the Cimian repository's root>"
+
+   The root is the folder that has `pkgs/` and `pkgsinfo/`. Write the value as a string. The share must be mounted;
+   `CimianImporter` never makes the root, `pkgs/` or `pkgsinfo/`. The input is named `cimian_repo`; the preference is the one name in upper case.
+
+3. **The version label** needs no program: the download recipe's step `WindowsExeVersion` reads it from the `.exe` itself, and this recipe passes it on as `%version%`.
+
+4. **The item.** The item's name is the recipe's input `CIMIAN_NAME`, `bambustudio`. If the repository has an item of that name, its newest pkginfo (by the client's order of versions) is the template: nothing is to be made, and its catalogs, arguments, scripts and checks are carried into the new version. The recipe's `pkginfo` does not change a template: a key that the template lacks is added, a key that the template has with another value keeps the template's, and a NOTE names each (the display name of the recipe does not rename an item that has another). `cimian_pkginfo_wins` set to true in the override lets the recipe's `pkginfo` win instead, for example `pkginfo: {catalogs: [Testing]}` to put new versions into another catalog first. If it has no item of that name, the first real run builds a pkginfo from the recipe's `pkginfo` (the display name and the developer) and the inputs, in the catalog `Development`; that pkginfo is then the template of every later version. If the repository has pkginfo files of the item for several architectures, the run stops until the override gives `cimian_architecture` (for example `x64`).
+
+   **What a person completes by hand for an `.exe`, in the override's `pkginfo`:** the silent arguments (`installer: {args: [...]}`; `args` is the key the client reads, `UpdateModels.cs:772-773`) and an install check (`installs`, or `check`), because without a check the client treats the item as not installed unless the ManagedInstalls registry has a trace of it (`StatusService.cs:194-219` and `:268-298`). The recipe's `pkginfo` does NOT give the silent arguments: this folder's README does not establish them (the first step of the package tool's way below marks what is only the writer's knowledge or was not read), so they are left for a person who has read them in the vendor's documentation and tried them on a test PC. The run says in a WARNING that the pkginfo has no install check.
+
+### 2. Make the override INTO THE WINDOWS OVERRIDES FOLDER
+
+First check that no other recipe has the same name. AutoPkg takes the first match by name and says nothing about the others:
+
+    autopkg list-recipes | grep -i BambuStudio-Win
+    autopkg list-recipes | grep -i BambuStudio.cimian
+
+Each name must be listed once, from this repository. (Not run: the lines of the output are not known.) Then make the override:
+
+    autopkg make-override --override-dir=<the Windows overrides folder> BambuStudio.cimian
+
+**Why: without `--override-dir` the override lands in AutoPkg's normal overrides folder, and a nightly script that runs every override there would run it too.** The command takes the recipe's name, `BambuStudio.cimian`, not a path. It writes `<the Windows overrides folder>/BambuStudio.cimian.recipe` with the identifier `local.cimian.BambuStudio` and the trust information of the recipes and the processors. **Open the written file and read `ParentRecipe`: it must be `com.github.serrc-techops.cimian.BambuStudio`**, the identifier of the recipe that the override was made from (AutoPkg writes the identifier of the recipe it found by that name). Another value means that AutoPkg found another recipe of the same name. The override's `Input` now has `CIMIAN_NAME`, `CIMIAN_SUBDIRECTORY` and `pkginfo`: set `CIMIAN_NAME` to the name of the repository's item if it differs, and `CIMIAN_SUBDIRECTORY` only to put new files in another folder (empty: the folder of the template's installer, else directly under `pkgs/`).
+
+### 3. First try: a dry run
+
+Run the override BY PATH and with `--override-dir` (see above):
+
+    autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.cimian.recipe
+
+**Why by path:** the recipe's name or identifier (`com.github.serrc-techops.cimian.BambuStudio`) runs the recipe itself, not the override. The recipe itself never leaves the dry run, so the real run of step 5 would never happen.
+
+Expected, also without `-v` (the lines that `CimianImporter` prints, read in its code and tests; NOT seen from a run with AutoPkg; AutoPkg puts the processor's name and a colon before each):
+
+    WARNING: DRY RUN. Nothing was written, because cimian_dry_run is on. Set cimian_dry_run to false in the override for a real run.
+    Would write <CIMIAN_NAME> <version>: pkgsinfo/<the item's folder>/<CIMIAN_NAME>-<version>.yaml and pkgs/<the item's folder>/<CIMIAN_NAME>-<version>.exe (<size> bytes).
+    Template: <CIMIAN_NAME> <the newest version in the repository> (pkgsinfo/<the item's folder>/...).
+
+followed by the NOTE and WARNING lines about what is carried from the template, and at the end the report row with the result `dry run, nothing written`. The plan itself (the pkginfo's text) is not printed. The repository is unchanged. If the repository has this version already, the line is `Nothing new: <CIMIAN_NAME> <version> is in the repository already (it has this version). Nothing was written.` instead. That is correct. If the repository has no item of this name, the second line is `No template: the pkginfo is built from the inputs.`
+
+If the run stops before this, with an error from the download recipe's steps, nothing was written: read the error, and correct the recipe, never the trust information first.
+
+### 4. Switch a real run on
+
+    /usr/libexec/PlistBuddy -c 'Add :Input:cimian_dry_run bool false' \
+        <the Windows overrides folder>/BambuStudio.cimian.recipe
+    autopkg verify-trust-info --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.cimian.recipe
+
+The trust check still reports OK: a change of the `Input` does not break trust. Do not use `-k cimian_dry_run=false` instead: on the command line it applies to every recipe of that run.
+
+### 5. The real run, the catalogs, the second run
+
+1. The real run, by path again:
+
+       autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.cimian.recipe
+
+   Expected: `Published <CIMIAN_NAME> <version> (pkgsinfo/<the item's folder>/<CIMIAN_NAME>-<version>.yaml). Build the catalogs with makecatalogs.` and a report row with the result `published`. The repository now has the installer under `pkgs/` (copied beside its place, checked against the SHA-256 that was verified, and moved into place), then the pkginfo under `pkgsinfo/`. Neither file replaces another: a file that is there already stops the run. (Where the share does not allow hard links the check and the rename are two steps: do not run two runs of one item at the same time.)
+
+2. **Build the catalogs with Cimian's `makecatalogs`** against the repository (`CimianImporter` does not do it; see Cimian's documentation for how it is run). Without it no PC sees the new version. (Not run.)
+
+3. The second run, by path again:
+
+       autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.cimian.recipe
+
+   It prints `Nothing new: <CIMIAN_NAME> <version> is in the repository already (it has this version). Nothing was written.`
+
+### 6. When a recipe or a processor changes upstream
+
+The run fails and publishes nothing:
+
+    Failed local trust verification ... contents differ from expected
+
+Look at what changed, then accept it. Never do this automatically:
+
+    autopkg verify-trust-info -vv --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.cimian.recipe
+    autopkg update-trust-info --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.cimian.recipe
+
+### A share that is not mounted
+
+`CimianImporter` stops with `The Cimian repository is not a folder: ... Is the share mounted?` (or, for a folder without `pkgs/` or `pkgsinfo/`, `The Cimian repository is not complete`) before it reads or writes anything. Mount the share, then run again.
+
+## With the package tool (pcman)
+
+This way needs the owner's package tool, `pcman`, which is **not part of this repository**; it uses `BambuStudio.pcman.recipe` and `PcmanImporter` of `../Win-PcmanProcessors/`. Everything below up to "Other facts" is about it, and its commands name `BambuStudio.pcman` where this README used to say `BambuStudio.cimian`. The recipe's `PCMAN_TEMPLATE` is the item's name in the package tool. **An override that was made from the old `BambuStudio.cimian.recipe` (when that recipe ran the package tool) must be made again from `BambuStudio.pcman.recipe`:** it has `PCMAN_TEMPLATE` in its `Input`, which the new `BambuStudio.cimian.recipe` does not read, and once its trust information is accepted again it would run `CimianImporter` instead of the package tool.
+
 ## a. What must exist first
 
 1. **The recipe repository is added to AutoPkg**, so that its folders are in
@@ -112,21 +217,21 @@ First check that no other recipe has the same name. AutoPkg takes the first matc
 by name and says nothing about the others:
 
     autopkg list-recipes | grep -i BambuStudio-Win
-    autopkg list-recipes | grep -i BambuStudio.cimian
+    autopkg list-recipes | grep -i BambuStudio.pcman
 
 Each name must be listed once, from this repository. (Not run: the lines of the
 output are not known.) Then make the override:
 
-    autopkg make-override --override-dir=<the Windows overrides folder> BambuStudio.cimian
+    autopkg make-override --override-dir=<the Windows overrides folder> BambuStudio.pcman
 
 **Why: without `--override-dir` the override lands in AutoPkg's normal overrides
 folder, and a nightly script that runs every override there would run it too.**
-The command takes the recipe's name, `BambuStudio.cimian`, not a path. It writes
-`<the Windows overrides folder>/BambuStudio.cimian.recipe` with the identifier
-`local.cimian.BambuStudio` and the trust information of the two recipes and the four
+The command takes the recipe's name, `BambuStudio.pcman`, not a path. It writes
+`<the Windows overrides folder>/BambuStudio.pcman.recipe` with the identifier
+`local.pcman.BambuStudio` and the trust information of the two recipes and the four
 processors that are not part of AutoPkg itself (`GitHubAssetDigest`, `ChecksumVerifier`,
 `WindowsExeVersion`, `PcmanImporter`). **Open the written file and read
-`ParentRecipe`: it must be `com.github.serrc-techops.download.BambuStudio-Win`.** Another value
+`ParentRecipe`: it must be `com.github.serrc-techops.pcman.BambuStudio`**, the identifier of the recipe that the override was made from (AutoPkg writes the identifier of the recipe it found by that name). Another value
 means that AutoPkg found another recipe of the same name.
 
 ## c. First try: a dry run
@@ -136,10 +241,10 @@ lines of the label step are printed (`-v` prints what each processor says about 
 work; `-vv` would add every processor's inputs and outputs to the log, `pcman_root` and the
 repository among them, and such a log would have to be kept private):
 
-    autopkg run -v --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.cimian.recipe
+    autopkg run -v --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.pcman.recipe
 
 **Why by path:** the recipe's name or identifier
-(`com.github.serrc-techops.cimian.BambuStudio`) runs the recipe itself, not the
+(`com.github.serrc-techops.pcman.BambuStudio`) runs the recipe itself, not the
 override. The recipe itself never leaves the dry run, so the real run of step e
 would never happen.
 
@@ -175,8 +280,8 @@ ProductVersion** (see "The version label").
 ## d. Switch a real run on
 
     /usr/libexec/PlistBuddy -c 'Add :Input:pcman_dry_run bool false' \
-        <the Windows overrides folder>/BambuStudio.cimian.recipe
-    autopkg verify-trust-info --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.cimian.recipe
+        <the Windows overrides folder>/BambuStudio.pcman.recipe
+    autopkg verify-trust-info --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.pcman.recipe
 
 The trust check should still report OK: a change of the `Input` does not break trust.
 Do not use `-k pcman_dry_run=false` instead: on the command line it applies to
@@ -186,7 +291,7 @@ every recipe of that run.
 
 1. The real run, by path again:
 
-       autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.cimian.recipe
+       autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.pcman.recipe
 
    Expected: `Published bambustudio <label>.` and a table of the published version
    with the result `published`. The repository then has the installer and the pkginfo of
@@ -201,7 +306,7 @@ every recipe of that run.
 
 4. The second run, by path again:
 
-       autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.cimian.recipe
+       autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.pcman.recipe
 
    It should print `Nothing new: bambustudio <label> is in the repository already.
    Nothing was written.` and `Nothing downloaded, packaged or imported.`
@@ -214,8 +319,8 @@ The run fails and publishes nothing:
 
 Look at what changed, then accept it. Never do this automatically:
 
-    autopkg verify-trust-info -vv --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.cimian.recipe
-    autopkg update-trust-info --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.cimian.recipe
+    autopkg verify-trust-info -vv --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.pcman.recipe
+    autopkg update-trust-info --override-dir=<the Windows overrides folder> <the Windows overrides folder>/BambuStudio.pcman.recipe
 
 ## g. A share that is not mounted
 
@@ -249,3 +354,5 @@ They check that both files are property lists, that every argument is an input
 that the shared processor declares, that this README opens with the status line
 that says what was not done, has no `make-override` without `--override-dir` and
 runs no recipe by its identifier, and that nothing site-specific is in the folder.
+
+The tests of this folder also read the `.cimian.recipe` (its last step is `CimianImporter`, its inputs are the ones above, and nothing of the package tool is in it), the `.pcman.recipe` (what the `.cimian.recipe` was before: the same inputs, with the processor `PcmanProcessors/PcmanImporter`), and run each against a stand-in: the package tool's for the one, a temporary Cimian repository for the other (that one needs PyYAML and is skipped without it).

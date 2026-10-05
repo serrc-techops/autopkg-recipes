@@ -22,7 +22,7 @@ import subprocess
 import tempfile
 import unittest
 
-from _win_support import ProcessorError, importer, run_processor, sha256_hex
+from _pcman_support import ProcessorError, importer, run_processor, sha256_hex
 
 TOOL_SOURCE = os.environ.get("PCMAN_TOOL_SOURCE", "")
 TOOL_PYTHON = os.environ.get("PCMAN_TOOL_PYTHON", "")

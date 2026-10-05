@@ -3,15 +3,24 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>This import is NOT verified yet: the download has no hard check (no vendor hash, no signature check). A real run is refused by the shared importer until a verification step exists, unless the override sets pcman_allow_unverified to true (the run then publishes with a WARNING, and the report says published, NOT verified). Hands the downloaded Foxit PDF Reader installer (an EXE) to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. For an EXE the package tool is given the version label: the recipe passes the version that the shared WindowsExeVersion step read from the file itself, which is the ProductVersion that a person reads in the file's properties. On 2026-10-02 it was 2026.2.1.39815, and the version in Foxit's address, 2026.2.1, was its first three parts; that the next release keeps this is NOT established, and whether the package tool checks that an EXE is the same product as the template was NOT established. This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false.</string>
+        <string>This import is NOT verified yet: the download has no hard check (no vendor hash, no signature check). A real run is refused by CimianImporter until a verification step exists, unless the override sets cimian_allow_unverified to true (the run then publishes with a WARNING, and the report says published, NOT verified). Hands the downloaded Foxit PDF Reader installer (an EXE) to CimianImporter, which publishes it as a new version of the item into a Cimian repository (as a copy of the item's newest pkginfo, with what belongs to the installer file replaced), or says that nothing is new. For an EXE CimianImporter is given the version label: the recipe passes the version that the shared WindowsExeVersion step read from the file itself, which is the ProductVersion that a person reads in the file's properties. On 2026-10-02 it was 2026.2.1.39815, and the version in Foxit's address, 2026.2.1, was its first three parts; that the next release keeps this is NOT established, and CimianImporter does not check that an EXE is the same product as the template. This is a dry run, which writes nothing, until the recipe's override sets cimian_dry_run to false. The repository is the input cimian_repo or the AutoPkg preference CIMIAN_REPO.</string>
         <key>Identifier</key>
         <string>com.github.serrc-techops.cimian.FoxitReader</string>
         <key>Input</key>
         <dict>
+            <key>CIMIAN_NAME</key>
+            <string>foxitreader</string>
+            <key>CIMIAN_SUBDIRECTORY</key>
+            <string></string>
             <key>NAME</key>
             <string>FoxitReader</string>
-            <key>PCMAN_TEMPLATE</key>
-            <string>foxitreader</string>
+            <key>pkginfo</key>
+            <dict>
+                <key>developer</key>
+                <string>Foxit Software</string>
+                <key>display_name</key>
+                <string>Foxit PDF Reader</string>
+            </dict>
         </dict>
         <key>MinimumVersion</key>
         <string>1.0.0</string>
@@ -21,14 +30,16 @@
         <array>
             <dict>
                 <key>Processor</key>
-                <string>com.github.serrc-techops.SharedProcessors/PcmanImporter</string>
+                <string>com.github.serrc-techops.SharedProcessors/CimianImporter</string>
                 <key>Arguments</key>
                 <dict>
                     <key>pathname</key>
                     <string>%pathname%</string>
-                    <key>pcman_template</key>
-                    <string>%PCMAN_TEMPLATE%</string>
-                    <key>pcman_version</key>
+                    <key>cimian_name</key>
+                    <string>%CIMIAN_NAME%</string>
+                    <key>cimian_subdirectory</key>
+                    <string>%CIMIAN_SUBDIRECTORY%</string>
+                    <key>version</key>
                     <string>%version%</string>
                 </dict>
             </dict>
