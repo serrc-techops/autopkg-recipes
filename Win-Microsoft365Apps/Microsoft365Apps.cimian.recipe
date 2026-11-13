@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Description</key>
+    <string>This import is NOT verified: the download has no hard check (no vendor hash, no signature check). A real run is refused by CimianImporter until the override sets cimian_allow_unverified to true (the run then publishes with a WARNING, and the report says published, NOT verified). Hands the self-extracting Microsoft 365 Apps installer that the download recipe built (an EXE of about 3.3 GB) to CimianImporter, which publishes it as a new version of the item into a Cimian repository (as a copy of the item's newest pkginfo, with what belongs to the installer file replaced), or says that nothing is new. The version label is the Office version (16.0.x.y), which is also the version Windows shows for the installed product, so a check by the product's name and version in the Windows uninstall list follows the label. This is a dry run, which writes nothing, until the recipe's override sets cimian_dry_run to false. The repository is the input cimian_repo or the AutoPkg preference CIMIAN_REPO.</string>
+    <key>Identifier</key>
+    <string>com.github.serrc-techops.cimian.Microsoft365Apps</string>
+    <key>Input</key>
+    <dict>
+        <key>CIMIAN_NAME</key>
+        <string>office365business</string>
+        <key>CIMIAN_SUBDIRECTORY</key>
+        <string></string>
+        <key>NAME</key>
+        <string>Microsoft365Apps</string>
+        <key>pkginfo</key>
+        <dict>
+            <key>developer</key>
+            <string>Microsoft</string>
+            <key>display_name</key>
+            <string>Microsoft 365 Apps</string>
+        </dict>
+    </dict>
+    <key>MinimumVersion</key>
+    <string>1.0.0</string>
+    <key>ParentRecipe</key>
+    <string>com.github.serrc-techops.download.Microsoft365Apps-Win</string>
+    <key>Process</key>
+    <array>
+        <dict>
+            <key>Arguments</key>
+            <dict>
+                <key>cimian_name</key>
+                <string>%CIMIAN_NAME%</string>
+                <key>cimian_subdirectory</key>
+                <string>%CIMIAN_SUBDIRECTORY%</string>
+                <key>pathname</key>
+                <string>%pathname%</string>
+                <key>version</key>
+                <string>%version%</string>
+            </dict>
+            <key>Processor</key>
+            <string>com.github.serrc-techops.SharedProcessors/CimianImporter</string>
+        </dict>
+    </array>
+</dict>
+</plist>

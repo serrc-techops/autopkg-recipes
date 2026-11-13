@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Description</key>
+    <string>This download is NOT verified: Microsoft publishes no hash for the Office source files or for its setup.exe, and no signature is checked on the build machine, so nothing proves that the files are what Microsoft published (they come from Microsoft's CDN over https, each with the size the server announced). The importers therefore refuse a real run unless the override sets cimian_allow_unverified to true (pcman_allow_unverified for the package tool's recipe). Reads the version that Microsoft offers for the update channel OFFICE_CHANNEL, downloads the Click-to-Run source of Microsoft 365 Apps for Windows (64-bit, one language, about 3.3 GB) and Microsoft's setup.exe (the Office Deployment Tool), and packs them into ONE self-extracting EXE that installs Office from the files it carries, with no download on the PC. The EXE's stub is 7zS2con.sfx of the public-domain LZMA SDK, downloaded from SFX_SDK_URL and compared with SFX_SDK_SHA256. Which product is installed, which apps are left out and how Office is updated are the inputs below; they are written into the EXE. Needs a 7z program on the build machine and about 10 GB of free space in the cache while it builds. There is no EndOfCheckPhase: a run with --check builds too, and a version that is in the cache already costs one small request.</string>
+    <key>Identifier</key>
+    <string>com.github.serrc-techops.download.Microsoft365Apps-Win</string>
+    <key>Input</key>
+    <dict>
+        <key>NAME</key>
+        <string>Microsoft365Apps</string>
+        <key>OFFICE_CHANNEL</key>
+        <string>MonthlyEnterprise</string>
+        <key>OFFICE_EXCLUDE_APPS</key>
+        <string>Access Groove Lync OneDrive OneNote Outlook Publisher</string>
+        <key>OFFICE_FORCE_APP_SHUTDOWN</key>
+        <false/>
+        <key>OFFICE_INCLUDE_ARM64X</key>
+        <false/>
+        <key>OFFICE_LANGUAGE</key>
+        <string>en-us</string>
+        <key>OFFICE_MIGRATE_ARCHITECTURE</key>
+        <true/>
+        <key>OFFICE_PRODUCT_ID</key>
+        <string>O365BusinessRetail</string>
+        <key>OFFICE_REMOVE_MSI</key>
+        <true/>
+        <key>OFFICE_UPDATES_ENABLED</key>
+        <false/>
+        <key>OFFICE_VERSION</key>
+        <string></string>
+        <key>SFX_SDK_SHA256</key>
+        <string>1d9da340870b12712e9068be178a4436fbad785486b62aed6e2aa88ea1e3bb65</string>
+        <key>SFX_SDK_URL</key>
+        <string>https://github.com/ip7z/7zip/releases/download/26.06/lzma2606.7z</string>
+    </dict>
+    <key>MinimumVersion</key>
+    <string>1.0.0</string>
+    <key>Process</key>
+    <array>
+        <dict>
+            <key>Arguments</key>
+            <dict>
+                <key>office_channel</key>
+                <string>%OFFICE_CHANNEL%</string>
+                <key>office_exclude_apps</key>
+                <string>%OFFICE_EXCLUDE_APPS%</string>
+                <key>office_force_app_shutdown</key>
+                <string>%OFFICE_FORCE_APP_SHUTDOWN%</string>
+                <key>office_include_arm64x</key>
+                <string>%OFFICE_INCLUDE_ARM64X%</string>
+                <key>office_language</key>
+                <string>%OFFICE_LANGUAGE%</string>
+                <key>office_migrate_architecture</key>
+                <string>%OFFICE_MIGRATE_ARCHITECTURE%</string>
+                <key>office_product_id</key>
+                <string>%OFFICE_PRODUCT_ID%</string>
+                <key>office_remove_msi</key>
+                <string>%OFFICE_REMOVE_MSI%</string>
+                <key>office_updates_enabled</key>
+                <string>%OFFICE_UPDATES_ENABLED%</string>
+                <key>office_version</key>
+                <string>%OFFICE_VERSION%</string>
+                <key>sfx_sdk_sha256</key>
+                <string>%SFX_SDK_SHA256%</string>
+                <key>sfx_sdk_url</key>
+                <string>%SFX_SDK_URL%</string>
+            </dict>
+            <key>Processor</key>
+            <string>Microsoft365AppsPackager</string>
+        </dict>
+    </array>
+</dict>
+</plist>
