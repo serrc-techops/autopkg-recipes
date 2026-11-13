@@ -13,7 +13,7 @@
         <key>OFFICE_CHANNEL</key>
         <string>MonthlyEnterprise</string>
         <key>OFFICE_EXCLUDE_APPS</key>
-        <string>Access Groove Lync OneDrive OneNote Outlook Publisher</string>
+        <string>Access Groove Lync OneDrive OneNote Outlook OutlookForWindows Publisher Teams</string>
         <key>OFFICE_FORCE_APP_SHUTDOWN</key>
         <false/>
         <key>OFFICE_INCLUDE_ARM64X</key>

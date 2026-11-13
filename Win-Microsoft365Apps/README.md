@@ -19,7 +19,8 @@ empty cache it read the Monthly Enterprise version (16.0.20527.20194), downloade
 source in the cache took 12 seconds. That EXE was run as SYSTEM from a scheduled task on a Windows 11
 Education test PC with no Office: exit 0 after 7.7 minutes, Office 16.0.20527.20194, `x64`, Word,
 Excel and PowerPoint there, Outlook, Access, OneNote and Publisher not, updates off, the temp
-folder removed. A second EXE made of the same stub and a `setup.bat` that ends with 7 ended with
+folder removed. (That EXE was built with a list that lacked `OutlookForWindows` and `Teams`, and only the classic
+programs were looked for: on the Cimian test PC below the new Outlook and the new Teams were found provisioned.) A second EXE made of the same stub and a `setup.bat` that ends with 7 ended with
 7: a failure of what the stub runs comes back. Windows lists the product as
 `Microsoft 365 Apps for business - en-us` with the version 16.0.20527.20194. The same day the EXE was imported with the package tool as an `exe` item (the
 item text below), served by Zentral's Monolith, and installed by the Cimian client 2026.10.30.0858
@@ -89,7 +90,7 @@ The exit code of the EXE is the exit code of Microsoft's `setup.exe /configure`,
 | `OFFICE_VERSION` | empty | A version to pack instead of the newest (`16.0.x.y`) |
 | `OFFICE_LANGUAGE` | `en-us` | `en-us`, `es-es` or `fr-fr` (the processor's table has the number of each) |
 | `OFFICE_PRODUCT_ID` | `O365BusinessRetail` | The product ID of the Office Deployment Tool |
-| `OFFICE_EXCLUDE_APPS` | `Access Groove Lync OneDrive OneNote Outlook Publisher` | The apps that are not installed (so: Word, Excel, PowerPoint) |
+| `OFFICE_EXCLUDE_APPS` | `Access Groove Lync OneDrive OneNote Outlook OutlookForWindows Publisher Teams` | The apps that are not installed (so: Word, Excel, PowerPoint). `Outlook` is the classic program only: without `OutlookForWindows` and `Teams` Microsoft's setup also provisions the new Outlook and the new Teams for all users (seen on a test PC on 2026-11-13 with the first list, which lacked the two) |
 | `OFFICE_UPDATES_ENABLED` | false | False: Office does not update itself; the version on a PC is the item's |
 | `OFFICE_MIGRATE_ARCHITECTURE` | true | A 32-bit Click-to-Run Office is changed to 64-bit |
 | `OFFICE_REMOVE_MSI` | true | An Office installed by Windows Installer is removed first |

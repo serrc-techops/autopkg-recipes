@@ -278,6 +278,10 @@ class RecipeTests(unittest.TestCase):
         self.assertEqual(len(recipe["Input"]["SFX_SDK_SHA256"]), 64)
         self.assertTrue(recipe["Input"]["SFX_SDK_URL"].startswith("https://"))
         self.assertIs(recipe["Input"]["OFFICE_UPDATES_ENABLED"], False)
+        # Outlook is the classic program only; the new Outlook and the new Teams have IDs of their own
+        excluded = recipe["Input"]["OFFICE_EXCLUDE_APPS"].split()
+        for app in ("Outlook", "OutlookForWindows", "Teams"):
+            self.assertIn(app, excluded)
         self.assertIs(recipe["Input"]["OFFICE_FORCE_APP_SHUTDOWN"], False)
 
     def test_every_description_says_not_verified_first_and_no_recipe_claims_a_check(self):
