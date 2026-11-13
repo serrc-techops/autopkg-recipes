@@ -31,7 +31,10 @@ What the processor does, in order:
 On the PC the EXE unpacks into a new folder under the temp folder, runs
 setup.bat with that folder as the current folder, waits, removes the folder
 and ends with setup.bat's exit code. setup.bat joins the parts, checks the
-sizes (join.ps1: one pass, each part appended once and deleted), writes the folder's path into configuration.xml as SourcePath and runs
+sizes (join.ps1: one pass, each part appended once and deleted), makes
+configuration.xml ready for the PC (prepare.ps1: the folder's path becomes
+SourcePath; an excluded app of office_keep_if_installed that the PC has is no
+longer excluded, so setup keeps it) and runs
 `setup.exe /configure configuration.xml`; its exit code is setup.exe's. Exit
 codes 30 to 39 are setup.bat's own (see SETUP_BAT_CODES).
 
@@ -65,6 +68,7 @@ __all__ = [
     "configuration_xml",
     "part_names",
     "setup_bat",
+    "KEEP_PROGRAMS",
     "settings_digest",
 ]
 
@@ -107,7 +111,7 @@ SETUP_BAT_CODES = {
     30: "the folder of setup.bat could not be made the current folder",
     31: "a part could not be joined to its file",
     32: "a joined file does not have the size of the original",
-    33: "the folder's path could not be written into configuration.xml",
+    33: "configuration.xml could not be made ready for the PC",
 }
 
 
@@ -209,9 +213,14 @@ def part_names(path, size):
     return ["%s.part%03d" % (path, number) for number in range(1, count + 1)]
 
 
-def setup_bat(split_files):
+def setup_bat(split_files, keep_if_installed=()):
     """The text of setup.bat (CRLF lines). `split_files` is a list of
-    (path below the folder, size, [part paths]) for every file that was cut."""
+    (path below the folder, size, [part paths]) for every file that was cut;
+    `keep_if_installed` are the excluded apps that stay where a PC has them."""
+    for app in keep_if_installed:
+        if app not in KEEP_PROGRAMS:
+            raise ValueError("an app that is kept where it is installed must be one of %s, not %r" % (
+                ", ".join(sorted(KEEP_PROGRAMS)), str(app)[:30]))
     lines = [
         "@echo off",
         "setlocal",
@@ -223,15 +232,48 @@ def setup_bat(split_files):
             'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File join.ps1 "%s" || exit 31' % target)
         lines.append('for %%%%F in ("%s") do if not "%%%%~zF"=="%d" exit 32' % (target, size))
     lines += [
-        'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command '
-        '"$t = [IO.File]::ReadAllText(\'configuration.xml\'); '
-        "[IO.File]::WriteAllText((Join-Path (Get-Location).Path 'configuration.xml'), "
-        "$t.Replace('%s', (Get-Location).Path))\" || exit 33" % SOURCE_PLACEHOLDER,
+        'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File prepare.ps1 "%s" || exit 33'
+        % ",".join(keep_if_installed),
         'start "" /wait setup.exe /configure configuration.xml',
         "exit %ERRORLEVEL%",
     ]
     return "\r\n".join(lines) + "\r\n"
 
+
+# The excluded apps that can be kept where a PC has them, and the program that shows it.
+KEEP_PROGRAMS = {"Outlook": "OUTLOOK.EXE", "Access": "MSACCESS.EXE", "OneNote": "ONENOTE.EXE", "Publisher": "MSPUB.EXE"}
+
+PREPARE_PS1 = """\
+# Makes configuration.xml ready for this PC: the folder that the EXE unpacked into becomes
+# SourcePath, and an app of the list that is installed on the PC is taken out of the excluded
+# apps, so that Office's setup keeps it (setup removes an installed app that is excluded).
+param([string]$KeepIfInstalled = '')
+$ErrorActionPreference = 'Stop'
+$here = (Get-Location).Path
+$path = Join-Path $here 'configuration.xml'
+$xml = New-Object System.Xml.XmlDocument
+$xml.PreserveWhitespace = $true
+$xml.Load($path)
+$xml.SelectSingleNode('/Configuration/Add').SetAttribute('SourcePath', $here)
+$programs = @{ %s }
+# The stub is a 32-bit program, so this may be a 32-bit PowerShell: ProgramW6432 is then the 64-bit folder.
+$roots = @($env:ProgramW6432, $env:ProgramFiles, ${env:ProgramFiles(x86)}) | Where-Object { $_ } | Select-Object -Unique
+foreach ($app in ($KeepIfInstalled -split '[ ,]+' | Where-Object { $_ })) {
+    if (-not $programs.ContainsKey($app)) { continue }
+    $found = $false
+    foreach ($root in $roots) {
+        # Click-to-Run Office, then an Office that Windows Installer put there (Office14, Office15, Office16)
+        if (Test-Path -LiteralPath (Join-Path $root ('Microsoft Office\\root\\Office16\\' + $programs[$app]))) { $found = $true }
+        if (@(Get-ChildItem -Path (Join-Path $root ('Microsoft Office\\Office1*\\' + $programs[$app])) -ErrorAction SilentlyContinue).Count -gt 0) { $found = $true }
+    }
+    if ($found) {
+        foreach ($node in @($xml.SelectNodes("/Configuration/Add/Product/ExcludeApp[@ID='$app']"))) { [void]$node.ParentNode.RemoveChild($node) }
+        Write-Output "$app is installed on this PC: it is kept"
+    }
+}
+$xml.Save($path)
+exit 0
+""" % "; ".join("%s = '%s'" % pair for pair in sorted(KEEP_PROGRAMS.items()))
 
 JOIN_PS1 = """\
 # Joins <file>.part001, .part002, ... into <file>, in one pass: each part is
@@ -388,6 +430,12 @@ class Microsoft365AppsPackager(Processor):
             "description": "Whether open Office programs are closed for the install (unsaved work is lost). "
                            "False: the install fails while one is open, and the next run tries again.",
         },
+        "office_keep_if_installed": {
+            "required": False,
+            "default": "Outlook",
+            "description": "Excluded apps that are NOT removed from a PC that has them (%s), separated by "
+                           "spaces or commas. Empty: an excluded app is removed wherever it is." % ", ".join(sorted(KEEP_PROGRAMS)),
+        },
         "sfx_sdk_url": {
             "required": True,
             "description": "The address of the LZMA SDK archive (.7z) that holds %s." % STUB_MEMBER,
@@ -471,6 +519,7 @@ class Microsoft365AppsPackager(Processor):
             raise ProcessorError("office_channel must be one of %s." % ", ".join(sorted(CHANNELS)))
         base = CDN_PREFIX + CHANNELS[channel]
         exclude = [app for app in re.split(r"[\s,]+", str(env.get("office_exclude_apps") or "")) if app]
+        keep = [app for app in re.split(r"[\s,]+", str(env.get("office_keep_if_installed", "Outlook") or "")) if app]
         try:
             flags = {name: as_bool(env.get(name, self.input_variables[name]["default"]), name) for name in (
                 "office_updates_enabled", "office_migrate_architecture", "office_remove_msi", "office_force_app_shutdown",
@@ -481,6 +530,7 @@ class Microsoft365AppsPackager(Processor):
                 version, channel, language, str(env.get("office_product_id") or "O365BusinessRetail"), exclude,
                 flags["office_updates_enabled"], flags["office_migrate_architecture"], flags["office_remove_msi"],
                 flags["office_force_app_shutdown"])
+            setup_bat([], keep)  # checks the kept apps before anything is downloaded
         except ValueError as err:
             raise ProcessorError(str(err))
 
@@ -492,7 +542,7 @@ class Microsoft365AppsPackager(Processor):
         record_path = exe_path + ".json"
         settings = settings_digest({"configuration": configuration, "sdk": str(env["sfx_sdk_sha256"]).lower(),
                                     "part_bytes": PART_BYTES, "files": files,
-                                    "join": JOIN_PS1})
+                                    "join": JOIN_PS1, "prepare": PREPARE_PS1, "keep": keep})
         env["version"] = version
         try:
             with open(record_path, "r", encoding="utf-8") as handle:
@@ -553,7 +603,9 @@ class Microsoft365AppsPackager(Processor):
             with open(os.path.join(stage, "configuration.xml"), "w", encoding="utf-8", newline="\r\n") as handle:
                 handle.write(configuration)
             with open(os.path.join(stage, "setup.bat"), "w", encoding="ascii", newline="") as handle:
-                handle.write(setup_bat(split))
+                handle.write(setup_bat(split, keep))
+            with open(os.path.join(stage, "prepare.ps1"), "w", encoding="ascii", newline="\r\n") as handle:
+                handle.write(PREPARE_PS1)
             with open(os.path.join(stage, "join.ps1"), "w", encoding="ascii", newline="\r\n") as handle:
                 handle.write(JOIN_PS1)
             archive = os.path.join(work, "source.7z")

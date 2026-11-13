@@ -18,6 +18,8 @@
         <false/>
         <key>OFFICE_INCLUDE_ARM64X</key>
         <false/>
+        <key>OFFICE_KEEP_IF_INSTALLED</key>
+        <string>Outlook</string>
         <key>OFFICE_LANGUAGE</key>
         <string>en-us</string>
         <key>OFFICE_MIGRATE_ARCHITECTURE</key>
@@ -50,6 +52,8 @@
                 <string>%OFFICE_FORCE_APP_SHUTDOWN%</string>
                 <key>office_include_arm64x</key>
                 <string>%OFFICE_INCLUDE_ARM64X%</string>
+                <key>office_keep_if_installed</key>
+                <string>%OFFICE_KEEP_IF_INSTALLED%</string>
                 <key>office_language</key>
                 <string>%OFFICE_LANGUAGE%</string>
                 <key>office_migrate_architecture</key>

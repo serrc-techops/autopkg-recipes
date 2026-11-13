@@ -27,10 +27,18 @@ item text below), served by Zentral's Monolith, and installed by the Cimian clie
 on a Windows Server 2022 test PC with no Office: download, install and the client's record in 11.6
 minutes, exit 0, and the next check called it installed with nothing pending (the item has no
 `installs` list, so the client says "cannot verify, assuming success"; the check by name and
-version is what tells). NOT established: a
+version is what tells). The EXE was then rebuilt with
+`OutlookForWindows` and `Teams` excluded and with `prepare.ps1`, and run as SYSTEM on a Windows
+Server 2025 test PC that had neither app: a fresh install (exit 0, 11.8 minutes) left the new
+Outlook and the new Teams away and installed no classic Outlook; on the same PC with classic
+Outlook added to the Business product, the EXE kept Outlook (exit 0, 13.6 minutes). The first
+build was also run over a 32-bit Click-to-Run Office of 2018 (16.0.9126.2336, the products
+`O365ProPlusRetail` and `O365HomePremRetail`): exit 0 after 14.2 minutes, everything 64-bit at
+16.0.20527.20194, **the two products kept beside the new one** (Office's setup adds a product; it
+removes none), and with them their apps, Outlook among them. NOT established: a
 run of the three recipes by AutoPkg itself (the override, the trust information, `%version%`
 reaching the importers); an install
-over an older Office, a 32-bit Office or an MSI Office (`MigrateArch`, `RemoveMSI`); an install while
+over an MSI Office (`RemoveMSI`); an install while
 an Office program is open; any language but `en-us`; any channel but Monthly Enterprise; that
 `AllowCdnFallback="FALSE"` keeps a PC from Microsoft's servers (the test PC had internet access).
 
@@ -64,8 +72,8 @@ an Office program is open; any language but `en-us`; any channel but Monthly Ent
   holds a file twice. (A first form, `copy /b file+part file` for each part, took 9 minutes
   on the test PC for the same files: `copy` rewrites the growing file every time.)
 - **From the folder and from nowhere else.** `configuration.xml` names the version,
-  `AllowCdnFallback="FALSE"`, and a `SourcePath` that `setup.bat` sets to the folder the EXE
-  unpacked into. A source that is not complete fails the install; it is not fetched from
+  `AllowCdnFallback="FALSE"`, and a `SourcePath` that `prepare.ps1` (run by `setup.bat`) sets to the
+  folder the EXE unpacked into. A source that is not complete fails the install; it is not fetched from
   Microsoft behind the back of the repository.
 - **4 GiB.** Windows does not start an EXE of 4 GiB or more. The processor stops with a
   message when the source has outgrown that; nothing is built.
@@ -80,7 +88,7 @@ The exit code of the EXE is the exit code of Microsoft's `setup.exe /configure`,
 | 30 | The folder of `setup.bat` could not be made the current folder |
 | 31 | A part could not be joined to its file |
 | 32 | A joined file does not have the size of the original |
-| 33 | The folder's path could not be written into `configuration.xml` |
+| 33 | `configuration.xml` could not be made ready for the PC (`prepare.ps1`) |
 
 ## The inputs (set them in the override, never in the recipe)
 
@@ -91,6 +99,7 @@ The exit code of the EXE is the exit code of Microsoft's `setup.exe /configure`,
 | `OFFICE_LANGUAGE` | `en-us` | `en-us`, `es-es` or `fr-fr` (the processor's table has the number of each) |
 | `OFFICE_PRODUCT_ID` | `O365BusinessRetail` | The product ID of the Office Deployment Tool |
 | `OFFICE_EXCLUDE_APPS` | `Access Groove Lync OneDrive OneNote Outlook OutlookForWindows Publisher Teams` | The apps that are not installed (so: Word, Excel, PowerPoint). `Outlook` is the classic program only: without `OutlookForWindows` and `Teams` Microsoft's setup also provisions the new Outlook and the new Teams for all users (seen on a test PC on 2026-11-13 with the first list, which lacked the two) |
+| `OFFICE_KEEP_IF_INSTALLED` | `Outlook` | Excluded apps that stay on a PC that has them (`Outlook`, `Access`, `OneNote`, `Publisher`: the classic programs). Office's setup removes an installed app that is excluded; for an app of this list the EXE first looks for the program on the PC (Click-to-Run or Windows Installer Office, 32-bit or 64-bit) and, where it is there, no longer excludes it. Empty: an excluded app is removed wherever it is |
 | `OFFICE_UPDATES_ENABLED` | false | False: Office does not update itself; the version on a PC is the item's |
 | `OFFICE_MIGRATE_ARCHITECTURE` | true | A 32-bit Click-to-Run Office is changed to 64-bit |
 | `OFFICE_REMOVE_MSI` | true | An Office installed by Windows Installer is removed first |

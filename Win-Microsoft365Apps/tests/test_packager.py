@@ -137,8 +137,25 @@ class SetupBatTests(unittest.TestCase):
         self.assertIn('for %%F in ("Office\\Data\\x.dat") do if not "%%~zF"=="12345" exit 32', lines)
         self.assertEqual(lines[-3], 'start "" /wait setup.exe /configure configuration.xml')
         self.assertEqual(lines[-2], "exit %ERRORLEVEL%")
-        self.assertIn(packager.SOURCE_PLACEHOLDER, lines[-4])
-        self.assertTrue(lines[-4].endswith("|| exit 33"))
+        self.assertEqual(
+            lines[-4], 'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File prepare.ps1 "" || exit 33')
+        kept = packager.setup_bat([], ["Outlook", "Access"]).split("\r\n")
+        self.assertIn('-File prepare.ps1 "Outlook,Access" || exit 33', kept[-4])
+
+    def test_only_known_apps_can_be_kept(self):
+        for app in ("Word", "Outlook\" & del", "outlook"):
+            with self.subTest(app=app):
+                with self.assertRaises(ValueError):
+                    packager.setup_bat([], [app])
+
+    def test_the_prepare_script_sets_the_source_and_keeps_an_installed_app(self):
+        text = packager.PREPARE_PS1
+        self.assertIn("SetAttribute('SourcePath', $here)", text)
+        self.assertIn("Outlook = 'OUTLOOK.EXE'", text)
+        self.assertIn("ExcludeApp[@ID='$app']", text)
+        self.assertIn("$env:ProgramW6432", text)  # the stub is 32-bit
+        self.assertTrue(text.rstrip().endswith("exit 0"))
+        text.encode("ascii")
         text.encode("ascii")
 
     def test_every_own_exit_code_is_described(self):
@@ -223,6 +240,8 @@ class BuildTests(unittest.TestCase):
         self.assertIn(b"<ExcludeApp ID=\"Outlook\"", self.staged["configuration.xml"])
         self.assertEqual(self.staged["setup.exe"][:2], b"MZ")
         self.assertIn(b".part*", self.staged["join.ps1"])
+        self.assertIn(b'prepare.ps1 "Outlook"', self.staged["setup.bat"])
+        self.assertIn(b"OUTLOOK.EXE", self.staged["prepare.ps1"])
         self.assertNotIn(b"\n", self.staged["join.ps1"].replace(b"\r\n", b""))
         self.assertEqual([name for name in os.listdir(self.folder.name) if name.startswith("m365-build-")], [])
 
@@ -251,6 +270,11 @@ class BuildTests(unittest.TestCase):
         with self.assertRaises(ProcessorError):
             self.Fake(env=self.env()).main()
 
+    def test_an_app_that_cannot_be_kept_stops_the_run_before_any_download(self):
+        with self.assertRaises(ProcessorError):
+            self.Fake(env=self.env(office_keep_if_installed="Word")).main()
+        self.assertEqual(self.downloads, [])
+
     def test_an_unknown_channel_stops_the_run(self):
         with self.assertRaises(ProcessorError):
             self.Fake(env=self.env(office_channel="Nightly")).main()
@@ -273,6 +297,7 @@ class RecipeTests(unittest.TestCase):
         declared = packager.Microsoft365AppsPackager.input_variables
         self.assertEqual(set(step["Arguments"]) | {"sevenzip_path"}, set(declared))
         self.assertIs(recipe["Input"]["OFFICE_INCLUDE_ARM64X"], False)
+        self.assertEqual(recipe["Input"]["OFFICE_KEEP_IF_INSTALLED"], "Outlook")
         for value in step["Arguments"].values():
             self.assertIn(value.strip("%"), recipe["Input"])
         self.assertEqual(len(recipe["Input"]["SFX_SDK_SHA256"]), 64)
