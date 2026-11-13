@@ -12,7 +12,7 @@ override sets `cimian_allow_unverified` (`pcman_allow_unverified`) to true. On t
 Microsoft's `setup.exe` and the Click-to-Run client check the source files against
 Microsoft's catalogs; nothing checks `setup.exe` itself.**
 
-**Status (2026-11-13). Built and installed once; NOT run under AutoPkg, and nothing is published.**
+**Status (2026-11-13). Built, imported by hand and installed by the Cimian client once; NOT run under AutoPkg.**
 The processor was run by hand with AutoPkg 2.9.0's Python on the build Mac (p7zip 17.05): from an
 empty cache it read the Monthly Enterprise version (16.0.20527.20194), downloaded the 12 files and
 `setup.exe` and built the EXE (3,329,210,368 bytes) in about two minutes; a second run with the
@@ -21,9 +21,14 @@ Education test PC with no Office: exit 0 after 7.7 minutes, Office 16.0.20527.20
 Excel and PowerPoint there, Outlook, Access, OneNote and Publisher not, updates off, the temp
 folder removed. A second EXE made of the same stub and a `setup.bat` that ends with 7 ended with
 7: a failure of what the stub runs comes back. Windows lists the product as
-`Microsoft 365 Apps for business - en-us` with the version 16.0.20527.20194. NOT established: a
+`Microsoft 365 Apps for business - en-us` with the version 16.0.20527.20194. The same day the EXE was imported with the package tool as an `exe` item (the
+item text below), served by Zentral's Monolith, and installed by the Cimian client 2026.10.30.0858
+on a Windows Server 2022 test PC with no Office: download, install and the client's record in 11.6
+minutes, exit 0, and the next check called it installed with nothing pending (the item has no
+`installs` list, so the client says "cannot verify, assuming success"; the check by name and
+version is what tells). NOT established: a
 run of the three recipes by AutoPkg itself (the override, the trust information, `%version%`
-reaching the importers); the item in a repository and an install by the Cimian client; an install
+reaching the importers); an install
 over an older Office, a 32-bit Office or an MSI Office (`MigrateArch`, `RemoveMSI`); an install while
 an Office program is open; any language but `en-us`; any channel but Monthly Enterprise; that
 `AllowCdnFallback="FALSE"` keeps a PC from Microsoft's servers (the test PC had internet access).
