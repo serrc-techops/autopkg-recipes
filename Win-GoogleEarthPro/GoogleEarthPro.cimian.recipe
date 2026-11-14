@@ -3,7 +3,7 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>This import is NOT verified yet: the download has no hard check (no vendor hash, no signature check). A real run is refused by CimianImporter until a verification step exists, unless the override sets cimian_allow_unverified to true (the run then publishes with a WARNING, and the report says published, NOT verified). Hands the downloaded Google Earth Pro installer (an EXE) to CimianImporter, which publishes it as a new version of the item into a Cimian repository (as a copy of the item's newest pkginfo, with what belongs to the installer file replaced), or says that nothing is new. For an EXE CimianImporter is given the version label: the recipe passes the version that the download recipe's WindowsExeVersion step read from the EXE itself (its ProductVersion when that is numbers and dots only, else the four numbers of its fixed file information). The label must equal what a person reads in the file's properties, which the first dry run shows. CimianImporter does not check that an EXE is the same product as the template (it only compares the upgrade code of an MSI). This recipe was NOT rehearsed with AutoPkg. This is a dry run, which writes nothing, until the recipe's override sets cimian_dry_run to false. The repository is the input cimian_repo or the AutoPkg preference CIMIAN_REPO.</string>
+        <string>This import is NOT verified yet: the download has no hard check (no vendor hash, no signature check). A real run is refused by CimianImporter until a verification step exists, unless the override sets cimian_allow_unverified to true (the run then publishes with a WARNING, and the report says published, NOT verified). Hands the Google Earth Pro MSI that the download recipe cut out of the downloaded EXE (a part of an unverified file) to CimianImporter, which publishes it as a new version of the item into a Cimian repository (as a copy of the item's newest pkginfo, with what belongs to the installer file replaced), or says that nothing is new. The recipe gives no version label: for an MSI CimianImporter takes the MSI's own ProductVersion (read with msiinfo); what that version is was NOT read. It refuses an MSI whose upgrade code differs from the template's unless the override sets cimian_allow_product_change to true. That the MSI installs alone, without the wrapper, was NOT tested. This recipe was NOT rehearsed with AutoPkg. This is a dry run, which writes nothing, until the recipe's override sets cimian_dry_run to false. The repository is the input cimian_repo or the AutoPkg preference CIMIAN_REPO.</string>
         <key>Identifier</key>
         <string>com.github.serrc-techops.cimian.GoogleEarthPro</string>
         <key>Input</key>
@@ -40,7 +40,7 @@
                     <key>cimian_subdirectory</key>
                     <string>%CIMIAN_SUBDIRECTORY%</string>
                     <key>version</key>
-                    <string>%version%</string>
+                    <string></string>
                 </dict>
             </dict>
         </array>

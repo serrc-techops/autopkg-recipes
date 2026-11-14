@@ -1,19 +1,19 @@
-"""Tests of the two Google Earth Pro recipes. Nothing here runs AutoPkg or uses the network.
+"""Tests of the Google Earth Pro recipes. Nothing here runs AutoPkg or uses the network.
 
-The recipes are read as property lists. The step that names our shared
-processor is compared with what that processor declares (see
-../../Win-SharedProcessors). The shared folder's tests are run separately.
+The recipes are read as property lists. The steps that name a processor are
+compared with what that processor declares (the shared ones in
+../../Win-SharedProcessors, the extractor in this folder). The shared folder's
+tests and test_msi_extractor.py are run separately.
 
 The download of this program has NO hard check (no vendor hash, no signature
 check). The tests make sure that nobody can overlook that: the Description of
-both recipes and the top of the README say it, and no recipe invents a check.
+the recipes and the top of the README say it, and no recipe invents a check.
 
-Nothing of this folder was rehearsed with AutoPkg. Some facts of the source were
-fetched by the writer on 2026-10-02 (the address, the size and the date of the file):
-the README's first paragraph says which, and a test checks it. The version label is
-read from the EXE by the shared processor WindowsExeVersion: the tests check that
-the recipes use it as the brief says (a step after EndOfCheckPhase, the label passed
-on as pcman_version) and compare its arguments with what it declares.
+The first run under AutoPkg 2.9.0, on 2026-11-13, stopped at WindowsExeVersion:
+the EXE has no version resource. It is a wrapper around one MSI (resource
+BINARY/ID_MSI). The recipe now cuts that MSI out with this folder's
+GoogleEarthProMsiExtractor (a step after EndOfCheckPhase), and both importers
+get the MSI with no version label: they read the MSI's own ProductVersion.
 """
 import os
 import plistlib
@@ -34,6 +34,9 @@ if SHARED_TESTS_DIR not in sys.path:
 if PCMAN_TESTS_DIR not in sys.path:
     sys.path.insert(0, PCMAN_TESTS_DIR)
 
+if RECIPE_DIR not in sys.path:
+    sys.path.insert(0, RECIPE_DIR)
+
 import _win_support  # noqa: E402,F401  (installs the autopkglib stand-in, imports the processors)
 import _pcman_support  # noqa: E402,F401  (the stand-in for the package tool, and its processor)
 import test_public_repository as shared_hygiene  # noqa: E402
@@ -47,6 +50,8 @@ PCMAN = os.path.join(RECIPE_DIR, "GoogleEarthPro.pcman.recipe")
 README = os.path.join(RECIPE_DIR, "README.md")
 # Processors that are part of AutoPkg itself.
 CORE_PROCESSORS = ("URLDownloader", "EndOfCheckPhase")
+# The processor of this folder, named by its bare class name as AutoPkg finds it beside the recipe.
+EXTRACTOR = "GoogleEarthProMsiExtractor"
 # Required inputs that a recipe must NOT pass: they come from AutoPkg's
 # preferences or the override on the machine that runs it.
 SUPPLIED_BY_THE_MACHINE = {"PcmanImporter": {"pcman_root"}}
@@ -77,14 +82,17 @@ def read(path):
 def processor_classes():
     import importlib
     classes = {}
-    for name in ("PcmanImporter", "CimianImporter", "ChecksumVerifier", "GitHubAssetDigest", "WindowsExeVersion"):
+    for name in ("PcmanImporter", "CimianImporter", "ChecksumVerifier", "GitHubAssetDigest", EXTRACTOR):
         classes[name] = getattr(importlib.import_module(name), name)
     return classes
 
 
 def shared_steps(recipe):
-    """The steps that name a processor of this repository, of either folder: (name, arguments)."""
+    """The steps that name a processor of this repository, of either shared folder or of this
+    folder: (name, arguments)."""
     for step in recipe["Process"]:
+        if step["Processor"] == EXTRACTOR:
+            yield EXTRACTOR, step.get("Arguments", {})
         for prefix in (SHARED_PREFIX, PCMAN_PREFIX):
             if step["Processor"].startswith(prefix):
                 yield step["Processor"][len(prefix):], step.get("Arguments", {})
@@ -115,19 +123,28 @@ class RecipeFileTests(unittest.TestCase):
 
     def test_the_download_steps_in_order(self):
         steps = [step["Processor"] for step in load(DOWNLOAD)["Process"]]
-        self.assertEqual(steps, ["URLDownloader", "EndOfCheckPhase", SHARED_PREFIX + "WindowsExeVersion"])
+        self.assertEqual(steps, ["URLDownloader", "EndOfCheckPhase", EXTRACTOR])
 
-    def test_the_version_step_comes_after_the_end_of_the_check_phase_with_only_the_pathname(self):
+    def test_the_extractor_comes_after_the_end_of_the_check_phase_with_only_the_pathname(self):
         steps = load(DOWNLOAD)["Process"]
         names = [step["Processor"] for step in steps]
-        self.assertGreater(names.index(SHARED_PREFIX + "WindowsExeVersion"), names.index("EndOfCheckPhase"))
+        self.assertGreater(names.index(EXTRACTOR), names.index("EndOfCheckPhase"))
         self.assertEqual(steps[-1].get("Arguments"), {"pathname": "%pathname%"})
-        # nothing of the processor's inputs is changed: set_version stays at its default
-        self.assertNotIn("set_version", read(DOWNLOAD))
 
-    def test_there_is_exactly_one_version_step_and_it_is_in_the_download_recipe_only(self):
-        self.assertEqual(read(DOWNLOAD).count("WindowsExeVersion</string>"), 1)
-        self.assertNotIn("WindowsExeVersion</string>", read(PCMAN))
+    def test_the_extractor_is_named_by_its_bare_class_name_and_sits_beside_the_recipe(self):
+        """A processor of the recipe's own folder is named by its class name, as in Win-Krita and Win-VLC."""
+        self.assertTrue(os.path.isfile(os.path.join(RECIPE_DIR, EXTRACTOR + ".py")))
+        for path in (DOWNLOAD, CIMIAN, PCMAN):
+            self.assertNotIn("/" + EXTRACTOR, read(path))
+        self.assertEqual(read(DOWNLOAD).count("<string>%s</string>" % EXTRACTOR), 1)
+        for path in (CIMIAN, PCMAN):
+            self.assertNotIn(EXTRACTOR, read(path))
+
+    def test_the_exe_version_step_of_the_first_run_is_gone(self):
+        """The first run (AutoPkg 2.9.0, 2026-11-13) stopped there: the EXE has no version resource."""
+        for path in (DOWNLOAD, CIMIAN, PCMAN):
+            self.assertNotIn("WindowsExeVersion</string>", read(path))
+            self.assertNotIn("set_version", read(path))
 
     def test_the_pcman_recipe_has_one_step(self):
         steps = [step["Processor"] for step in load(PCMAN)["Process"]]
@@ -156,23 +173,29 @@ class RecipeFileTests(unittest.TestCase):
     def test_the_download_recipe_has_no_parent(self):
         self.assertNotIn("ParentRecipe", read(DOWNLOAD))
 
-    def test_the_download_description_says_what_was_fetched_and_what_was_not_rehearsed(self):
+    def test_the_download_description_says_what_the_first_run_showed_and_what_was_not_run(self):
         text = re.sub(r"\s+", " ", load(DOWNLOAD)["Description"])
-        self.assertIn("The address, the size and the date of the file were read by the writer on 2026-11-13", text)
-        self.assertIn("a HEAD request only: the file was not downloaded, so it is not known whether it has a version resource", text)
-        self.assertIn("this recipe was NOT rehearsed with AutoPkg", text)
-        self.assertIn("the first run on the build machine is the check of the rest", text)
+        self.assertIn("The first run under AutoPkg 2.9.0, on 2026-11-13, downloaded the file (100802200 bytes) and stopped "
+                      "at the earlier step WindowsExeVersion: the EXE has no version resource", text)
+        self.assertIn("wrote an MSI of 63475712 bytes that begins with the signature of a Windows Installer database", text)
+        self.assertIn("This recipe in its new form was NOT run with AutoPkg, and the MSI's ProductVersion was not read", text)
 
-    def test_the_download_description_says_that_the_version_is_read_from_the_exe(self):
+    def test_the_download_description_says_that_the_msi_is_cut_out_and_not_verified(self):
         text = re.sub(r"\s+", " ", load(DOWNLOAD)["Description"])
-        self.assertIn("reads the version from the EXE itself with the shared processor WindowsExeVersion", text)
-        self.assertIn("the address has no version in it", text)
+        self.assertIn("cuts the Windows Installer database out of it with this folder's processor GoogleEarthProMsiExtractor", text)
+        self.assertIn("one resource BINARY/ID_MSI", text)
+        self.assertIn("The MSI is a part cut out of an unverified file, so it is NOT verified either", text)
 
-    def test_the_pcman_description_says_where_the_label_comes_from(self):
-        text = re.sub(r"\s+", " ", load(PCMAN)["Description"])
-        self.assertIn("the recipe passes the version that the download recipe's WindowsExeVersion step read from the EXE itself", text)
-        self.assertIn("The label must equal what a person reads in the file's properties", text)
-        self.assertIn("This recipe was NOT rehearsed with AutoPkg", text)
+    def test_the_importer_descriptions_say_where_the_version_comes_from_and_what_was_not_tested(self):
+        for path, importer in ((CIMIAN, "CimianImporter"), (PCMAN, "the package tool")):
+            text = re.sub(r"\s+", " ", load(path)["Description"])
+            with self.subTest(path=os.path.basename(path)):
+                self.assertIn("The recipe gives no version label", text)
+                self.assertIn("what that version is was NOT read", text)
+                self.assertIn("MSI that the download recipe cut out of the downloaded EXE (a part of an unverified file)", text)
+                self.assertIn("That the MSI installs alone, without the wrapper, was NOT tested", text)
+                self.assertIn("This recipe was NOT rehearsed with AutoPkg", text)
+                self.assertIn(importer, text)
 
     def test_no_description_claims_a_rehearsal(self):
         for path in (DOWNLOAD, PCMAN):
@@ -185,8 +208,7 @@ class RecipeFileTests(unittest.TestCase):
         self.assertEqual(recipe["Input"]["NAME"], "GoogleEarthPro")
         self.assertEqual(recipe["Input"]["PCMAN_TEMPLATE"], "google-earth-pro")
         args = recipe["Process"][0]["Arguments"]
-        self.assertEqual(args, {"pathname": "%pathname%", "pcman_template": "%PCMAN_TEMPLATE%",
-                                "pcman_version": "%version%"})
+        self.assertEqual(args, {"pathname": "%pathname%", "pcman_template": "%PCMAN_TEMPLATE%"})
 
     def test_no_file_name_of_ours_is_the_name_of_a_recipe_in_another_repository(self):
         ours = [name[: -len(".recipe")].casefold() for name in (os.path.basename(DOWNLOAD), os.path.basename(PCMAN))]
@@ -198,23 +220,23 @@ class RecipeFileTests(unittest.TestCase):
     def test_the_template_keeps_the_name_that_the_readme_names(self):
         self.assertEqual(load(PCMAN)["Input"]["PCMAN_TEMPLATE"], "google-earth-pro")
 
-    def test_the_label_of_an_exe_is_passed_from_the_processor_and_from_nothing_else(self):
-        """An EXE needs pcman_version. It is the `version` that WindowsExeVersion
-        outputs, never a value written in the recipe, an input or a hash."""
-        self.assertNotIn("pcman_version", read(DOWNLOAD))
-        text = read(PCMAN)
-        self.assertEqual(text.count("<key>pcman_version</key>"), 1)
-        self.assertIn("<key>pcman_version</key>\n                    <string>%version%</string>", text)
-        for key in ("VERSION", "PCMAN_VERSION", "LABEL"):
-            self.assertNotIn("<key>%s</key>" % key, text)
-            self.assertNotIn("<key>%s</key>" % key, read(DOWNLOAD))
-        for path in (DOWNLOAD, PCMAN):
+    def test_no_recipe_passes_a_version_label_for_the_msi(self):
+        """For an MSI both importers read the MSI's own ProductVersion. No label is passed: no
+        pcman_version, and an empty `version` for CimianImporter (an argument of a step wins over
+        anything an earlier step left in `version`)."""
+        for path in (DOWNLOAD, CIMIAN, PCMAN):
+            self.assertNotIn("pcman_version", read(path))
+            self.assertNotIn("%version%", read(path))
+            for key in ("VERSION", "PCMAN_VERSION", "LABEL"):
+                self.assertNotIn("<key>%s</key>" % key, read(path))
             self.assertNotIn("exe_product_version", read(path))
-            self.assertNotIn("exe_file_version", read(path))
+        self.assertEqual(load(CIMIAN)["Process"][0]["Arguments"]["version"], "")
 
-    def test_the_processor_that_gives_the_label_declares_the_output_the_recipe_uses(self):
-        self.assertIn("version", processor_classes()["WindowsExeVersion"].output_variables)
-        self.assertIn("pathname", processor_classes()["WindowsExeVersion"].input_variables)
+    def test_the_extractor_declares_what_the_recipe_uses_and_gives(self):
+        extractor = processor_classes()[EXTRACTOR]
+        self.assertEqual(set(extractor.input_variables), {"pathname"})
+        self.assertEqual(set(extractor.output_variables), {"pathname", "googleearthpro_wrapper_pathname"})
+        self.assertNotIn("version", extractor.output_variables)
 
     def test_no_stop_on_an_unchanged_download_and_no_latest_only(self):
         for path in (DOWNLOAD, PCMAN):
@@ -264,11 +286,10 @@ class NotVerifiedTests(unittest.TestCase):
         self.assertIn("no hash", sentence)
         self.assertIn("signature", sentence)
 
-    def test_the_pcman_description_says_what_is_not_established_about_what_still_protects(self):
+    def test_the_pcman_description_says_what_still_protects_for_an_msi(self):
         text = re.sub(r"\s+", " ", load(PCMAN)["Description"])
-        self.assertIn("Whether the package tool has a check of the product for an EXE, like its upgrade code check "
-                      "for an MSI, was NOT established", text)
-        self.assertNotIn("refuses an MSI whose upgrade code differs", text)
+        self.assertIn("It refuses an MSI whose upgrade code differs from the template's", text)
+        self.assertNotIn("for an EXE", text)
         self.assertIn("pcman_dry_run", text)
         self.assertIn("dry run", text)
 
@@ -306,54 +327,71 @@ class NotVerifiedTests(unittest.TestCase):
     def test_the_readme_opens_with_a_status_line_and_a_not_verified_line_both_bold(self):
         lines = [line for line in read(README).splitlines() if line.strip()]
         self.assertTrue(lines[0].startswith("# "))
-        self.assertTrue(lines[1].startswith("A Windows recipe pair: Google Earth Pro, the full (offline) `.exe` installer"))
+        self.assertTrue(lines[1].startswith("A Windows recipe pair: Google Earth Pro, the Windows Installer database "
+                                            "(`.msi`) cut out of the full (offline) `.exe` installer"))
         status, not_verified = lines[2], lines[3]
-        self.assertTrue(status.startswith("**Status. New and not rehearsed:"), status[:100])
+        self.assertTrue(status.startswith("**Status. Changed after its first run, NOT run in its new form."), status[:100])
         self.assertTrue(status.endswith("**"))
         self.assertTrue(not_verified.startswith("**Not verified. The download is NOT verified:"), not_verified[:60])
         self.assertTrue(not_verified.endswith("**"))
         for needle in ("signature check", "REFUSES a real run", "pcman_allow_unverified",
                        "Do not set it before the signature check exists",
-                       "pcman import <file> --template google-earth-pro --version <label>", "the label of an EXE",
-                       "Nothing has been run and nothing has been installed on a PC"):
+                       "The MSI is a part cut out of that unverified file, so it is NOT verified either",
+                       "pcman import <file> --template google-earth-pro` (no `--version` for an MSI)",
+                       "Nothing has been installed on a PC"):
             self.assertIn(needle, not_verified)
 
-    def test_the_status_line_says_what_was_read_and_what_was_not_established(self):
+    def test_the_status_line_says_what_the_first_run_showed_what_changed_and_what_was_not_established(self):
         status = [line for line in read(README).splitlines() if line.startswith("**Status.")][0]
         text = re.sub(r"\s+", " ", status)
         for needle in (
-                "nothing of this folder has run under AutoPkg, no installer was downloaded, and nothing has been installed on a PC",
-                "Some facts of the source were read by the writer on 2026-11-13:",
+                "The first run under AutoPkg 2.9.0, on 2026-11-13",
+                "downloaded `googleearthprowin-x64.exe` (100802200 bytes) and stopped each time at the step "
+                "`WindowsExeVersion` with `googleearthprowin-x64.exe: the file has no version resource (RT_VERSION).` "
+                "(exit 70); nothing was published",
+                "one resource `.rsrc/1033/BINARY/ID_MSI` of 63475712 bytes",
+                "So the EXE is a wrapper around one MSI",
+                "Because of this the recipe was changed: `WindowsExeVersion` is gone",
+                "`GoogleEarthProMsiExtractor` cuts the MSI out of the EXE",
+                "The extractor was run on a copy of that file, outside AutoPkg",
                 "`%s` answered a HEAD request with 200 and no redirect",
                 "`Content-Length` 100802200",
                 "`Last-Modified` 2026-08-20",
                 "the address holds no version; no hash was found for the file",
                 "will no longer be available for download from June 25, 2027",
-                "NOT established:",
+                "NOT established",
                 "that Google's own download page links exactly this address",
                 "that Google publishes a hash or a signature check for this file",
-                "that the file has a version resource",
-                "that it takes `OMAHA=1` as its silent argument and installs per machine "
-                "(this is the writer's knowledge, NOT read from Google and NOT tested)",
                 "the path of the installed program",
-                "that the package tool has a check of the product for an EXE",
                 "that Google's server answers the questions that AutoPkg asks about a changed file",
                 "any install on a PC",
-                "The first install on a test PC is the check of what is NOT established",
+                "now concerns only the wrapper, which the recipe no longer publishes",
                 "When a run fails, STOP: nothing was written",
                 "correct the recipe, and only then look at the trust information",
                 "Never accept new trust information first"):
             self.assertIn(needle % load(DOWNLOAD)["Input"]["DOWNLOAD_URL"] if "%s" in needle else needle, text)
         self.assertNotIn("Rehearsed on", read(README))
 
-    def test_the_readme_has_a_section_on_the_label_with_the_two_lines_of_the_processor(self):
+    def test_the_status_line_has_a_marked_place_for_what_is_read_later(self):
+        """The MSI's ProductVersion and an install of the MSI alone are not established: the status line
+        keeps a marked place for them and states no version."""
+        status = [line for line in read(README).splitlines() if line.startswith("**Status.")][0]
+        self.assertEqual(status.count("TO BE FILLED IN"), 1)
+        place = status[status.index("TO BE FILLED IN"):]
+        self.assertIn("the MSI's ProductVersion: `<not read; expected four numbers, 7.3.x.y>`", place)
+        self.assertIn("that the extracted MSI installs alone with `msiexec /i <file> /qn`: `<not tested; the wrapper may "
+                      "pass properties or run steps of its own, unread>`", place)
+        self.assertIsNone(re.search(r"\b7\.3\.\d+\.\d+\b", read(README)))
+
+    def test_the_readme_has_a_section_on_the_msi_inside_the_exe(self):
         text = re.sub(r"\s+", " ", read(README))
-        self.assertIn("## The label", text)
-        self.assertIn("`version is ..., taken from ...`", text)
-        self.assertIn("the ProductVersion string when that is numbers and dots only, else the four numbers of the "
-                      "fixed file information", text)
-        self.assertIn("compare them with the file's properties on a Windows PC", text)
-        self.assertLess(text.index("## The label"), text.index("## a."))
+        self.assertIn("## The MSI inside the EXE", text)
+        for needle in ("The EXE has no version resource", "`BINARY` with the name `ID_MSI`",
+                       "never executes the file", "through a temporary file and a rename",
+                       "a link at the target is refused", "The same EXE gives the same MSI, byte for byte",
+                       "one line with the EXE's size and the MSI's size"):
+            self.assertIn(needle, text)
+        self.assertLess(text.index("## The MSI inside the EXE"), text.index("## a."))
 
     def test_the_readme_does_not_claim_that_earth_pro_updates_itself(self):
         text = re.sub(r"\s+", " ", read(README))
@@ -369,9 +407,11 @@ class NotVerifiedTests(unittest.TestCase):
         text = re.sub(r"\s+", " ", read(README))
         self.assertIn("**The label.**", text)
         self.assertIn("**The same product.**", text)
-        self.assertIn("For an MSI the package tool refuses a different upgrade code", text)
-        self.assertIn("Whether it has an equivalent check for an EXE was NOT established by the writer", text)
+        self.assertIn("**The extractor's checks.**", text)
+        self.assertIn("The package tool refuses an MSI whose upgrade code differs from the template's", text)
+        self.assertIn("The MSI's upgrade code was NOT read", text)
         self.assertIn("proves nothing about where the file came from", text)
+        self.assertIn("they say nothing about its origin", text)
         self.assertIn("What remains does not replace a verification", text)
         self.assertIn("a real run is refused before the package tool starts", text)
 
@@ -381,14 +421,16 @@ class NotVerifiedTests(unittest.TestCase):
         self.assertLess(text.index("**Status."), text.index("**Not verified."))
         self.assertLess(text.index("**Not verified."), text.index("## a."))
 
-    def test_the_hand_command_uses_the_template_and_the_label(self):
+    def test_the_hand_command_uses_the_template_and_no_label(self):
         """S2: after the template exists, `pcman import` without --template would make a second item.
-        An EXE needs its label."""
+        An MSI gives its own version."""
         text = read(README)
         self.assertNotIn("with the same command", text)
         match = re.search(r"\n    (pcman import <the file> --template google-earth-pro[^\n]*)\n", text)
         self.assertTrue(match)
-        self.assertIn("--version <the label>", match.group(1))
+        self.assertNotIn("--version", match.group(1))
+        self.assertNotIn("--version", text.replace("no `--version`", "").replace("There is no `--version`", "")
+                         .replace("Do not add `--version`", ""))
         self.assertNotIn("--name", match.group(1))
         self.assertNotIn("--build", match.group(1))
         self.assertIn("it makes no second item", re.sub(r"\s+", " ", text))
@@ -478,8 +520,19 @@ class HygieneTests(unittest.TestCase):
         names = sorted(os.path.relpath(path, RECIPE_DIR) for path in self.files())
         self.assertEqual(names, sorted([
             "GoogleEarthPro-Win.download.recipe", "GoogleEarthPro.cimian.recipe", "GoogleEarthPro.pcman.recipe", "README.md",
+            EXTRACTOR + ".py",
             os.path.join("tests", "__init__.py"), os.path.join("tests", "test_recipes.py"),
+            os.path.join("tests", "test_msi_extractor.py"),
         ]))
+
+    def test_no_installer_or_msi_is_in_the_folder(self):
+        """The real EXE and the MSI cut out of it are never committed, not even as a test fixture."""
+        for path in self.files():
+            self.assertFalse(path.lower().endswith((".exe", ".msi", ".cab")), path)
+            with open(path, "rb") as handle:
+                head = handle.read(8)
+            self.assertNotEqual(head[:2], b"MZ", path)
+            self.assertNotEqual(head, bytes.fromhex("D0CF11E0A1B11AE1"), path)
 
 
 class ReadmeTests(unittest.TestCase):
@@ -571,26 +624,33 @@ class ReadmeTests(unittest.TestCase):
         )
         self.assertIn("com.github.serrc-techops.pcman.GoogleEarthPro", text[override:])
 
-    def test_the_readme_says_that_the_label_is_the_installers_version_and_nothing_compares_it(self):
-        heading = "## The label is the installer's version, and nothing compares it with the product's"
+    def test_the_readme_says_that_the_msi_alone_may_need_what_the_wrapper_gives_it(self):
+        heading = "## The MSI may need what the wrapper gives it"
         self.assertIn(heading, self.raw)
         start = self.text.index(heading)
         section = self.text[start:self.text.index("## Run every override")]
-        for needle in ("the `ProductVersion` of the downloaded setup file", "`googleearthprowin-x64.exe`",
-                       "No step of this recipe compares the two",
-                       "the recipe has no other version to compare it with",
-                       "the address has none, and the recipe reads no other page",
-                       "would still publish under the setup file's number",
-                       "that number orders the versions in the repository",
-                       "does not check this at any run", "A person checks it, at the first dry run",
-                       "with `-v`", "the Details tab", "Nobody has looked at the properties on a PC",
-                       "Nobody has seen it: the file was not downloaded",
-                       "stop and tell the owner before anything is published",
-                       "Nobody has done that comparison"):
+        for needle in ("The recipe publishes the MSI alone", "The wrapper is not published and not run",
+                       "was NOT read", "the MSI alone may install differently from the EXE, or not at all",
+                       "Nobody has read it", "`msiexec /i <file> /qn`", "Nobody has done that",
+                       "stop and tell the owner before anything is published"):
             self.assertIn(needle, section)
         self.assertLess(self.raw.index(heading), self.raw.index("## a."))
-        step = self.raw[self.raw.index("## c."):self.raw.index("## d.")]
-        self.assertIn("autopkg run -v --override-dir=", step)
+        for step in (self.raw[self.raw.index("## c."):self.raw.index("## d.")],
+                     self.raw[self.raw.index("### 3."):self.raw.index("### 4.")]):
+            self.assertIn("autopkg run -v --override-dir=", step)
+
+    def test_the_readme_says_that_an_old_override_fails_its_trust_check_once(self):
+        self.assertIn("**An override made before this change** has the trust information of `WindowsExeVersion` "
+                      "and not of `GoogleEarthProMsiExtractor`", self.text)
+        self.assertIn("That is the expected failure", self.text)
+
+    def test_the_readme_names_the_pinned_addresses_of_googles_help_page_as_not_used(self):
+        for needle in ("`https://support.google.com/earth/answer/168344` (read 2026-11-13)",
+                       "`https://dl.google.com/dl/earth/client/advanced/current/googleearthprowin-7.3.7-x64.exe`",
+                       "They give no fourth number and no hash, and the recipe does not use them",
+                       "whether such a file has the same `BINARY`/`ID_MSI` resource was NOT read"):
+            self.assertIn(needle, self.text)
+        self.assertNotIn("7.3.7", read(DOWNLOAD))
 
     def test_the_readme_states_no_hash(self):
         """S7: a README that states a SHA-256 (64 hex digits) could be taken for a check."""
@@ -600,38 +660,47 @@ class ReadmeTests(unittest.TestCase):
         match = re.search(r"pcman import ([^`]*?--build)", self.raw, re.S)
         self.assertTrue(match)
         command = re.sub(r"\s+", " ", match.group(1))
-        self.assertIn("--name google-earth-pro", command)
-        self.assertIn("--version <the label that the first dry run prints>", command)
+        self.assertIn("pcman import <path of googleearthprowin-x64.msi> --name google-earth-pro", "pcman import " + command)
+        self.assertNotIn("--version", command)
+        self.assertNotIn(".exe", command)
         self.assertIn("--no-prompt", command)
 
-    def test_the_first_import_has_the_equals_sign_marks_the_switch_untested_and_gives_no_install_path(self):
-        """The switch is the writer's knowledge (not read, not tested). No install path is given."""
+    def test_the_first_import_of_the_msi_gives_no_arguments_and_says_what_is_untested(self):
+        """The MSI gets the client's own msiexec arguments; the wrapper's switch is not given."""
         match = re.search(r"pcman import ([^`]*?--build)", self.raw, re.S)
         command = re.sub(r"\s+", " ", match.group(1))
         for flag in ("--display-name", "--category", "--developer", "--description", "--directory",
-                     "--install-arguments=OMAHA=1", "--architectures x64", "--icon"):
+                     "--architectures x64", "--icon"):
             self.assertIn(flag, command)
+        self.assertNotIn("--install-arguments", command)
+        self.assertNotIn("OMAHA", command)
         self.assertNotIn("--install-path", command)
-        self.assertNotIn("--install-arguments OMAHA=1", command)
         for switch in ("/S ", "/silent", "/quiet", "/qn", "/VERYSILENT", "--silent"):
             self.assertNotIn(switch, command + " ")
         self.assertNotIn("Program Files", command)
         step = re.sub(r"\s+", " ", self.raw[self.raw.index("3. **The template item"):self.raw.index("## b.")])
         for needle in ("The command, NOT run for this recipe",
-                       "`OMAHA=1` is the writer's knowledge of the full installer's silent argument: it was NOT read from Google and NOT tested on a PC",
-                       "`--architectures x64` is from the name of the file (`-x64`), NOT from its header",
-                       "`--install-path` is left out: the installed program's path was not read"):
+                       "There is no `--version`: the package tool takes the MSI's own version",
+                       "**That the MSI installs alone this way was NOT tested on a PC**",
+                       "`OMAHA=1`, the writer's knowledge of the wrapper's silent argument (NOT read from Google and NOT tested), is not given",
+                       "`--architectures x64` is from the name of the file (`-x64`), NOT from the MSI's own platform",
+                       "an item made from the EXE is not a template for the MSI"):
             self.assertIn(needle, step)
 
-    def test_the_readme_does_not_claim_a_rehearsal_of_this_folder(self):
+    def test_the_readme_claims_no_run_but_the_first_one(self):
+        """The only run of this folder is the first run of 2026-11-13, which the status line reports.
+        Nothing of the models' history (other dates, catalog counts) is here."""
         self.assertNotIn("Rehearsed on", self.raw)
         self.assertNotIn("`pcman catalogs` was NOT run either", self.text)
         self.assertIn("carries `--override-dir`", self.text)
-        self.assertIn("Nothing has been run and nothing has been installed on a PC", self.text)
+        self.assertIn("Nothing has been installed on a PC", self.text)
         self.assertNotIn("has NOT been run by anyone", self.text)
         self.assertIn("NOT seen for this recipe", self.text)
-        for dated_run in ("2026-10-04", "2026-10-02", "106 items", "exit 70", "(rehearsed with"):
+        for dated_run in ("2026-10-04", "2026-10-02", "106 items", "(rehearsed with"):
             self.assertNotIn(dated_run, re.sub(r"read on 2026-10-04 and not checked", "", self.text))
+        status = [line for line in self.raw.splitlines() if line.startswith("**Status.")][0]
+        self.assertEqual(self.raw.count("exit 70"), 1)
+        self.assertIn("exit 70", status)
 
     def test_the_readme_says_what_to_do_when_the_server_does_not_answer_the_changed_file_question(self):
         self.assertIn("whether this server answers that question is NOT established", self.text)
@@ -644,21 +713,23 @@ def _text(path):
 
 
 class NothingRanTests(unittest.TestCase):
-    """This folder is new: no run, no download, no install. The README keeps the model's history out."""
+    """One run only (2026-11-13, stopped before any import), no install. The README keeps the models' history out."""
 
     def setUp(self):
         self.raw = _text(README)
         self.text = re.sub(r"\s+", " ", self.raw)
 
-    def test_no_run_is_reported_and_no_catalog_count(self):
-        for needle in ("exit 70", "REFUSED the run", "was used on", "Run on 20", "were published by the package tool\n"):
+    def test_no_other_run_is_reported_and_no_catalog_count(self):
+        for needle in ("REFUSED the run", "was used on", "Run on 20", "were published by the package tool\n"):
             self.assertNotIn(needle, self.raw)
         self.assertIsNone(re.search(r"\b\d+ items each", self.raw))
+        self.assertIn("nothing was published", self.text)
 
     def test_the_silent_switch_is_never_called_tested(self):
         for sentence in re.split(r"(?<=[.!?])\s", self.text):
             if "OMAHA" in sentence:
-                self.assertTrue("NOT" in sentence or "writer's knowledge" in sentence, sentence)
+                self.assertTrue("NOT" in sentence or "writer's knowledge" in sentence
+                            or "On one Windows 11 test PC" in sentence, sentence)  # the one dated test of 2026-11-13
         self.assertNotIn("was tested", self.text)
 
     def test_the_second_run_line_is_a_plain_expectation(self):
@@ -727,14 +798,14 @@ class CimianRecipeTests(unittest.TestCase):
         self.assertEqual(sorted(recipe["Input"]), ["CIMIAN_NAME", "CIMIAN_SUBDIRECTORY", "NAME", "pkginfo"])
         self.assertEqual(recipe["Process"][0]["Arguments"], {
             "pathname": "%pathname%", "cimian_name": "%CIMIAN_NAME%",
-            "cimian_subdirectory": "%CIMIAN_SUBDIRECTORY%", "version": "%version%"})
+            "cimian_subdirectory": "%CIMIAN_SUBDIRECTORY%", "version": ""})
 
     def test_the_pkginfo_gives_only_what_the_readme_states(self):
         self.assertEqual(load(CIMIAN)["Input"]["pkginfo"], {'display_name': 'Google Earth Pro', 'developer': 'Google'})
 
     def test_the_version_argument_is_the_exes_label_or_empty_for_an_msi(self):
         argument = load(CIMIAN)["Process"][0]["Arguments"]["version"]
-        if "exe" == "exe":
+        if "msi" == "exe":
             self.assertEqual(argument, "%version%")
         else:
             self.assertEqual(argument, "")  # the MSI's own ProductVersion, not a tag that an earlier step set
@@ -747,7 +818,7 @@ class CimianRecipeTests(unittest.TestCase):
         arguments = recipe["Process"][0]["Arguments"]
         self.assertEqual(arguments["pathname"], "%pathname%")
         self.assertEqual(arguments["pcman_template"], "%PCMAN_TEMPLATE%")
-        self.assertEqual("pcman_version" in arguments, "exe" == "exe")
+        self.assertEqual("pcman_version" in arguments, "msi" == "exe")
 
     def test_nothing_of_the_package_tool_is_in_the_cimian_recipe(self):
         text = _text(CIMIAN).lower()
@@ -888,7 +959,7 @@ class CimianReadmeTests(unittest.TestCase):
             self.assertIn(fragment.split(". ")[0] if fragment.startswith("WARNING") else fragment.strip(), self.generic.replace("`", ""))
 
     def test_the_generic_way_says_what_a_person_completes_by_hand(self):
-        if "exe" == "exe":
+        if "msi" == "exe":
             self.assertIn("What a person completes by hand for an `.exe`", self.generic)
             self.assertIn("an install check", self.generic)
             self.assertIn("StatusService.cs:194-219", self.generic)
@@ -958,7 +1029,7 @@ class CimianChainTests(_win_support.RepoTestCase):
         earlier step of the download recipe may have left in the run (a release tag, say); `label` is what
         WindowsExeVersion leaves in `version` for an .exe."""
         recipe = load(CIMIAN)
-        run = {"pathname": installer, "version": label if "exe" == "exe" else tag}
+        run = {"pathname": installer, "version": label if "msi" == "exe" else tag}
         if self.VERIFIED:
             run["expected_sha256"] = _win_support.sha256_hex(installer)
             verifier, _ = _win_support.run_processor(_win_support.checksum.ChecksumVerifier, run)
@@ -977,7 +1048,7 @@ class CimianChainTests(_win_support.RepoTestCase):
         return _win_support.run_processor(_win_support.cimian.CimianImporter, env)
 
     def installer(self):
-        return self.exe if "exe" == "exe" else self.msi
+        return self.exe if "msi" == "exe" else self.msi
 
     @_win_support.needs_yaml
     def test_the_chain_publishes_into_an_empty_repository_as_the_recipes_inputs_say(self):
@@ -998,12 +1069,12 @@ class CimianChainTests(_win_support.RepoTestCase):
                     self.assertEqual(new[key][inner], expected)
             else:
                 self.assertEqual(new[key], value)
-        self.assertEqual(new["installer"]["type"], "exe")
+        self.assertEqual(new["installer"]["type"], "msi")
         self.assertEqual(new["installer"]["hash"], _win_support.sha256_hex(self.installer()))
 
     @_win_support.needs_yaml
     def test_the_version_is_the_label_of_an_exe_and_the_products_own_for_an_msi(self):
-        if "exe" == "exe":
+        if "msi" == "exe":
             processor, _ = self.run_chain(self.exe, label="1.2.3", cimian_allow_unverified=True)
             self.assertEqual(processor.env["cimian_version_imported"], "1.2.3")
         else:
@@ -1015,8 +1086,8 @@ class CimianChainTests(_win_support.RepoTestCase):
     def test_the_recipes_pkginfo_does_not_change_an_item_that_the_repository_has(self):
         """A template wins over the recipe's own pkginfo: the display name of the recipe does not rename an
         existing item, and the recipe's arguments are not added beside the template's."""
-        head = "display_name: Template Name\nversion: 1.0.0\ncatalogs:\n- Production\ninstaller:\n  location: apps/Example-Chain-1.0.0.exe\n"
-        if "exe" == "exe":
+        head = "display_name: Template Name\nversion: 1.0.0\ncatalogs:\n- Production\ninstaller:\n  location: apps/Example-Chain-1.0.0.msi\n"
+        if "msi" == "exe":
             body = ("  hash: " + "a" * 64 + "\n  type: exe\n  switches:\n  - /TEMPLATE-SWITCH\n"
                     "check:\n  file:\n    path: C:" + chr(92) + "Example" + chr(92) + "example.exe\n    version: 1.0.0\nname: Example-Chain\n")
         else:
@@ -1033,7 +1104,7 @@ class CimianChainTests(_win_support.RepoTestCase):
             else:
                 self.assertEqual(new[key], value, key)
         self.assertEqual(new["display_name"], "Template Name")
-        if "exe" == "exe":
+        if "msi" == "exe":
             self.assertEqual(new["installer"]["switches"], ["/TEMPLATE-SWITCH"])
             self.assertNotIn("args", new["installer"])
 
@@ -1042,6 +1113,26 @@ class CimianChainTests(_win_support.RepoTestCase):
         self.run_chain(self.installer(), cimian_allow_unverified=True)
         before = self.repo_tree()
         processor, messages = self.run_chain(self.installer(), cimian_allow_unverified=True)
+        self.assertEqual(processor.env["cimian_result"], "nothing-new")
+        self.assertEqual(self.repo_tree(), before)
+
+    @_win_support.needs_yaml
+    def test_the_extractors_msi_goes_through_the_importer_and_a_second_download_has_nothing_new(self):
+        """The download recipe's last step hands the importer the MSI that it cut out of a (built) EXE;
+        the same EXE downloaded again gives the same MSI, which the importer finds in the repository."""
+        import test_msi_extractor as built
+        exe = self.make_installer("googleearthprowin-x64.exe", built.build_pe(built.standard_tree()))
+        extracted, _ = _win_support.run_processor(built.PROCESSOR, {"pathname": exe})
+        msi = extracted.env["pathname"]
+        self.assertTrue(msi.endswith(".msi"))
+        processor, _ = self.run_chain(msi, cimian_allow_unverified=True)
+        self.assertEqual(processor.env["cimian_version_imported"], "2.5.0")  # the stand-in msiinfo's version
+        new = self.read_pkginfo("Example-Chain-2.5.0.yaml")
+        self.assertEqual(new["installer"]["type"], "msi")
+        self.assertEqual(new["installer"]["hash"], _win_support.sha256_hex(msi))
+        before = self.repo_tree()
+        again, _ = _win_support.run_processor(built.PROCESSOR, {"pathname": exe})
+        processor, _ = self.run_chain(again.env["pathname"], cimian_allow_unverified=True)
         self.assertEqual(processor.env["cimian_result"], "nothing-new")
         self.assertEqual(self.repo_tree(), before)
 

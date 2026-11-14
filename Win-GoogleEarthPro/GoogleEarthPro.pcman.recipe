@@ -3,7 +3,7 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>This import is NOT verified yet: the download has no hard check (no vendor hash, no signature check). A real run is refused by the shared importer until a verification step exists, unless the override sets pcman_allow_unverified to true (the run then publishes with a WARNING, and the report says published, NOT verified). Hands the downloaded Google Earth Pro installer (an EXE) to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. For an EXE the package tool is given the version label: the recipe passes the version that the download recipe's WindowsExeVersion step read from the EXE itself (its ProductVersion when that is numbers and dots only, else the four numbers of its fixed file information). The label must equal what a person reads in the file's properties, which the first dry run shows. Whether the package tool has a check of the product for an EXE, like its upgrade code check for an MSI, was NOT established. This recipe was NOT rehearsed with AutoPkg. This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false.</string>
+        <string>This import is NOT verified yet: the download has no hard check (no vendor hash, no signature check). A real run is refused by the shared importer until a verification step exists, unless the override sets pcman_allow_unverified to true (the run then publishes with a WARNING, and the report says published, NOT verified). Hands the Google Earth Pro MSI that the download recipe cut out of the downloaded EXE (a part of an unverified file) to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. The recipe gives no version label: for an MSI the package tool takes the MSI's own version; what that version is was NOT read. It refuses an MSI whose upgrade code differs from the template's. That the MSI installs alone, without the wrapper, was NOT tested. This recipe was NOT rehearsed with AutoPkg. This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false.</string>
         <key>Identifier</key>
         <string>com.github.serrc-techops.pcman.GoogleEarthPro</string>
         <key>Input</key>
@@ -28,8 +28,6 @@
                     <string>%pathname%</string>
                     <key>pcman_template</key>
                     <string>%PCMAN_TEMPLATE%</string>
-                    <key>pcman_version</key>
-                    <string>%version%</string>
                 </dict>
             </dict>
         </array>
