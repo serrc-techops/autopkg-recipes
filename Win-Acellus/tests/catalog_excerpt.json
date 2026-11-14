@@ -1,0 +1,81 @@
+{
+  "_note": "A cut of the Store's catalog record of product 9NXWFBJHRXKC (market US, language en-us), read on 2026-11-13: the fields that MicrosoftStorePackageDownloader reads, and the publisher.",
+  "Product": {
+    "ProductId": "9NXWFBJHRXKC",
+    "LocalizedProperties": [
+      {
+        "ProductTitle": "Acellus",
+        "PublisherName": "GoldKey Corporation",
+        "DeveloperName": ""
+      }
+    ],
+    "DisplaySkuAvailabilities": [
+      {
+        "Sku": {
+          "SkuId": "0010",
+          "Properties": {
+            "Packages": [
+              {
+                "PackageFullName": "GoldKeyCorporation.Acellus_2026.1028.1836.0_neutral_~_v2rn50m687qry",
+                "PackageFormat": "MsixBundle",
+                "Hash": "TrKB4QjWxCILiRm9FTruJDa4R9S1jw/NV1Wu5BUzZXw=",
+                "HashAlgorithm": "SHA256",
+                "MaxDownloadSizeInBytes": 88033841,
+                "Version": "570272718162493440",
+                "Architectures": [
+                  "x86",
+                  "x64"
+                ],
+                "PackageId": "b1e707bb-6a6a-5b1a-eb2f-ef21cebe331f-X86-X64",
+                "FrameworkDependencies": [
+                  {
+                    "PackageIdentity": "Microsoft.WindowsAppRuntime.1.4",
+                    "MinVersion": 1125905529089556480
+                  }
+                ],
+                "FulfillmentData": {
+                  "ProductId": "9NXWFBJHRXKC",
+                  "WuCategoryId": "cfc3b99b-cc64-488f-9dfe-988f47694eb3",
+                  "PackageFamilyName": "GoldKeyCorporation.Acellus_v2rn50m687qry"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "Sku": {
+          "SkuId": "0011",
+          "Properties": {
+            "Packages": [
+              {
+                "PackageFullName": "GoldKeyCorporation.Acellus_2026.1028.1836.0_neutral_~_v2rn50m687qry",
+                "PackageFormat": "MsixBundle",
+                "Hash": "TrKB4QjWxCILiRm9FTruJDa4R9S1jw/NV1Wu5BUzZXw=",
+                "HashAlgorithm": "SHA256",
+                "MaxDownloadSizeInBytes": 88033841,
+                "Version": "570272718162493440",
+                "Architectures": [
+                  "x86",
+                  "x64"
+                ],
+                "PackageId": "b1e707bb-6a6a-5b1a-eb2f-ef21cebe331f-X86-X64",
+                "FrameworkDependencies": [
+                  {
+                    "PackageIdentity": "Microsoft.WindowsAppRuntime.1.4",
+                    "MinVersion": 1125905529089556480
+                  }
+                ],
+                "FulfillmentData": {
+                  "ProductId": "9NXWFBJHRXKC",
+                  "WuCategoryId": "cfc3b99b-cc64-488f-9dfe-988f47694eb3",
+                  "PackageFamilyName": "GoldKeyCorporation.Acellus_v2rn50m687qry"
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

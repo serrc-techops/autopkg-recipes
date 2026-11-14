@@ -74,6 +74,10 @@ class CommandLineTests(ToolTestCase):
             ("exe, dry run", self.env(pcman_dry_run=True), "dry-run"),
             ("msi without version", self.env(installer=self.msi, pcman_version=None), "published"),
             ("msi with version", self.env(installer=self.msi, pcman_version="2.5.0"), "published"),
+            ("bundle without version", self.env(installer=self.bundle, pcman_version=None), "published"),
+            ("bundle, dry run", self.env(installer=self.bundle, pcman_version=None, pcman_dry_run=True), "dry-run"),
+            ("bundle with version",
+             self.env(installer=self.bundle, pcman_version="2026.1028.1836.0"), "published"),
         ]
         for label, env, kind in cases:
             with self.subTest(case=label):
@@ -979,10 +983,13 @@ class CheckBeforeTheCallTests(ToolTestCase):
         os.remove(self.python)
         self.refused()
 
-    def test_the_installer_must_exist_and_end_in_msi_or_exe(self):
+    def test_the_installer_must_exist_and_end_in_a_known_extension(self):
         self.assertIn("does not exist", self.refused(installer=os.path.join(self.downloads, "gone.exe")))
         other = self.make_installer("Example.zip")
-        self.assertIn(".msi or .exe", self.refused(installer=other))
+        self.assertIn(
+            "must end in .msi, .exe, .msix, .appx, .msixbundle or .appxbundle: Example.zip",
+            self.refused(installer=other),
+        )
         self.refused(pathname="")
         self.refused(installer=self.downloads + os.sep + "Example App-2.5.0")
 
@@ -1034,6 +1041,93 @@ class CheckBeforeTheCallTests(ToolTestCase):
             with self.assertRaises(ProcessorError) as caught:
                 run_processor(PCMAN, self.env())
         self.assertIn("could not be started", str(caught.exception))
+
+
+class AppPackageTests(ToolTestCase):
+    """An app package (.msix, .appx, .msixbundle, .appxbundle) is passed as an
+    .msi is: no version is needed (the tool reads the package's Identity
+    Version), a given one is passed on for the tool to compare, and the
+    verification rule is the same. It needs no msiinfo."""
+
+    def refused(self, **overrides):
+        with self.assertRaises(ProcessorError) as caught:
+            run_processor(PCMAN, self.env(**overrides))
+        self.assertFalse(self.was_run(), "the tool must not run after a refused input")
+        return str(caught.exception)
+
+    def test_the_four_extensions_are_the_tools(self):
+        self.assertEqual(importer.APP_PACKAGE_EXTENSIONS, (".msix", ".appx", ".msixbundle", ".appxbundle"))
+        for extension in importer.APP_PACKAGE_EXTENSIONS:
+            self.assertIn(extension, importer.INSTALLER_EXTENSIONS)
+
+    def test_each_extension_is_passed_to_the_tool_without_a_version(self):
+        for extension, package in self.app_packages.items():
+            with self.subTest(extension=extension):
+                self.behave(result=result_file_content(version="2026.1028.1836.0", extension=extension))
+                run_processor(PCMAN, self.env(installer=package, pcman_version=None))
+                argv = self.record()["argv"]
+                result_file = argv[argv.index("--result-file") + 1]
+                self.assertEqual(
+                    argv,
+                    ["import", package, "--template", "Example-App",
+                     "--no-prompt", "--if-new", "--result-file", result_file],
+                )
+
+    def test_the_extension_is_read_in_any_letter_case(self):
+        shouting = os.path.join(self.downloads, "EXAMPLE.APP.MSIXBUNDLE")
+        os.rename(self.bundle, shouting)
+        run_processor(PCMAN, self.env(installer=shouting, pcman_version=None))
+        self.assertIn(shouting, self.record()["argv"])
+
+    def test_an_empty_or_blank_version_is_not_given(self):
+        for value in (None, "", " "):
+            with self.subTest(value=value):
+                run_processor(PCMAN, self.env(installer=self.bundle, pcman_version=value))
+                self.assertNotIn("--version", self.record()["argv"])
+
+    def test_a_given_version_is_passed_on_for_the_tool_to_compare_as_for_an_msi(self):
+        run_processor(PCMAN, self.env(installer=self.bundle, pcman_version="2026.1028.1836.0"))
+        argv = self.record()["argv"]
+        self.assertEqual(argv[argv.index("--version") + 1], "2026.1028.1836.0")
+
+    def test_a_version_that_looks_like_a_flag_is_refused(self):
+        self.refused(installer=self.bundle, pcman_version="--allow-version-label")
+
+    def test_an_app_package_needs_no_msiinfo(self):
+        for extension, package in self.app_packages.items():
+            with self.subTest(extension=extension):
+                run_processor(PCMAN, self.env(installer=package, pcman_version=None, pcman_path=self.empty_bin))
+                self.assertTrue(self.was_run())
+
+    def test_msiinfo_is_never_looked_for_for_an_app_package(self):
+        with mock.patch.object(importer.shutil, "which", side_effect=AssertionError("looked for")):
+            run_processor(PCMAN, self.env(installer=self.bundle, pcman_version=None))
+
+    def test_a_real_run_of_an_unverified_package_is_refused_before_the_tool_starts(self):
+        message = self.refused(installer=self.bundle, pcman_version=None, checksum_verified=None)
+        self.assertIn("not verified", message)
+
+    def test_a_package_other_than_the_verified_one_is_refused_also_with_the_allowance(self):
+        env = self.env(installer=self.bundle, pcman_version=None, pcman_allow_unverified=True,
+                       checksum_sha256=sha256_hex(self.app_packages[".msix"]))
+        with self.assertRaises(ProcessorError) as caught:
+            run_processor(PCMAN, env)
+        self.assertIn("not the file whose checksum was verified", str(caught.exception))
+        self.assertFalse(self.was_run())
+
+    def test_an_unverified_package_with_the_allowance_is_published_and_marked(self):
+        processor, _ = run_processor(
+            PCMAN, self.env(installer=self.bundle, pcman_version=None, checksum_verified=None,
+                            pcman_allow_unverified=True)
+        )
+        self.assertEqual(
+            processor.env["pcman_importer_summary_result"]["data"]["result"], "published, NOT verified"
+        )
+
+    def test_a_name_that_only_contains_an_extension_is_refused(self):
+        for name in ("Example.msix.zip", "Example.msixbundle.part", "Example-msix"):
+            with self.subTest(name=name):
+                self.assertIn("must end in", self.refused(installer=self.make_installer(name)))
 
 
 class DeclarationTests(unittest.TestCase):

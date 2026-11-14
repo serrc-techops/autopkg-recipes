@@ -13,6 +13,7 @@ import os
 import sys
 import tempfile
 import unittest
+import zipfile
 
 TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
 PROCESSOR_DIR = os.path.dirname(TESTS_DIR)
@@ -107,15 +108,52 @@ sys.exit(0)
 """
 
 
+# An app package, as small as the tool's reader needs: a zip whose bundle
+# manifest (or single-package manifest) has an Identity element with Name and
+# Version (the tool's `pcman/msixtools.py`). The versions are made up and have
+# a first part above 255, so that no test reads them as an address.
+APP_PACKAGE_EXTENSIONS = (".msix", ".appx", ".msixbundle", ".appxbundle")
+BUNDLE_NAMESPACE = "http://schemas.microsoft.com/appx/2013/bundle"
+PACKAGE_NAMESPACE = "http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+BUNDLE_MANIFEST = "AppxMetadata/AppxBundleManifest.xml"
+PACKAGE_MANIFEST = "AppxManifest.xml"
+
+
+def write_app_package(path, identity_name="Example.App", version="2026.1028.1836.0",
+                      bundle=True, payload=b"made-up package payload"):
+    """Write an app package at `path`. A bundle (the default) holds
+    AppxMetadata/AppxBundleManifest.xml; a single package holds AppxManifest.xml
+    with a ProcessorArchitecture. `payload` makes two packages differ."""
+    if bundle:
+        member = BUNDLE_MANIFEST
+        manifest = (
+            '<?xml version="1.0"?><Bundle xmlns="%s"><Identity Name="%s" '
+            'Publisher="CN=Example" Version="%s"/></Bundle>' % (BUNDLE_NAMESPACE, identity_name, version)
+        )
+    else:
+        member = PACKAGE_MANIFEST
+        manifest = (
+            '<?xml version="1.0"?><Package xmlns="%s"><Identity Name="%s" '
+            'Publisher="CN=Example" Version="%s" ProcessorArchitecture="x64"/></Package>'
+            % (PACKAGE_NAMESPACE, identity_name, version)
+        )
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr(member, manifest)
+        archive.writestr("payload.bin", payload)
+    return path
+
+
 def result_file_content(result="published", name="Example App", version="2.5.0",
-                        catalogs=("Production",), **extra):
-    """What the tool's result file holds (the keys of its README)."""
+                        catalogs=("Production",), extension=".exe", **extra):
+    """What the tool's result file holds (the keys of its README). The
+    installer in the repository keeps the extension of the imported file, also
+    an app package's own (the tool's `installers.installer_ext`)."""
     content = {
         "result": result,
         "name": name,
         "version": version,
         "item_path": "/example/items/Example.yaml",
-        "installer_path": "/example/pkgs/apps/Example-%s.exe" % version,
+        "installer_path": "/example/pkgs/apps/Example-%s%s" % (version, extension),
         "pkginfo_path": "/example/pkgsinfo/apps/Example-%s.yaml" % version,
         "catalogs": list(catalogs),
         "unreadable_pkginfo": 0,
@@ -127,7 +165,7 @@ def result_file_content(result="published", name="Example App", version="2.5.0",
 
 class ToolTestCase(unittest.TestCase):
     """A temporary folder with a stand-in tool, a stand-in msiinfo in its own
-    folder, and an installer."""
+    folder, an installer of each kind and an app package of each extension."""
 
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory(prefix="win-shared-tests-")
@@ -155,6 +193,15 @@ class ToolTestCase(unittest.TestCase):
         os.makedirs(self.downloads)
         self.exe = self.make_installer("Example App-2.5.0.exe")
         self.msi = self.make_installer("Example App-2.5.0.msi")
+        # One app package of each extension; the stand-in tool does not read it.
+        self.app_packages = {
+            extension: write_app_package(
+                os.path.join(self.downloads, "Example.App_2026.1028.1836.0" + extension),
+                bundle=extension.endswith("bundle"),
+            )
+            for extension in APP_PACKAGE_EXTENSIONS
+        }
+        self.bundle = self.app_packages[".msixbundle"]
 
         self.behave()
 

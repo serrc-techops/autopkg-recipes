@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>Hands the downloaded Acellus package (a .msixbundle) to CimianImporter, which publishes it as a new version of the item into a Cimian repository (as a copy of the item's newest pkginfo, with what belongs to the installer file replaced), or says that nothing is new. The recipe gives no version label: for an app package CimianImporter takes the package's own Identity Version, which for a bundle is the bundle's version (it looks like a date), not the version of the application inside it. It refuses a package whose identity name is not the one of the msix installs entry of the item's newest pkginfo. The item needs the Windows App Runtime framework item in its requires; this recipe does not add it. This is a dry run, which writes nothing, until the recipe's override sets cimian_dry_run to false. The repository is the input cimian_repo or the AutoPkg preference CIMIAN_REPO.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.cimian.Acellus</string>
+        <key>Input</key>
+        <dict>
+            <key>CIMIAN_NAME</key>
+            <string>Acellus</string>
+            <key>CIMIAN_SUBDIRECTORY</key>
+            <string></string>
+            <key>NAME</key>
+            <string>Acellus</string>
+            <key>pkginfo</key>
+            <dict>
+                <key>developer</key>
+                <string>GoldKey Corporation</string>
+                <key>display_name</key>
+                <string>Acellus</string>
+            </dict>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>ParentRecipe</key>
+        <string>com.github.serrc-techops.download.Acellus-Win</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/CimianImporter</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>cimian_name</key>
+                    <string>%CIMIAN_NAME%</string>
+                    <key>cimian_subdirectory</key>
+                    <string>%CIMIAN_SUBDIRECTORY%</string>
+                    <key>version</key>
+                    <string></string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

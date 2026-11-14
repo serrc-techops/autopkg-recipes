@@ -90,6 +90,8 @@ class PublicRepositoryTests(unittest.TestCase):
             os.path.join("tests", "test_digest.py"), os.path.join("tests", "test_exe_version.py"),
             os.path.join("tests", "test_newest_release.py"),
             os.path.join("tests", "test_readme.py"), os.path.join("tests", "test_version_name.py"),
+            "MicrosoftStorePackageDownloader.py", "microsoft-root-2011.pem",
+            os.path.join("tests", "test_store_downloader.py"),
         ]  # this file is not listed: it is not scanned
         self.assertEqual(names, sorted(expected))
 

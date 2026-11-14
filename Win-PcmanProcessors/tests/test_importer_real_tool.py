@@ -9,7 +9,9 @@ The test copies only the tool's code (`pcman/` and `bin/`) into a temporary
 folder, so it never reads the checkout's own settings, items or state. The
 repository, the state folder and the installers are made in a temporary folder
 too. For an MSI, a stand-in `msiinfo` is used (the real one is not needed to
-test the processor).
+test the processor). An app package is a small zip made in the test, with a
+bundle manifest that holds an Identity element: the tool reads its name and
+version from it.
 
 Run by hand:
 
@@ -22,7 +24,7 @@ import subprocess
 import tempfile
 import unittest
 
-from _pcman_support import ProcessorError, importer, run_processor, sha256_hex
+from _pcman_support import ProcessorError, importer, run_processor, sha256_hex, write_app_package
 
 TOOL_SOURCE = os.environ.get("PCMAN_TOOL_SOURCE", "")
 TOOL_PYTHON = os.environ.get("PCMAN_TOOL_PYTHON", "")
@@ -47,6 +49,11 @@ sys.exit(2)
 """
 
 PCMAN = importer.PcmanImporter
+# Made-up identity and versions of an app package (a bundle's version looks like
+# a date). The first part is above 255, so that no test reads one as an address.
+APP_IDENTITY = "Example.App"
+FIRST_BUNDLE_VERSION = "2026.1028.1836.0"
+SECOND_BUNDLE_VERSION = "2026.1105.900.0"
 
 
 @unittest.skipUnless(
@@ -282,6 +289,88 @@ class RealToolTests(unittest.TestCase):
         before = self.repository_files()
         with self.assertRaises(ProcessorError):
             run_processor(PCMAN, self.env(second, pcman_version="5.0.0"))
+        self.assertEqual(self.repository_files(), before)
+
+    # ---- app packages ----
+
+    def make_bundle_template(self):
+        """The first import of an app package by hand: the tool reads the
+        identity name and the version from the bundle."""
+        first = write_app_package(
+            os.path.join(self.downloads, "Example.App_%s.msixbundle" % FIRST_BUNDLE_VERSION),
+            identity_name=APP_IDENTITY, version=FIRST_BUNDLE_VERSION, payload=b"first bundle",
+        )
+        self.pcman_by_hand(
+            "import", first, "--name", "Example-App", "--directory", "apps", "--build", "--no-prompt",
+        )
+
+    def second_bundle(self, identity_name=APP_IDENTITY):
+        return write_app_package(
+            os.path.join(self.downloads, "Example.App_%s.msixbundle" % SECOND_BUNDLE_VERSION),
+            identity_name=identity_name, version=SECOND_BUNDLE_VERSION, payload=b"second bundle",
+        )
+
+    def test_a_dry_run_of_an_app_package_reads_its_version_and_writes_nothing(self):
+        self.make_bundle_template()
+        before = self.repository_files()
+        processor, messages = run_processor(
+            PCMAN, self.env(self.second_bundle(), pcman_version=None, pcman_dry_run=None, pcman_path="/usr/bin:/bin")
+        )
+        self.assertEqual(processor.env["pcman_result"], "dry-run")
+        self.assertEqual(processor.env["pcman_version_published"], SECOND_BUNDLE_VERSION)
+        self.assertTrue(processor.env["pcman_installer_path"].endswith("-%s.msixbundle" % SECOND_BUNDLE_VERSION))
+        self.assertIs(processor.env["pcman_repo_changed"], False)
+        self.assertEqual(self.repository_files(), before)
+        self.assertTrue(any(m.startswith("WARNING: DRY RUN") for m in messages))
+
+    def test_an_app_package_is_published_from_its_template_and_the_second_run_is_nothing_new(self):
+        self.make_bundle_template()
+        second = self.second_bundle()
+        processor, _ = run_processor(PCMAN, self.env(second, pcman_version=None, pcman_path="/usr/bin:/bin"))
+        env = processor.env
+        self.assertEqual(env["pcman_result"], "published")
+        self.assertEqual(env["pcman_version_published"], SECOND_BUNDLE_VERSION)
+        self.assertTrue(os.path.isfile(env["pcman_installer_path"]))
+        self.assertTrue(env["pcman_installer_path"].endswith(".msixbundle"))
+        with open(env["pcman_pkginfo_path"], "r", encoding="utf-8") as handle:
+            pkginfo = handle.read()
+        self.assertIn("type: msix", pkginfo)
+        self.assertIn("identity_name: %s" % APP_IDENTITY, pkginfo)
+        self.assertIn(SECOND_BUNDLE_VERSION, pkginfo)
+        before = self.repository_files()
+        processor, messages = run_processor(PCMAN, self.env(second, pcman_version=None))
+        self.assertEqual(processor.env["pcman_result"], "nothing-new")
+        self.assertEqual(self.repository_files(), before)
+        self.assertTrue(any(m.startswith("Nothing new") for m in messages))
+
+    def test_an_app_package_with_its_own_version_given_is_published(self):
+        self.make_bundle_template()
+        processor, _ = run_processor(PCMAN, self.env(self.second_bundle(), pcman_version=SECOND_BUNDLE_VERSION))
+        self.assertEqual(processor.env["pcman_result"], "published")
+        self.assertEqual(processor.env["pcman_version_published"], SECOND_BUNDLE_VERSION)
+
+    def test_an_app_package_with_another_label_than_its_own_is_an_error(self):
+        self.make_bundle_template()
+        before = self.repository_files()
+        with self.assertRaises(ProcessorError) as caught:
+            run_processor(PCMAN, self.env(self.second_bundle(), pcman_version="2026.1105.901.0"))
+        self.assertIn("is not the package's version", str(caught.exception))
+        self.assertEqual(self.repository_files(), before)
+
+    def test_an_app_package_of_another_application_is_an_error(self):
+        self.make_bundle_template()
+        before = self.repository_files()
+        with self.assertRaises(ProcessorError) as caught:
+            run_processor(PCMAN, self.env(self.second_bundle(identity_name="Another.App"), pcman_version=None))
+        self.assertIn("Another.App", str(caught.exception))
+        self.assertEqual(self.repository_files(), before)
+
+    def test_an_unverified_app_package_is_refused_in_a_real_run(self):
+        self.make_bundle_template()
+        before = self.repository_files()
+        with self.assertRaises(ProcessorError) as caught:
+            run_processor(PCMAN, self.env(self.second_bundle(), pcman_version=None, checksum_verified=None))
+        self.assertIn("not verified", str(caught.exception))
         self.assertEqual(self.repository_files(), before)
 
 

@@ -6,6 +6,7 @@ of the tests are made-up ones. The tests that read or write pkginfo files need
 PyYAML, which AutoPkg's own Python has; they are skipped in a Python without it.
 """
 import hashlib
+import io
 import os
 import stat
 import sys
@@ -2076,6 +2077,442 @@ class OutputTests(PyYamlCase):
                 else:
                     self.assertEqual(len(lines(messages, "WARNING: published WITHOUT a verified download")), 1)
                     self.assertTrue(messages[0].startswith("Published Example-App 2.6.0"))
+
+
+# ---- app packages (.msix, .appx, .msixbundle, .appxbundle) -------------------
+
+from _win_support import package_manifest, tree_of, write_app_package  # noqa: E402
+
+PACKAGE_NAME = "Example.Vendor.App"
+NEW_PACKAGE_VERSION = "2026.1028.1836.0"
+OLD_PACKAGE_VERSION = "2026.1001.1200.0"
+
+# A made-up app package item, in the shape that the client reads for an app package.
+MSIX_TEMPLATE = """name: Example-Store-App
+display_name: Example Store App
+version: %(old)s
+catalogs:
+- Production
+category: Education
+developer: Example Vendor
+dependencies:
+- Example-Framework
+supported_architectures:
+- x64
+unattended_install: true
+installs:
+- type: msix
+  identity_name: %(identity)s
+  version: %(old)s
+installer:
+  type: msix
+  size: 1234
+  location: app/Example-Store-App-%(old)s.msixbundle
+  hash: %(hash)s
+""" % {"old": OLD_PACKAGE_VERSION, "identity": PACKAGE_NAME, "hash": TEMPLATE_HASH}
+
+
+class PackageIdentityReaderTests(unittest.TestCase):
+    """read_package_identity: a zip file, one manifest read into memory, no declarations."""
+
+    def setUp(self):
+        self._tmp = cimian.tempfile.TemporaryDirectory(prefix="win-cimian-msix-")
+        self.addCleanup(self._tmp.cleanup)
+        self.tmp = self._tmp.name
+
+    def package(self, members, name="package.msix"):
+        return write_app_package(os.path.join(self.tmp, name), members)
+
+    def refused(self, path, needle):
+        with self.assertRaises(ProcessorError) as caught:
+            cimian.read_package_identity(path)
+        self.assertIn(needle, str(caught.exception))
+        self.assertNotIn("\n", str(caught.exception))
+        return str(caught.exception)
+
+    def test_a_single_package_gives_its_name_version_and_architecture(self):
+        identity = cimian.read_package_identity(self.package({"AppxManifest.xml": package_manifest()}))
+        self.assertEqual((identity.name, identity.version, identity.architecture, identity.bundle),
+                         (PACKAGE_NAME, NEW_PACKAGE_VERSION, "x64", False))
+
+    def test_a_bundle_gives_its_own_version_and_no_architecture(self):
+        members = {"AppxMetadata/AppxBundleManifest.xml": package_manifest(version="2026.1103.900.0", bundle=True),
+                   # a single package's manifest beside it does not count: the bundle's wins
+                   "AppxManifest.xml": package_manifest(version="7.1.300.0", architecture="arm64")}
+        identity = cimian.read_package_identity(self.package(members, "bundle.msixbundle"))
+        self.assertEqual((identity.version, identity.architecture, identity.bundle), ("2026.1103.900.0", "", True))
+
+    def test_member_names_are_found_with_backslashes_and_in_any_letter_case(self):
+        identity = cimian.read_package_identity(
+            self.package({"appxmetadata" + BACKSLASH + "APPXBUNDLEMANIFEST.XML": package_manifest(bundle=True)}))
+        self.assertTrue(identity.bundle)
+
+    def test_neutral_is_read_as_written(self):
+        identity = cimian.read_package_identity(self.package({"AppxManifest.xml": package_manifest(architecture="Neutral")}))
+        self.assertEqual(identity.architecture, "neutral")
+
+    def test_a_file_that_is_not_a_zip_is_refused(self):
+        path = os.path.join(self.tmp, "not.msix")
+        with open(path, "wb") as handle:
+            handle.write(b"MZ" + bytes(300))
+        self.refused(path, "is not an app package that can be read")
+
+    def test_a_zip_without_a_manifest_is_refused(self):
+        self.refused(self.package({"readme.txt": "x"}), "holds neither AppxManifest.xml nor AppxMetadata/AppxBundleManifest.xml")
+
+    def test_a_manifest_larger_than_the_limit_is_refused(self):
+        path = self.package({"AppxManifest.xml": package_manifest()})
+        with mock.patch.object(cimian, "MAX_MANIFEST_BYTES", 100), \
+                mock.patch.object(cimian.zipfile.ZipFile, "open", side_effect=AssertionError("opened")) as opened:
+            self.refused(path, "is larger than 100 bytes")
+        opened.assert_not_called()  # refused by the size the zip records, before anything is read
+
+    def test_a_manifest_that_reads_longer_than_its_recorded_size_is_cut_at_the_limit(self):
+        """The size in the zip's directory is not the only guard: what is read stops after the limit."""
+        path = self.package({"AppxManifest.xml": package_manifest()})
+        with mock.patch.object(cimian, "MAX_MANIFEST_BYTES", 1000), \
+                mock.patch.object(cimian.zipfile.ZipFile, "open", lambda archive, info: io.BytesIO(b" " * 5000)):
+            self.refused(path, "is larger than 1000 bytes")
+
+    def test_a_document_type_declaration_is_refused(self):
+        text = ('<?xml version="1.0"?>\n<!DOCTYPE Package>\n'
+                '<Package><Identity Name="%s" Version="%s"/></Package>' % (PACKAGE_NAME, NEW_PACKAGE_VERSION))
+        self.refused(self.package({"AppxManifest.xml": text}), "document type or an entity declaration")
+
+    def test_an_entity_declaration_is_refused_by_its_own_handler(self):
+        """The document type handler stops such a manifest first; with it taken away, the entity
+        handler still does, so that an entity cannot expand into a large text."""
+        text = ('<?xml version="1.0"?>\n<!DOCTYPE Package [<!ENTITY a "aaaaaaaaaa"><!ENTITY b "&a;&a;&a;&a;">]>\n'
+                '<Package><Identity Name="&b;" Version="%s"/></Package>' % NEW_PACKAGE_VERSION)
+        path = self.package({"AppxManifest.xml": text})
+        self.refused(path, "document type or an entity declaration")
+        real_create = cimian.expat.ParserCreate
+
+        class WithoutDoctypeGuard(object):
+            def __init__(self, parser):
+                object.__setattr__(self, "parser", parser)
+
+            def __getattr__(self, name):
+                return getattr(self.parser, name)
+
+            def __setattr__(self, name, value):
+                if name != "StartDoctypeDeclHandler":
+                    setattr(self.parser, name, value)
+
+        with mock.patch.object(cimian.expat, "ParserCreate", lambda *a, **k: WithoutDoctypeGuard(real_create(*a, **k))):
+            self.refused(path, "document type or an entity declaration")
+
+    def test_a_manifest_that_is_not_xml_is_refused(self):
+        self.refused(self.package({"AppxManifest.xml": "<Package><Identity"}), "is not well-formed XML")
+
+    def test_a_manifest_without_an_identity_under_its_root_is_refused(self):
+        deeper = ('<Package xmlns="urn:example"><Properties><Identity Name="%s" Version="%s"/></Properties></Package>'
+                  % (PACKAGE_NAME, NEW_PACKAGE_VERSION))
+        self.refused(self.package({"AppxManifest.xml": deeper}), "has no Identity element")
+
+    def test_an_identity_without_a_name_or_a_version_is_refused(self):
+        for kwargs in ({"name": None}, {"version": None}, {"name": "  "}):
+            with self.subTest(**kwargs):
+                self.refused(self.package({"AppxManifest.xml": package_manifest(**kwargs)}), "has no Name or no Version")
+
+    def test_a_version_that_the_client_cannot_compare_is_refused(self):
+        for version in ("1", ".".join("12345"), "v2.0", "2.0-beta"):
+            with self.subTest(version=version):
+                self.refused(self.package({"AppxManifest.xml": package_manifest(version=version)}),
+                             "is not two to four numbers")
+
+    def test_an_identity_name_that_is_not_one_is_refused(self):
+        self.refused(self.package({"AppxManifest.xml": package_manifest(name="Bad Name!")}), "is not one")
+
+    def test_the_message_names_the_file_and_not_its_folder(self):
+        message = self.refused(self.package({"readme.txt": "x"}, "Example.msix"), "Example.msix")
+        self.assertNotIn(self.tmp, message)
+
+
+class PackageCase(PyYamlCase):
+    def make_package(self, file_name="Example.Vendor.App_%s_neutral_~_abc.msixbundle" % NEW_PACKAGE_VERSION,
+                     bundle=None, **manifest):
+        if bundle is None:
+            bundle = file_name.lower().endswith("bundle")
+        member = "AppxMetadata/AppxBundleManifest.xml" if bundle else "AppxManifest.xml"
+        return write_app_package(os.path.join(self.downloads, file_name),
+                                 {member: package_manifest(bundle=bundle, **manifest), "payload.bin": bytes(range(256))})
+
+    def package_env(self, package=None, **overrides):
+        values = {"cimian_name": "Example-Store-App", "version": None}
+        values.update(overrides)
+        return self.env(package or self.make_package(), **values)
+
+    def put_msix_template(self, text=MSIX_TEMPLATE):
+        return self.put_pkginfo("app/Example-Store-App-%s.yaml" % OLD_PACKAGE_VERSION, text)
+
+    def new_pkginfo(self, folder="app/"):
+        return self.read_pkginfo("%sExample-Store-App-%s.yaml" % (folder, NEW_PACKAGE_VERSION))
+
+
+@needs_yaml
+class PackageWithoutTemplateTests(PackageCase):
+    def test_a_bundle_is_published_into_an_empty_repository(self):
+        package = self.make_package()
+        processor, messages = run(self.package_env(package))
+        self.assertEqual(processor.env["cimian_result"], "published")
+        self.assertEqual(processor.env["cimian_version_imported"], NEW_PACKAGE_VERSION)
+        file_name = "Example-Store-App-%s.msixbundle" % NEW_PACKAGE_VERSION
+        new = self.new_pkginfo("")
+        self.assertEqual(new, {
+            "name": "Example-Store-App",
+            "version": NEW_PACKAGE_VERSION,
+            "catalogs": ["Development"],
+            "installs": [{"type": "msix", "identity_name": PACKAGE_NAME, "version": NEW_PACKAGE_VERSION}],
+            "installer": {"type": "msix", "size": os.path.getsize(package), "location": file_name,
+                          "hash": sha256_hex(package)},
+        })
+        self.assertEqual(list(new), ["name", "version", "catalogs", "installs", "installer"])
+        self.assertEqual(sha256_hex(os.path.join(self.repo, "pkgs", file_name)), sha256_hex(package))
+        # the installs entry is the check: no warning about a missing one, and no architecture is guessed
+        self.assertEqual(lines(messages, "WARNING"), [])
+        self.assertNotIn("supported_architectures", new)
+        self.assertTrue(any(m.startswith("NOTE: read from the bundle: identity name %s, version %s (the bundle's own"
+                                         % (PACKAGE_NAME, NEW_PACKAGE_VERSION)) for m in messages))
+
+    def test_a_single_package_names_its_architecture(self):
+        package = self.make_package("Example.Vendor.App_%s_x64.msix" % NEW_PACKAGE_VERSION)
+        run(self.package_env(package))
+        new = self.new_pkginfo("")
+        self.assertEqual(new["supported_architectures"], ["x64"])
+        self.assertEqual(new["installer"]["location"], "Example-Store-App-%s.msix" % NEW_PACKAGE_VERSION)
+
+    def test_a_neutral_package_names_none(self):
+        package = self.make_package("Example.appx", architecture="neutral")
+        run(self.package_env(package))
+        new = self.new_pkginfo("")
+        self.assertNotIn("supported_architectures", new)
+        self.assertEqual(new["installer"]["type"], "msix")
+        self.assertEqual(new["installer"]["location"], "Example-Store-App-%s.appx" % NEW_PACKAGE_VERSION)
+
+    def test_an_architecture_that_is_not_known_is_said_and_not_used(self):
+        package = self.make_package("Example.msix", architecture="x86a64")
+        processor, messages = run(self.package_env(package))
+        self.assertNotIn("supported_architectures", self.new_pkginfo(""))
+        self.assertEqual(len(lines(messages, "NOTE: the package's ProcessorArchitecture x86a64 is not one of")), 1)
+
+    def test_a_bundle_takes_the_architecture_input_as_an_msi_does(self):
+        run(self.package_env(self.make_package("Example.appxbundle"), cimian_architecture="x64"))
+        self.assertEqual(self.new_pkginfo("")["supported_architectures"], ["x64"])
+
+    def test_the_architecture_input_must_be_the_single_packages(self):
+        package = self.make_package("Example.msix", architecture="x64")
+        run(self.package_env(package, cimian_architecture="amd64"))  # amd64 is x64
+        with self.assertRaises(ProcessorError) as caught:
+            run(self.package_env(package, cimian_architecture="x86", cimian_dry_run=True))
+        self.assertIn("cimian_architecture is x86, but the package is for x64", str(caught.exception))
+
+    def test_a_version_input_must_be_the_packages_own(self):
+        package = self.make_package()
+        before = self.repo_tree()
+        with self.assertRaises(ProcessorError) as caught:
+            run(self.package_env(package, version="26.10.28"))
+        self.assertIn("version is 26.10.28, but the package's own version (Identity Version of its manifest) is %s"
+                      % NEW_PACKAGE_VERSION, str(caught.exception))
+        self.assertEqual(self.repo_tree(), before)
+        processor, _ = run(self.package_env(package, version=NEW_PACKAGE_VERSION))
+        self.assertEqual(processor.env["cimian_result"], "published")
+
+    def test_every_extension_of_an_app_package_is_taken_in_any_letter_case(self):
+        for number, extension in enumerate((".msix", ".APPX", ".MsixBundle", ".appxbundle")):
+            with self.subTest(extension=extension):
+                package = self.make_package("Example%d%s" % (number, extension), version="2026.%d.1000.0" % (1100 + number))
+                processor, _ = run(self.package_env(package))
+                self.assertTrue(processor.env["cimian_installer_path"].endswith(extension.lower()))
+                self.assertEqual(processor.env["cimian_result"], "published")
+
+    def test_another_extension_is_refused_and_the_message_names_all_six(self):
+        other = self.make_installer("Example.zip", b"PK")
+        with self.assertRaises(ProcessorError) as caught:
+            run(self.env(other))
+        self.assertIn("must end in .msi, .exe, .msix, .appx, .msixbundle or .appxbundle: Example.zip", str(caught.exception))
+
+    def test_a_package_that_cannot_be_read_stops_the_run_in_a_dry_run_too(self):
+        broken = self.make_installer("Broken.msixbundle", b"not a zip")
+        before = self.repo_tree()
+        with self.assertRaises(ProcessorError) as caught:
+            run(self.package_env(broken, cimian_dry_run=True))
+        self.assertIn("is not an app package that can be read", str(caught.exception))
+        self.assertEqual(self.repo_tree(), before)
+
+    def test_installer_keys_that_an_app_package_does_not_take_are_refused(self):
+        for key, value in (("args", ["/S"]), ("switches", ["x"]), ("success_codes", [5]),
+                           ("product_code", PRODUCT_CODE), ("upgrade_code", UPGRADE_CODE)):
+            with self.subTest(key=key):
+                before = self.repo_tree()
+                with self.assertRaises(ProcessorError) as caught:
+                    run(self.package_env(pkginfo={"installer": {key: value}}))
+                self.assertIn("The pkginfo has installer.%s" % key, str(caught.exception))
+                self.assertEqual(self.repo_tree(), before)
+
+    def test_an_msix_entry_of_another_package_in_pkginfo_is_refused(self):
+        entry = {"type": "msix", "identity_name": "Other.Vendor.App", "version": "1.0"}
+        with self.assertRaises(ProcessorError) as caught:
+            run(self.package_env(pkginfo={"installs": [entry]}))
+        self.assertIn("identity name Other.Vendor.App, but the package's is %s" % PACKAGE_NAME, str(caught.exception))
+
+    def test_an_msix_entry_in_pkginfo_gets_the_packages_identity_and_version(self):
+        entry = {"type": "msix", "identity_name": PACKAGE_NAME.lower()}
+        other = {"type": "file", "path": EXE_PATH, "version": "1.0"}
+        run(self.package_env(pkginfo={"installs": [other, entry], "display_name": "Example Store App"}))
+        new = self.new_pkginfo("")
+        self.assertEqual(new["installs"], [other, {"type": "msix", "identity_name": PACKAGE_NAME,
+                                                   "version": NEW_PACKAGE_VERSION}])
+        self.assertEqual(new["display_name"], "Example Store App")
+
+    def test_a_dry_run_writes_nothing_and_says_what_it_would_write(self):
+        package = self.make_package()
+        before = self.repo_tree()
+        processor, messages = run(self.package_env(package, cimian_dry_run=True))
+        self.assertEqual(self.repo_tree(), before)
+        self.assertEqual(processor.env["cimian_result"], "dry-run")
+        self.assertIn("Would write Example-Store-App %s: pkgsinfo/Example-Store-App-%s.yaml and "
+                      "pkgs/Example-Store-App-%s.msixbundle (%d bytes)."
+                      % (NEW_PACKAGE_VERSION, NEW_PACKAGE_VERSION, NEW_PACKAGE_VERSION, os.path.getsize(package)), messages)
+        self.assertIn("No template: the pkginfo is built from the inputs.", messages)
+
+
+@needs_yaml
+class PackageTemplateTests(PackageCase):
+    def test_a_new_version_copies_the_template_and_replaces_what_belongs_to_the_file(self):
+        self.put_msix_template()
+        old = self.read_pkginfo("app/Example-Store-App-%s.yaml" % OLD_PACKAGE_VERSION)
+        package = self.make_package()
+        processor, messages = run(self.package_env(package))
+        new = self.new_pkginfo()
+        self.assertEqual(list(new), list(old))
+        self.assertEqual(new["version"], NEW_PACKAGE_VERSION)
+        self.assertEqual(new["installer"], {"type": "msix", "size": os.path.getsize(package),
+                                            "location": "app/Example-Store-App-%s.msixbundle" % NEW_PACKAGE_VERSION,
+                                            "hash": sha256_hex(package)})
+        self.assertEqual(new["installs"], [{"type": "msix", "identity_name": PACKAGE_NAME, "version": NEW_PACKAGE_VERSION}])
+        for key in ("display_name", "catalogs", "category", "developer", "dependencies", "supported_architectures",
+                    "unattended_install", "name"):
+            self.assertEqual(new[key], old[key], key)
+        self.assertTrue(os.path.isfile(os.path.join(self.repo, "pkgs", "app",
+                                                    "Example-Store-App-%s.msixbundle" % NEW_PACKAGE_VERSION)))
+        self.assertEqual(lines(messages, "WARNING"), [])
+
+    def test_a_package_of_another_identity_is_another_product(self):
+        self.put_msix_template()
+        before = self.repo_tree()
+        with self.assertRaises(ProcessorError) as caught:
+            run(self.package_env(self.make_package(name="Other.Vendor.App")))
+        self.assertIn("has the identity name %s, and the package's is Other.Vendor.App: it is another product"
+                      % PACKAGE_NAME, str(caught.exception))
+        self.assertEqual(self.repo_tree(), before)
+
+    def test_the_identity_name_is_compared_without_regard_to_case_and_takes_the_packages_spelling(self):
+        self.put_msix_template(MSIX_TEMPLATE.replace("identity_name: " + PACKAGE_NAME, "identity_name: " + PACKAGE_NAME.upper()))
+        processor, messages = run(self.package_env())
+        self.assertEqual(self.new_pkginfo()["installs"][0]["identity_name"], PACKAGE_NAME)
+        self.assertEqual(len(lines(messages, "NOTE: the msix entry of installs writes the identity name as")), 1)
+
+    def test_a_template_without_an_msix_entry_gets_one_and_says_so(self):
+        text = MSIX_TEMPLATE.replace("installs:\n- type: msix\n  identity_name: %s\n  version: %s\n"
+                                     % (PACKAGE_NAME, OLD_PACKAGE_VERSION), "")
+        self.assertNotIn("installs:", text)
+        self.put_msix_template(text)
+        processor, messages = run(self.package_env())
+        self.assertEqual(self.new_pkginfo()["installs"],
+                         [{"type": "msix", "identity_name": PACKAGE_NAME, "version": NEW_PACKAGE_VERSION}])
+        self.assertEqual(len(lines(messages, "NOTE: the template has no msix entry in installs: one is added")), 1)
+
+    def test_other_entries_follow_the_carry_rules_and_the_packages_entry_is_found_among_several(self):
+        extra = ("- type: msix\n  identity_name: Example.Vendor.Framework\n  version: 9.0.100\n"
+                 "- type: file\n  path: %s\n  version: %s\n" % (EXE_PATH, OLD_PACKAGE_VERSION))
+        self.put_msix_template(MSIX_TEMPLATE.replace("installer:\n", extra + "installer:\n"))
+        processor, messages = run(self.package_env())
+        installs = self.new_pkginfo()["installs"]
+        self.assertEqual(installs[0], {"type": "msix", "identity_name": PACKAGE_NAME, "version": NEW_PACKAGE_VERSION})
+        self.assertEqual(installs[1], {"type": "msix", "identity_name": "Example.Vendor.Framework", "version": "9.0.100"})
+        self.assertEqual(installs[2], {"type": "file", "path": EXE_PATH, "version": NEW_PACKAGE_VERSION})
+        # the msix entries are not given the carry rules' warning about a version that is not the template's
+        self.assertEqual(lines(messages, "WARNING"),
+                         ["WARNING: installs[2] is another msix entry, not this package's: it is kept as it is."])
+
+    def test_several_msix_entries_and_none_of_this_package_stop_the_run(self):
+        text = MSIX_TEMPLATE.replace("identity_name: " + PACKAGE_NAME, "identity_name: Other.One")
+        text = text.replace("installer:\n", "- type: msix\n  identity_name: Other.Two\n  version: 1.0\ninstaller:\n")
+        self.put_msix_template(text)
+        with self.assertRaises(ProcessorError) as caught:
+            run(self.package_env())
+        self.assertIn("The template has 2 msix entries in installs, and none of them has the package's identity name",
+                      str(caught.exception))
+
+    def test_a_template_of_another_kind_of_installer_is_refused_both_ways(self):
+        self.put_exe_template()
+        with self.assertRaises(ProcessorError) as caught:
+            run(self.env(self.make_package("Example.msixbundle"), version=None))
+        self.assertIn("is of the kind exe, and the file is an .msixbundle", str(caught.exception))
+        self.put_msix_template(MSIX_TEMPLATE.replace("Example-Store-App", "Example-App"))
+        with self.assertRaises(ProcessorError) as caught:
+            run(self.env(self.exe, version="2026.1100.1000.0"))
+        self.assertIn("is of the kind msix, and the file is an .exe", str(caught.exception))
+
+    def test_a_template_of_the_type_appx_is_the_same_kind_and_is_written_as_msix(self):
+        self.put_msix_template(MSIX_TEMPLATE.replace("  type: msix\n  size", "  type: appx\n  size"))
+        processor, messages = run(self.package_env())
+        self.assertEqual(self.new_pkginfo()["installer"]["type"], "msix")
+        self.assertEqual(len(lines(messages, "NOTE: the template's installer.type is appx")), 1)
+
+    def test_a_template_with_installer_arguments_is_refused(self):
+        self.put_msix_template(MSIX_TEMPLATE + "  args:\n  - /quiet\n")
+        before = self.repo_tree()
+        with self.assertRaises(ProcessorError) as caught:
+            run(self.package_env())
+        self.assertIn("The pkginfo has installer.args (from the template or the input pkginfo)", str(caught.exception))
+        self.assertEqual(self.repo_tree(), before)
+
+    def test_a_template_keeps_its_architectures_whatever_the_package_names(self):
+        """The rule for a template and an architecture is the one an MSI has: a single x64 package and a template
+        for x64 (or for all) give a copy of the template's list."""
+        self.put_msix_template()
+        run(self.package_env(self.make_package("Example.msix", architecture="x64")))
+        self.assertEqual(self.new_pkginfo()["supported_architectures"], ["x64"])
+
+    def test_a_template_for_another_architecture_is_not_the_template(self):
+        self.put_msix_template(MSIX_TEMPLATE.replace("- x64", "- arm64"))
+        processor, messages = run(self.package_env(self.make_package("Example.msix", architecture="x64")))
+        self.assertTrue(any("for other architectures only: there is no template for x64" in m for m in messages))
+        self.assertEqual(self.new_pkginfo("")["supported_architectures"], ["x64"])
+
+    def test_a_dry_run_over_a_template_writes_nothing_and_prints_the_same_notes(self):
+        self.put_msix_template(MSIX_TEMPLATE.replace("installs:\n- type: msix\n  identity_name: %s\n  version: %s\n"
+                                                     % (PACKAGE_NAME, OLD_PACKAGE_VERSION), ""))
+        before = self.repo_tree()
+        processor, messages = run(self.package_env(cimian_dry_run=True))
+        self.assertEqual(self.repo_tree(), before)
+        self.assertIn("Template: Example-Store-App %s (pkgsinfo/app/Example-Store-App-%s.yaml)."
+                      % (OLD_PACKAGE_VERSION, OLD_PACKAGE_VERSION), messages)
+        self.assertEqual(len(lines(messages, "NOTE: the template has no msix entry in installs")), 1)
+
+
+@needs_yaml
+class PackageNothingNewTests(PackageCase):
+    def test_the_same_identity_version_is_nothing_new(self):
+        self.put_msix_template(MSIX_TEMPLATE.replace(OLD_PACKAGE_VERSION, NEW_PACKAGE_VERSION))
+        before = self.repo_tree()
+        processor, messages = run(self.package_env())
+        self.assertEqual(self.repo_tree(), before)
+        self.assertEqual(processor.env["cimian_result"], "nothing-new")
+        self.assertIn("Nothing new: Example-Store-App %s is in the repository already (it has this version). "
+                      "Nothing was written." % NEW_PACKAGE_VERSION, messages)
+        self.assertTrue(any("has another installer file" in m for m in messages))
+
+    def test_the_same_package_file_is_nothing_new_whatever_the_version(self):
+        package = self.make_package()
+        self.put_msix_template(MSIX_TEMPLATE.replace(TEMPLATE_HASH, sha256_hex(package)))
+        before = self.repo_tree()
+        processor, messages = run(self.package_env(package))
+        self.assertEqual(self.repo_tree(), before)
+        self.assertEqual(processor.env["cimian_result"], "nothing-new")
+        self.assertTrue(any("it has this very installer file" in m for m in messages))
 
 
 

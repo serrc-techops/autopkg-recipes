@@ -38,6 +38,16 @@ codes (msi_product_code, msi_upgrade_code) and the version, and the run says wha
 is missing. This processor does not build catalogs: run Cimian's makecatalogs after a
 publish.
 
+An app package (.msix, .appx, .msixbundle, .appxbundle) is installed by the client
+itself with Add-AppxProvisionedPackage, and its pkginfo has installer.type msix and one
+installs entry of type msix with the package's identity name and version, which is the
+install check. The identity name and the version (for a bundle the bundle's own) are
+read from the package's manifest: the package is opened as a zip file, one manifest is
+read into memory (at most MAX_MANIFEST_BYTES), nothing is extracted, and a manifest
+with a document type or entity declaration is refused. The package is not run, and its
+signature is not checked. A single package's ProcessorArchitecture (not neutral) is the
+installer's architecture; a bundle names none.
+
 The pkginfo files are read and written with PyYAML, which AutoPkg's own Python has.
 """
 import copy
@@ -47,6 +57,9 @@ import re
 import shutil
 import subprocess
 import tempfile
+import zipfile
+import zlib
+from xml.parsers import expat
 
 from autopkglib import Processor, ProcessorError
 
@@ -55,13 +68,34 @@ __all__ = [
     "compare_versions",
     "normalize_sha256",
     "parse_property_export",
+    "read_package_identity",
     "sha256_of_file",
     "version_parts",
 ]
 
-INSTALLER_EXTENSIONS = (".msi", ".exe")
 MSI_EXTENSION = ".msi"
 EXE_EXTENSION = ".exe"
+# The app packages that the client installs itself, with Add-AppxProvisionedPackage
+# (InstallerService.cs, BuildMsixInstallScript). Their pkginfo has the installer type
+# msix; the file keeps its own extension in pkgs/.
+APP_PACKAGE_EXTENSIONS = (".msix", ".appx", ".msixbundle", ".appxbundle")
+INSTALLER_EXTENSIONS = (MSI_EXTENSION, EXE_EXTENSION) + APP_PACKAGE_EXTENSIONS
+APP_PACKAGE_KIND = "msix"
+# The installer types that the client dispatches to the app package install (msix or appx).
+APP_PACKAGE_TYPES = ("msix", "appx")
+# The manifest of a bundle and of a single package; a bundle is recognised by its own.
+BUNDLE_MANIFEST = "AppxMetadata/AppxBundleManifest.xml"
+SINGLE_MANIFEST = "AppxManifest.xml"
+MAX_MANIFEST_BYTES = 4 * 1024 * 1024
+# Identity/@Name of a package: letters, digits, dots, underscores, hyphens.
+IDENTITY_NAME_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
+# Identity/@Version as the client compares it, with PowerShell's [System.Version]
+# (InstallerService.cs, BuildMsixInstallScript): two to four numbers.
+PACKAGE_VERSION_PATTERN = re.compile(r"[0-9]{1,9}(?:\.[0-9]{1,9}){1,3}")
+# The ProcessorArchitecture of a single package that names one; neutral (or none)
+# is for all.
+PACKAGE_ARCHITECTURES = ("x64", "x86", "arm", "arm64")
+NEUTRAL_ARCHITECTURE = "neutral"
 # The repository's folders. The client builds the installer's address from
 # pkgs/ and the item's `installer.location` (DownloadService.cs, BuildFullUrl).
 PKGS_DIR = "pkgs"
@@ -136,6 +170,10 @@ GUID_PATTERN = re.compile(
 # The keys of `installer` that give the arguments of an installer: the client joins
 # them all (UpdateModels.cs, GetAllArgs), so two of them in one item run twice.
 ARGUMENT_KEYS = ("args", "switches", "flags", "subcommand")
+# The keys of `installer` that an app package's item does not take: the client's
+# install of it passes no arguments and reads no success codes, and an app package
+# has no Windows Installer codes (InstallerService.cs, BuildMsixInstallScript).
+APP_PACKAGE_REFUSED_INSTALLER_KEYS = ARGUMENT_KEYS + ("success_codes", "product_code", "upgrade_code")
 # AutoPkg's own pattern for a variable (autopkglib/__init__.py:122).
 VARIABLE_PATTERN = re.compile(r"%([A-Za-z_][A-Za-z_0-9]*(?:\([A-Za-z0-9]+\))?)%")
 # Windows environment variables: a `%name%` of these in the input pkginfo is meant as it stands.
@@ -362,6 +400,118 @@ def parse_property_export(text):
             raise ProcessorError("msiinfo reports two different values for %s." % name)
         found[name] = value
     return found
+
+
+# ---- app packages -----------------------------------------------------------
+
+
+class PackageIdentity(object):
+    """What is read from an app package: Identity/@Name, Identity/@Version, a single
+    package's ProcessorArchitecture as written (lower case, or "" when it names none),
+    and whether it is a bundle."""
+
+    def __init__(self, name, version, architecture, bundle):
+        self.name = name
+        self.version = version
+        self.architecture = architecture
+        self.bundle = bundle
+
+
+def _refuse_declaration(*_args):
+    raise ProcessorError(
+        "The package's manifest has a document type or an entity declaration, which is not read."
+    )
+
+
+def _first_identity(data, shown):
+    """The attributes of the first `Identity` element that is a child of the root
+    element, whatever its namespace, or None. Read with expat, which builds no tree;
+    a document type or an entity declaration stops the reading."""
+    found = []
+    depth = [0]
+
+    def start(name, attributes):
+        if depth[0] == 1 and not found and name.rsplit(" ", 1)[-1] == "Identity":
+            found.append(dict(attributes))
+        depth[0] += 1
+
+    def end(_name):
+        depth[0] -= 1
+
+    parser = expat.ParserCreate(namespace_separator=" ")
+    parser.StartElementHandler = start
+    parser.EndElementHandler = end
+    parser.StartDoctypeDeclHandler = _refuse_declaration
+    parser.EntityDeclHandler = _refuse_declaration
+    try:
+        parser.Parse(data, True)
+    except expat.ExpatError as err:
+        raise ProcessorError("The manifest of %s is not well-formed XML: %s" % (shown, err))
+    return found[0] if found else None
+
+
+def _manifest_member(archive, wanted):
+    """The member whose name is `wanted`, with forward slashes and without regard to
+    letter case, or None."""
+    for info in archive.infolist():
+        if info.filename.replace("\\", "/").lower() == wanted.lower():
+            return info
+    return None
+
+
+def read_package_identity(path):
+    """The identity of the app package at `path` (a PackageIdentity). A bundle's
+    manifest wins over a single package's. Nothing is extracted: one manifest is read
+    into memory, at most MAX_MANIFEST_BYTES. Raises ProcessorError with one line."""
+    shown = os.path.basename(path)
+    try:
+        archive = zipfile.ZipFile(path)
+    except (zipfile.BadZipFile, OSError, ValueError) as err:
+        raise ProcessorError(
+            "%s is not an app package that can be read (a zip file with a manifest): %s" % (shown, err)
+        )
+    with archive:
+        bundle = _manifest_member(archive, BUNDLE_MANIFEST)
+        info = bundle or _manifest_member(archive, SINGLE_MANIFEST)
+        if info is None:
+            raise ProcessorError(
+                "%s holds neither %s nor %s: it is not an app package." % (shown, SINGLE_MANIFEST, BUNDLE_MANIFEST)
+            )
+        if info.file_size > MAX_MANIFEST_BYTES:
+            raise ProcessorError("The manifest of %s is larger than %d bytes." % (shown, MAX_MANIFEST_BYTES))
+        try:
+            with archive.open(info) as handle:
+                data = handle.read(MAX_MANIFEST_BYTES + 1)
+        except (zipfile.BadZipFile, NotImplementedError, RuntimeError, OSError, zlib.error, EOFError) as err:
+            raise ProcessorError("The manifest of %s cannot be read: %s" % (shown, err))
+    if len(data) > MAX_MANIFEST_BYTES:
+        raise ProcessorError("The manifest of %s is larger than %d bytes." % (shown, MAX_MANIFEST_BYTES))
+    identity = _first_identity(data, shown)
+    if identity is None:
+        raise ProcessorError("The manifest of %s has no Identity element." % shown)
+    name = (identity.get("Name") or "").strip()
+    version = (identity.get("Version") or "").strip()
+    if not name or not version:
+        raise ProcessorError("The Identity element in the manifest of %s has no Name or no Version." % shown)
+    if not IDENTITY_NAME_PATTERN.fullmatch(name):
+        raise ProcessorError(
+            "The identity name in the manifest of %s is not one (letters, numbers, dots, underscores, "
+            "hyphens): %r" % (shown, name[:40])
+        )
+    if not PACKAGE_VERSION_PATTERN.fullmatch(version):
+        raise ProcessorError(
+            "The version in the manifest of %s is not two to four numbers separated by dots, as the "
+            "client compares it: %r" % (shown, version[:40])
+        )
+    architecture = "" if bundle else (identity.get("ProcessorArchitecture") or "").strip().lower()
+    return PackageIdentity(name, version, architecture, bundle is not None)
+
+
+def installer_kind(extension):
+    """The installer type of the pkginfo for a file's extension (with its dot)."""
+    if extension in APP_PACKAGE_EXTENSIONS:
+        return APP_PACKAGE_KIND
+    return extension[1:]
 
 
 # ---- the pkginfo ------------------------------------------------------------
@@ -604,7 +754,10 @@ class CimianImporter(Processor):
     input_variables = {
         "pathname": {
             "required": True,
-            "description": "Path to the downloaded installer (.msi or .exe).",
+            "description": (
+                "Path to the downloaded installer (.msi, .exe, or an app package: "
+                ".msix, .appx, .msixbundle, .appxbundle)."
+            ),
         },
         "cimian_repo": {
             "required": False,
@@ -623,7 +776,8 @@ class CimianImporter(Processor):
             "description": (
                 "The version label. Required for an .exe. For an .msi the "
                 "default is the MSI's own ProductVersion, and another label is "
-                "refused when msiinfo can read the MSI."
+                "refused when msiinfo can read the MSI. For an app package it is "
+                "the package's own Identity Version, and another label is refused."
             ),
         },
         "cimian_subdirectory": {
@@ -659,7 +813,9 @@ class CimianImporter(Processor):
                 "The architecture of the installer (x64, x86, arm64). Needed when the "
                 "repository has pkginfo files of the item for several architectures: only the "
                 "ones for this architecture (or for all) are the template and decide "
-                "'nothing new'. A pkginfo without a template is then for this architecture."
+                "'nothing new'. A pkginfo without a template is then for this architecture. "
+                "For a single app package that names its ProcessorArchitecture, that is the "
+                "default, and another value is refused."
             ),
         },
         "cimian_allow_product_change": {
@@ -753,7 +909,8 @@ class CimianImporter(Processor):
         extension = os.path.splitext(installer)[1].lower()
         if extension not in INSTALLER_EXTENSIONS:
             raise ProcessorError(
-                "The installer must end in .msi or .exe: %s" % os.path.basename(installer)
+                "The installer must end in %s: %s"
+                % (", ".join(INSTALLER_EXTENSIONS[:-1]) + " or " + INSTALLER_EXTENSIONS[-1], os.path.basename(installer))
             )
         if not os.path.isfile(installer):
             raise ProcessorError("The installer does not exist: %s" % installer)
@@ -838,6 +995,12 @@ class CimianImporter(Processor):
             if value and not GUID_PATTERN.fullmatch(value):
                 raise ProcessorError("%s must be a GUID in braces: %r" % (key, value[:50]))
 
+        package = None
+        package_notes = []
+        if extension in APP_PACKAGE_EXTENSIONS:
+            package = read_package_identity(installer)
+            version, architecture = self.package_facts(package, version, architecture, package_notes)
+
         # The last check: it reads the whole installer, once. The hash is used again
         # for the pkginfo and for the copy.
         try:
@@ -870,9 +1033,48 @@ class CimianImporter(Processor):
             "path": path_value,
             "msi_product_code": product_code,
             "msi_upgrade_code": upgrade_code,
+            "package": package,
+            "package_notes": package_notes,
             "sha256": digest,
             "size": size,
         }
+
+    @staticmethod
+    def package_facts(package, label, architecture, notes):
+        """(version, architecture) of an app package. The version is the package's own
+        Identity Version: a `version` input that is not that text is refused, as a label
+        that is not an MSI's ProductVersion is. A single package's ProcessorArchitecture
+        that names one is the installer's architecture: a `cimian_architecture` that
+        names another is refused; neutral and a bundle name none."""
+        if label and label != package.version:
+            raise ProcessorError(
+                "version is %s, but the package's own version (Identity Version of its manifest) is %s. "
+                "For an app package the label must be that version: the client compares it with the "
+                "version that Windows reports for the provisioned package." % (label, package.version)
+            )
+        if len(package.version) > MAX_VERSION_CHARS or not VERSION_PATTERN.fullmatch(package.version):
+            raise ProcessorError("The package's version is not usable as a label: %r" % package.version[:40])
+        notes.append(
+            "NOTE: read from the %s: identity name %s, version %s%s."
+            % ("bundle" if package.bundle else "package", package.name, package.version,
+               " (the bundle's own version, not the application's)" if package.bundle
+               else ", architecture %s" % (package.architecture or "not named"))
+        )
+        named = package.architecture
+        if named in PACKAGE_ARCHITECTURES:
+            named = normalize_architecture(named)
+            if architecture and architecture != named:
+                raise ProcessorError(
+                    "cimian_architecture is %s, but the package is for %s (ProcessorArchitecture of its "
+                    "manifest). The input is wrong, or the file is another package." % (architecture, named)
+                )
+            architecture = named
+        elif named and named != NEUTRAL_ARCHITECTURE:
+            notes.append(
+                "NOTE: the package's ProcessorArchitecture %s is not one of %s or %s: it is not used."
+                % (named[:20], ", ".join(PACKAGE_ARCHITECTURES), NEUTRAL_ARCHITECTURE)
+            )
+        return package.version, architecture
 
     def catalogs_input(self):
         value = self.env.get("cimian_catalogs", list(DEFAULT_CATALOGS))
@@ -1080,7 +1282,7 @@ class CimianImporter(Processor):
         is (version, product code, upgrade code) for an MSI, else None."""
         notes = []
         label = settings["version"]
-        kind = settings["extension"][1:]
+        kind = installer_kind(settings["extension"])
         location = settings["location"]
         if template is None:
             data = {
@@ -1116,6 +1318,8 @@ class CimianImporter(Processor):
                 )
         if kind == "msi":
             self.apply_msi_facts(data, facts, notes, template is not None, settings["allow_product_change"])
+        if kind == APP_PACKAGE_KIND:
+            self.apply_package_facts(data, settings["package"], label, notes, template is not None)
         self.check_versions_readable(data)
         if template is None:
             data = order_pkginfo(data)
@@ -1140,7 +1344,7 @@ class CimianImporter(Processor):
         left."""
         label = settings["version"]
         old = template.version
-        kind = settings["extension"][1:]
+        kind = installer_kind(settings["extension"])
         data["version"] = label
 
         installer = data.get("installer")
@@ -1148,11 +1352,19 @@ class CimianImporter(Processor):
             installer = {}
             data["installer"] = installer
         written_type = installer.get("type")
-        if isinstance(written_type, str) and written_type.strip() and written_type.strip().lower() != kind:
+        written = written_type.strip().lower() if isinstance(written_type, str) else ""
+        if kind == APP_PACKAGE_KIND and written in APP_PACKAGE_TYPES:
+            # The client installs both types as an app package (InstallerService.cs, the msix or appx case).
+            if written != kind:
+                notes.append(
+                    "NOTE: the template's installer.type is %s: the new version is written with %s, which the "
+                    "client installs the same way." % (written, kind)
+                )
+        elif written and written != kind:
             raise ProcessorError(
-                "The template %s %s is of the kind %s, and the file is an .%s. Its install "
+                "The template %s %s is of the kind %s, and the file is an %s. Its install "
                 "arguments and checks are those of another kind of installer. Make a new "
-                "item by hand." % (data.get("name"), old, written_type.strip().lower(), kind)
+                "item by hand." % (data.get("name"), old, written, settings["extension"])
             )
         put_installer_fields(installer, settings["location"], settings["sha256"], settings["size"], kind)
 
@@ -1175,6 +1387,8 @@ class CimianImporter(Processor):
         installs = data.get("installs")
         if isinstance(installs, list):
             for number, entry in enumerate(installs, start=1):
+                if isinstance(entry, dict) and kind == APP_PACKAGE_KIND and install_check_type(entry) == APP_PACKAGE_KIND:
+                    continue  # the package's own entry: apply_package_facts
                 if isinstance(entry, dict) and install_check_type(entry) != "msi":
                     self.carry_entry(
                         "installs[%d]" % number, entry, old, label, notes, dropped,
@@ -1439,6 +1653,101 @@ class CimianImporter(Processor):
                 else:
                     del installer[key]
 
+    @staticmethod
+    def apply_package_facts(data, package, label, notes, template_mode):
+        """The identity of an app package into the pkginfo.
+
+        The `installs` entry `{type: msix, identity_name, version}` is the install check, and the
+        client's install and removal find the package by its identity name (InstallerService.cs,
+        BuildMsixInstallScript; StatusService.cs, the msix check). With a template, the entry of
+        `installs` that is this package's gets the new version: the only msix entry, whose identity
+        name must be the package's (another one is another product), or, when there are several, the
+        one with the package's identity name. Without a template, every msix entry that `pkginfo` gave
+        must name this package. An entry is added, with a NOTE for a template, when there is none.
+        An app package takes no installer arguments, no success codes and no Windows Installer codes:
+        such a key from the template or from `pkginfo` stops the run."""
+        installer = data.get("installer") if isinstance(data.get("installer"), dict) else {}
+        refused = [key for key in APP_PACKAGE_REFUSED_INSTALLER_KEYS if key in installer]
+        if refused:
+            raise ProcessorError(
+                "The pkginfo has %s (from the template or the input pkginfo), and an app package takes none: "
+                "the client provisions it with Add-AppxProvisionedPackage, passes no arguments and reads no "
+                "success codes or product codes. Remove it. Nothing was written."
+                % ", ".join("installer." + key for key in refused)
+            )
+        wanted = package.name.lower()
+        installs = data.get("installs")
+        entries = (
+            [item for item in installs if isinstance(item, dict) and install_check_type(item) == APP_PACKAGE_KIND]
+            if isinstance(installs, list) else []
+        )
+
+        def identity_of(entry):
+            value = entry.get("identity_name")
+            return value.strip() if isinstance(value, str) else ""
+
+        def set_identity(entry):
+            if identity_of(entry) and identity_of(entry) != package.name:
+                notes.append(
+                    "NOTE: the msix entry of installs writes the identity name as %s: it is now the package's own "
+                    "spelling, %s." % (identity_of(entry), package.name)
+                )
+            entry["identity_name"] = package.name
+            entry["version"] = label
+
+        def number_of(entry):
+            return [i for i, item in enumerate(installs, start=1) if item is entry][0]
+
+        if template_mode:
+            own = None
+            if len(entries) == 1:
+                own = entries[0]
+                if identity_of(own).lower() != wanted:
+                    raise ProcessorError(
+                        "The template's msix entry in installs has the identity name %s, and the package's is %s: "
+                        "it is another product. Make a new item for it. Nothing was written."
+                        % (identity_of(own) or "none", package.name)
+                    )
+            elif len(entries) > 1:
+                matching = [item for item in entries if identity_of(item).lower() == wanted]
+                if len(matching) != 1:
+                    raise ProcessorError(
+                        "The template has %d msix entries in installs, and %s of them has the package's identity "
+                        "name %s: it cannot be told which one is this package. Nothing was written."
+                        % (len(entries), "none" if not matching else str(len(matching)), package.name)
+                    )
+                own = matching[0]
+                for entry in entries:
+                    if entry is not own:
+                        notes.append(
+                            "WARNING: installs[%d] is another msix entry, not this package's: it is kept as it is."
+                            % number_of(entry)
+                        )
+            if own is not None:
+                set_identity(own)
+                return
+        else:
+            for entry in entries:
+                if identity_of(entry) and identity_of(entry).lower() != wanted:
+                    raise ProcessorError(
+                        "pkginfo has an msix entry in installs with the identity name %s, but the package's is %s. "
+                        "The identity is read from the package: leave it out of pkginfo."
+                        % (identity_of(entry), package.name)
+                    )
+                set_identity(entry)
+            if entries:
+                return
+        entry = {"type": APP_PACKAGE_KIND, "identity_name": package.name, "version": label}
+        if isinstance(installs, list):
+            installs.append(entry)
+        else:
+            data["installs"] = [entry]
+        if template_mode:
+            notes.append(
+                "NOTE: the template has no msix entry in installs: one is added for %s %s. It is the install "
+                "check, and the client finds the package by it." % (package.name, label)
+            )
+
     # ---- writing ----
 
     @staticmethod
@@ -1583,7 +1892,7 @@ class CimianImporter(Processor):
         name = settings["name"]
 
         entries, unreadable = self.scan_repository(loader, yaml, repo, name)
-        notes = []
+        notes = list(settings["package_notes"])
         if unreadable:
             notes.append(
                 "NOTE: %d pkginfo file(s) could not be read and were left out: %s"

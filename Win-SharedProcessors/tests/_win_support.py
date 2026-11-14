@@ -145,6 +145,38 @@ def property_export(version="2.5.0", product_code=PRODUCT_CODE, upgrade_code=UPG
     return "\n".join(rows) + "\n"
 
 
+# ---- app packages (.msix, .appx, .msixbundle, .appxbundle) -------------------
+
+PACKAGE_NAMESPACE = "http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+BUNDLE_NAMESPACE = "http://schemas.microsoft.com/appx/2013/bundle"
+
+
+def package_manifest(name="Example.Vendor.App", version="2026.1028.1836.0", architecture="x64", bundle=False):
+    """The text of a made-up manifest: a bundle's (AppxBundleManifest.xml, no
+    architecture) or a single package's (AppxManifest.xml). A value of None
+    leaves the attribute out."""
+    attributes = [("Name", name), ("Publisher", "CN=Example Vendor"), ("Version", version)]
+    if not bundle:
+        attributes.append(("ProcessorArchitecture", architecture))
+    identity = "<Identity %s/>" % " ".join('%s="%s"' % pair for pair in attributes if pair[1] is not None)
+    if bundle:
+        return ('<?xml version="1.0" encoding="UTF-8"?>\n<Bundle xmlns="%s" SchemaVersion="5.0">%s'
+                "<Packages/></Bundle>\n" % (BUNDLE_NAMESPACE, identity))
+    return ('<?xml version="1.0" encoding="utf-8"?>\n<Package xmlns="%s">%s'
+            "<Properties><DisplayName>Example</DisplayName></Properties></Package>\n" % (PACKAGE_NAMESPACE, identity))
+
+
+def write_app_package(path, members):
+    """A zip file at `path` with `members` ({name: text or bytes}), as an app
+    package is one. Returns the path."""
+    import zipfile
+
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for member, content in members.items():
+            archive.writestr(member, content)
+    return path
+
+
 # ---- release lists, as GitHub's API shapes them ------------------------------
 
 _asset_ids = itertools.count(5000)

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>Downloads the current package of Acellus, a Microsoft Store application (Store product 9NXWFBJHRXKC, package GoldKeyCorporation.Acellus, a .msixbundle that the Store signs), without the Store and without an account, with MicrosoftStorePackageDownloader, and checks it against the SHA-256 that the Store's catalog gives (ChecksumVerifier). The vendor offers no other download. The package is kept under its own full name, &lt;PackageFullName&gt;.msixbundle. The package needs the Windows App Runtime framework, which this recipe does not fetch: the download step prints each framework dependency with its minimum version at every run, and a person compares that line with the framework item of the repository. The run stops with an error and writes nothing when the catalog names more than one package, when the delivery service offers no file, when an offered file is on a host outside store_file_host_suffixes (the message names the host), or when no offered file has the catalog's SHA-256. When the cache holds the catalog's file already, the delivery service is not asked. The recipe never stops on an unchanged download, so a failed import is tried again at the next run; whether a version is new is decided by the importer from the package's own version. Nothing of this recipe has run under AutoPkg.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.Acellus-Win</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>Acellus</string>
+            <key>STORE_PRODUCT_ID</key>
+            <string>9NXWFBJHRXKC</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/MicrosoftStorePackageDownloader</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>store_product_id</key>
+                    <string>%STORE_PRODUCT_ID%</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/ChecksumVerifier</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>expected_sha256</key>
+                    <string>%expected_sha256%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

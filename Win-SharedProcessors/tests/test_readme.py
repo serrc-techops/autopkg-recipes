@@ -180,7 +180,7 @@ class ReadmeTests(unittest.TestCase):
     def test_the_readme_describes_the_newest_release_guard(self):
         raw = raw_text()
         text = normalized_text()
-        self.assertIn("Six AutoPkg processors", text)
+        self.assertIn("Seven AutoPkg processors", text)
         self.assertIn("| `GitHubNewestReleaseGuard.py` | Stops the recipe when the release that `GitHubReleasesInfoProvider` selected is not the newest one", text)
         section = text[text.index("## GitHubNewestReleaseGuard"):text.index("## WindowsExeVersion")]
         for needle in ("`GitHubReleasesInfoProvider.py:173-201`", "(`:204-205`)", "(`:235-255`)", "(`:244-248`)",

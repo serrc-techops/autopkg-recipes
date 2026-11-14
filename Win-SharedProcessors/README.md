@@ -1,6 +1,6 @@
 # Win-SharedProcessors
 
-Six AutoPkg processors for Windows installers, and the stub recipe that lets
+Seven AutoPkg processors for Windows installers, and the stub recipe that lets
 other recipes use them. None of them needs the package tool or any other program
 that is not in this repository or in AutoPkg: they work with any Cimian repository.
 (The processor for the owner's own package tool, `pcman`, is in
@@ -12,12 +12,13 @@ processor like this: `com.github.serrc-techops.SharedProcessors/<Processor>`.
 
 | File | What it is |
 | --- | --- |
-| `CimianImporter.py` | Publishes a downloaded `.msi` or `.exe` as a new version into a Cimian repository. The last step of a recipe. It is to a Cimian repository what AutoPkg's `MunkiImporter` is to a Munki repository |
+| `CimianImporter.py` | Publishes a downloaded `.msi`, `.exe` or app package (`.msix`, `.appx`, `.msixbundle`, `.appxbundle`) as a new version into a Cimian repository. The last step of a recipe. It is to a Cimian repository what AutoPkg's `MunkiImporter` is to a Munki repository |
 | `ChecksumVerifier.py` | Stops the recipe when a file does not have the SHA-256 that its publisher gives |
 | `GitHubAssetDigest.py` | Reads the SHA-256 that GitHub records for a release asset |
 | `GitHubNewestReleaseGuard.py` | Stops the recipe when the release that `GitHubReleasesInfoProvider` selected is not the newest one, so that a vendor's new spelling of a file name cannot send the recipe back to an old release unseen |
 | `WindowsExeVersion.py` | Reads the version of a downloaded `.exe` from the file itself, for the version label that `CimianImporter` needs |
 | `VersionFromName.py` | Reads the version label from the name of a downloaded file and checks its shape, for an `.exe` that has no version resource of its own |
+| `MicrosoftStorePackageDownloader.py` | Downloads the one package of a free Microsoft Store product from Microsoft's delivery service, without the Store, and keeps it only when it has the SHA-256 that the Store's catalog gives. `microsoft-root-2011.pem` beside it is the public root that the delivery service's certificate is issued under |
 | `SharedProcessors.recipe` | Stub. Carries the identifier `com.github.serrc-techops.SharedProcessors`. Does nothing |
 | `tests/` | Tests. They need no AutoPkg and no network. The tests of `CimianImporter` need PyYAML (see below) |
 
@@ -37,7 +38,8 @@ does these things:
    guard (see "A download that no step verified is refused").
 2. It reads every pkginfo of the repository that has the item's name.
 3. It stops with "Nothing new" when the repository has the version, or the installer file.
-4. For an MSI it reads the version and the codes with `msiinfo`.
+4. For an MSI it reads the version and the codes with `msiinfo`. For an app package it has read the
+   identity name and the version from the package's manifest with the input checks (see "An app package's facts").
 5. It makes the pkginfo of the new version: a copy of the template, or built from the
    inputs.
 6. A dry run says what it would write. A real run copies the installer to `pkgs/`, then
@@ -104,10 +106,11 @@ order of the template is kept):
 | Key | Becomes | The client reads it at |
 | --- | --- | --- |
 | `version` | the label (see "The label") | `StatusService.cs:196-219`, `:632`, `:716` |
-| `installer.location` | `<folder>/<name>-<version>.<extension>`, forward slashes, relative to `pkgs/` | `DownloadService.cs:442-456` |
+| `installer.location` | `<folder>/<name>-<version>.<extension>`, forward slashes, relative to `pkgs/`; the extension is the file's own (an app package keeps `.msixbundle`, say) | `DownloadService.cs:442-456` |
 | `installer.hash` | the SHA-256 of the file, lower-case | `DownloadService.cs:193-200` |
 | `installer.size` | the file's size in bytes | `StatusService.cs:2076-2079` |
-| `installer.type` | `msi` or `exe`, from the file's extension | `InstallerService.cs:871-873` |
+| `installer.type` | `msi` or `exe`, from the file's extension; `msix` for each of the four extensions of an app package | `InstallerService.cs:871-873` |
+| the `installs` entry of type `msix` (an app package): `identity_name`, `version` | the package's identity name and version; added, with a NOTE, when the template has none (see "An app package's facts") | `InstallerService.cs`, `BuildMsixInstallScript`; `StatusService.cs`, the msix check |
 | an `installs` entry of type `msi` (written, or implied by a code): `product_code`, `upgrade_code`, `version` | the codes and the ProductVersion of the new MSI | `StatusService.cs:713-718` |
 | `installer.product_code`, `installer.upgrade_code`, if the template has them (the older form) | the codes of the new MSI | `StatusService.cs:221-266` |
 | `uninstaller[].product_code` of type `msi`, when it is the old product code | the new product code (the client runs `uninstaller[0]` first and counts an unknown product as removed) | `InstallerService.cs:727-737`, `:1507-1548` |
@@ -161,7 +164,10 @@ into another catalog first, give `catalogs` in the input `pkginfo` and set `cimi
 true in the override (see "The input `pkginfo`"). `cimian_catalogs` is only for a pkginfo that has no template.
 
 The kind of installer cannot change: a template whose `installer.type` is `exe` stops the run for
-an `.msi` and the other way round (its arguments and its checks are those of the other kind).
+an `.msi` and the other way round (its arguments and its checks are those of the other kind). The same
+holds between an app package and an `.msi` or `.exe`, both ways. A template whose `installer.type` is
+`msix` or `appx` is of the app package's kind (the client installs both the same way); an `appx` is written
+`msix`, with a NOTE.
 An MSI whose upgrade code is not the template's, or that has none where the template's item had one, is **refused**: it may be another product, or the
 vendor changed the code, and Windows Installer does not upgrade across upgrade codes, so PCs could end
 up with both. The input `cimian_allow_product_change`, set to true in the override, lets it go on with
@@ -174,7 +180,9 @@ version from a file (that is `WindowsExeVersion`'s job, below). For an `.msi` th
 MSI's own ProductVersion, and another label is refused when `msiinfo` can read the MSI: the client
 compares the label with the version that Windows Installer records. A recipe for an MSI passes an
 empty `version` in its step, so that a version that an earlier step set (a release tag, say) is not
-taken for the MSI's own. The label begins with a digit and has letters, numbers, dots, underscores
+taken for the MSI's own. For an app package the rule is the same: the label is the package's own
+Identity Version (for a bundle the bundle's), and a `version` input that is not that text is refused,
+also in a dry run. The label begins with a digit and has letters, numbers, dots, underscores
 and hyphens only (it becomes part of two file names).
 
 ### Without a template
@@ -183,15 +191,17 @@ The pkginfo is built from the inputs: `name`, `version`, `catalogs` (the input `
 default `Development`: the catalog that Cimian's own tools use when none is named;
 `cli/makepkginfo/Program.cs:49` and `:297`, `shared/import/Models/ImportModels.cs:276`), the
 `installer` block (`type`, `size`, `location`, `hash`), for an MSI one `installs` entry of type `msi`,
-and everything in the input `pkginfo`. The keys are written in the order of the model of Cimian's own
+for an app package one `installs` entry of type `msix` (and the single package's architecture, see "An app
+package's facts"), and everything in the input `pkginfo`. The keys are written in the order of the model of Cimian's own
 `makepkginfo` (`cli/makepkginfo/Models/PkgsInfo.cs:64-157`); keys it does not name follow in the
 order they were given. **A person should then complete by hand**, in the input `pkginfo`, what the
 processor cannot know:
 
 - for an `.exe`, a way to tell that it is installed: an `installs` entry or a `check`. Without one the
   client treats an item that has none as not installed, unless the ManagedInstalls registry has a
-  trace of it (`StatusService.cs:194-219` and `:268-298`); the run says so in a WARNING;
-- the silent arguments of the installer, as `installer: {args: [...]}` (`args` is the key the client
+  trace of it (`StatusService.cs:194-219` and `:268-298`); the run says so in a WARNING (not for an app
+  package: its `installs` entry is the check);
+- the silent arguments of the installer (not for an app package, which takes none), as `installer: {args: [...]}` (`args` is the key the client
   reads, `UpdateModels.cs:772-773`; `makepkginfo` writes `arguments`, `PkgsInfo.cs:24`);
 - `display_name`, `developer`, `category`, `description`, `icon_name` and `unattended_install` if wanted.
 
@@ -234,7 +244,8 @@ so in a NOTE and writes nothing: give the file a version of its own to publish i
 sets `cimian_result` to `nothing-new` and `cimian_repo_changed` to false.
 
 For an MSI, "the same installer file" is decided before `msiinfo` is asked, so a run for a file
-that is known needs no MSI facts.
+that is known needs no MSI facts. For an app package the version that is compared is its identity
+version, and the rules are the same.
 
 ### A dry run is the default
 
@@ -336,18 +347,56 @@ there the facts that were given are used, and a NOTE says that nothing checked t
 MSI. An MSI without an UpgradeCode is allowed, with a WARNING (the template's stale upgrade code is
 removed).
 
+### An app package's facts
+
+An app package (`.msix`, `.appx`, `.msixbundle`, `.appxbundle`, any letter case) is installed by the
+client itself, for every user of the PC, with `Add-AppxProvisionedPackage -Online -PackagePath <file>
+-SkipLicense` (`InstallerService.cs`, `BuildMsixInstallScript`): it takes no arguments. **What is read.**
+The package is a zip file. The processor opens it, reads one member into memory, at most 4 MiB
+(`MAX_MANIFEST_BYTES`, checked against the size the zip records and again while reading), and extracts
+nothing: `AppxMetadata/AppxBundleManifest.xml` for a bundle, else `AppxManifest.xml` (names compared with
+forward slashes and without regard to letter case). A manifest with a document type or an entity
+declaration is refused, so that no entity can expand. From the first `Identity` element under the root it
+takes `Name` (letters, numbers, dots, underscores, hyphens), `Version` (two to four numbers, as the client
+compares it with PowerShell's `[System.Version]`) and, for a single package, `ProcessorArchitecture`. For a
+bundle the version is **the bundle's own**, which looks like a date (`2026.1028.1836.0`) and is not the
+version of the application inside it: it is the version that Windows reports for the provisioned package.
+A package that cannot be read stops the run, also in a dry run. The package is not run, and its signature
+is not checked.
+
+**What the pkginfo then holds.** `installer.type: msix`, `installer.location` with the file's own
+extension, `installer.hash`, `installer.size`, `version` (the identity version), and one `installs` entry
+`{type: msix, identity_name: <Name>, version: <Version>}`. That entry is the install check, and the client
+finds and removes the package by its identity name. With a template, the template's only `msix` entry gets
+the new version; its identity name must be the package's (compared without regard to letter case; the
+package's spelling is written), or the run is **refused**: it is another product. When the template has
+several `msix` entries, the one with the package's identity name is this package's (if none or several have
+it, the run stops), and the others are kept, with a WARNING. A template without an `msix` entry is given one,
+with a NOTE. Every other entry of `installs` and `check` follows the rules above. Without a template, an
+`msix` entry that the input `pkginfo` gives must name this package and gets its version. An app package
+takes no `installer.args`, `switches`, `flags`, `subcommand`, `success_codes`, `product_code` or
+`upgrade_code`: one of them, from the template or from the input `pkginfo`, stops the run. The inputs
+`msi_product_code` and `msi_upgrade_code` are not used.
+
+**Architecture.** A single package whose `ProcessorArchitecture` is `x64`, `x86`, `arm` or `arm64` is for
+that architecture: it is the default of `cimian_architecture` (a value that names another is refused), and
+the rules of "The template is the repository" follow, so a pkginfo without a template gets
+`supported_architectures: [<it>]` and a template keeps its own list. `neutral` names none. A bundle names
+none: nothing is guessed for it, and `cimian_architecture` is used as for an MSI. Another value is said in a
+NOTE and not used.
+
 ### Inputs
 
 | Input | Required | Default | Meaning |
 | --- | --- | --- | --- |
-| `pathname` | yes | | The downloaded installer. It must exist and end in `.msi` or `.exe` (any letter case) |
+| `pathname` | yes | | The downloaded installer. It must exist and end in `.msi`, `.exe`, `.msix`, `.appx`, `.msixbundle` or `.appxbundle` (any letter case) |
 | `cimian_name` | yes | | The item's name, the pkginfo's `name`: letters, numbers, dots, underscores and hyphens, not beginning with `-` or `.`, at most 100 characters. With a template the template's spelling is kept |
 | `cimian_repo` | no | the preference `CIMIAN_REPO` | The repository's root. A leading `~` is expanded. Never in a recipe |
 | `version` | `.exe` only | | The label. See "The label" |
 | `cimian_subdirectory` | no | the template's folder, else none | The folder under `pkgs/` and `pkgsinfo/` |
 | `pkginfo` | no | none | A dictionary of pkginfo keys. Without a template it is merged over the pkginfo that was built. With a template it only adds what the template lacks (see "The input `pkginfo`") |
 | `cimian_pkginfo_wins` | no | `false` | `true`: the input `pkginfo` replaces the template's values (each key named in a NOTE). Parsed like `cimian_dry_run`. Set it in an override, never in a recipe |
-| `cimian_architecture` | no | | `x64`, `x86` or `arm64` (`amd64` and `x86_64` are `x64`). Needed when the item's pkginfo files name different `supported_architectures` |
+| `cimian_architecture` | no | | `x64`, `x86` or `arm64` (`amd64` and `x86_64` are `x64`). Needed when the item's pkginfo files name different `supported_architectures`. For a single app package that names its architecture, that is the default and another value is refused |
 | `cimian_allow_product_change` | no | `false` | `true`: an MSI whose upgrade code is not the template's goes on, with a WARNING. Parsed like `cimian_allow_unverified`. Set it in an override, never in a recipe |
 | `cimian_catalogs` | no | `Development` | The catalogs of a pkginfo without a template: a list, or a text with commas |
 | `cimian_dry_run` | no | `true` | `true`: plan only. `false`: a real run. Only a boolean or the text `false`, `no` or `0` (any letter case) makes a real run; `off`, `n`, `f`, an empty value or a number other than the text `0` is an error |
@@ -413,7 +462,8 @@ about in the result (its `--hash_check` option compares an MD5 with `installer.h
 take a mismatch of that option for a bad file); how the owner's catalogs treat a new version in the
 template's catalog; what Cimian's YamlDotNet and the client's time parsing do with a text such as `22:00` or `1320` (the rules above are
 YAML's, and the reading of the client was not run); whether Cimian's own tools write such values quoted or not; which PyYAML AutoPkg's
-Python carries (the code needs 5.1 or later for `sort_keys`).
+Python carries (the code needs 5.1 or later for `sort_keys`). App packages: the tests use made-up zip files with a manifest
+in them; no real Store package has been published by this processor, and no PC has installed one from a pkginfo it wrote.
 
 ## ChecksumVerifier
 
@@ -691,6 +741,73 @@ three or four digits, as a build time; `VersionService.TryParseCalendarBuildStam
 processor accepts such a label (a label of two to four parts that has a digit other than zero) and does not warn about it. For a recipe whose label has
 three parts, read the order that the dry run's plan gives before the first import. A label of four parts, such as the four numbers of a Bambu Studio
 file name, meets neither rule.
+
+## MicrosoftStorePackageDownloader
+
+**Nothing of this processor has run under AutoPkg.** The protocol is ported from a stand-alone
+tool of the owner that fetched a real Store bundle on 2026-11-10; the processor itself is tested
+only with stand-ins for every answer.
+
+It downloads the package of a Microsoft Store product without the Store and without an account,
+the way a Windows PC asks for it:
+
+1. It reads the product in the Store's catalog (`displaycatalog.mp.microsoft.com`, the system's
+   trust, no redirect followed, at most 4 MB). Every SKU of the product must name the same one
+   package; a product with several packages (or SKUs that disagree) is refused. It reads the
+   package's full name, format, SHA-256, largest download size, framework dependencies and update
+   category.
+2. It asks Microsoft's delivery service (`fe3.delivery.mp.microsoft.com`) for the file addresses
+   of that category: a cookie, then up to eight rounds of `SyncUpdates`, then
+   `GetExtendedUpdateInfo2` for each update that has a file. The service's certificate is issued
+   under "Microsoft Root Certificate Authority 2011", which macOS does not trust;
+   `microsoft-root-2011.pem` beside the processor is that public root (Microsoft publishes it at
+   `http://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt`). It is used only when its
+   fingerprint is the one written in the processor, and only for this one host. No redirect is
+   followed.
+3. It downloads the offered files in turn to a `.partial` file in `downloads/` of the recipe's
+   cache, each with a size limit (the catalog's largest download size and 1 MiB), hashing while it
+   writes. The one with the catalog's SHA-256 becomes `downloads/<PackageFullName>.<extension>`;
+   every other file is deleted, and no `.partial` file is left behind, also after an error.
+
+When that file is in the cache already with the catalog's SHA-256, the delivery service is not
+asked and `download_changed` is false.
+
+| Input | Required | Meaning |
+| --- | --- | --- |
+| `store_product_id` | yes | The product id, 12 letters and digits, as in the address of the product's page |
+| `store_market` | no | The catalog's market, two letters. Default `US` |
+| `store_language` | no | The catalog's language. Default `en-us` |
+| `store_file_host_suffixes` | no | The hosts that a file address may have (a list, or one text with commas). Default `.dl.delivery.mp.microsoft.com`, `.microsoft.com`. **Assumed, not read**: the tool of 2026-11-10 did not record the hosts. A refused address stops the run and names its host |
+
+| Output | Meaning |
+| --- | --- |
+| `pathname` | The package, `<PackageFullName>.<extension>` in `downloads/` of the cache |
+| `expected_sha256` | The catalog's SHA-256 (lower-case hex). The next step is `ChecksumVerifier` with `pathname` and this |
+| `store_package_full_name` | The package's full name |
+| `store_package_version` | The four numbers of the version in the full name. For a bundle that is the bundle's version, which looks like a date, not the application's |
+| `store_package_format` | `msixbundle`, `appxbundle`, `msix` or `appx` |
+| `store_framework_dependencies` | One line: each framework's name and minimum version, or `none` |
+| `download_changed` | False when the cached file was used |
+| `microsoft_store_package_downloader_summary_result` | For AutoPkg's summary when a new file was downloaded: product id, full name, version, frameworks. No path |
+
+It sets no `checksum_verified`: the recipe's next step is `ChecksumVerifier`, as in every other
+recipe.
+
+**What it proves.** The file has the SHA-256 that Microsoft's catalog gives, and the catalog was
+read over verified TLS. The file addresses may be plain http: that is acceptable only because the
+file is accepted on that hash alone. **What it does not prove.** The package's signature is not
+checked (the Store signs the package; Windows checks the signature when it adds the package).
+Every value taken from an answer is checked for its shape before it goes into a request or a file
+name.
+
+**Free products with one package only.** A paid product, or one with several packages, is not
+for this processor.
+
+**What a person reads in the output.** The step prints the package's name, its size and every
+framework dependency with its minimum version (for example `needs Example.Runtime.1.4
+4000.1309.2056.0 or later`). The package does not install without its framework: compare that
+line with the framework item in your repository before the first import, and after every new
+version.
 
 ## When a vendor renames a file
 
