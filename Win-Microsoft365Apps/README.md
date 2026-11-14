@@ -35,7 +35,10 @@ Outlook added to the Business product, the EXE kept Outlook (exit 0, 13.6 minute
 build was also run over a 32-bit Click-to-Run Office of 2018 (16.0.9126.2336, the products
 `O365ProPlusRetail` and `O365HomePremRetail`): exit 0 after 14.2 minutes, everything 64-bit at
 16.0.20527.20194, **the two products kept beside the new one** (Office's setup adds a product; it
-removes none), and with them their apps, Outlook among them. NOT established: a
+removes none), and with them their apps, Outlook among them. The rebuilt EXE was then installed by
+the Cimian client on a real staff PC with that same 32-bit Office of 2018, nobody signed in: exit 0
+after 25.4 minutes (download included), everything 64-bit at 16.0.20527.20194, Outlook kept (the
+Business product's excluded apps no longer name it there), the temp folder removed. NOT established: a
 run of the three recipes by AutoPkg itself (the override, the trust information, `%version%`
 reaching the importers); an install
 over an MSI Office (`RemoveMSI`); an install while
