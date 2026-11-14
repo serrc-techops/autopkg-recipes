@@ -1,0 +1,237 @@
+{
+ "_note": "Names, sizes and whether GitHub records a digest, read from the public release list of HandBrake/HandBrake on 2026-11-13 (the newest 30 releases were read; six are kept here, newest first, in the order that GitHub listed them; in each release the files with Win or win in the name, without their .sig files, and for the pre-release all its files). Not the whole record: no release title and no digest value is kept.",
+ "releases": [
+  {
+   "tag_name": "1.11.2",
+   "prerelease": false,
+   "published_at": "2026-06-07T19:08:25Z",
+   "assets": [
+    {
+     "name": "HandBrake-1.11.2-arm64-Win_GUI.exe",
+     "size": 18595792,
+     "digest_recorded": true
+    },
+    {
+     "name": "HandBrake-1.11.2-arm64-Win_GUI.zip",
+     "size": 27418450,
+     "digest_recorded": true
+    },
+    {
+     "name": "HandBrake-1.11.2-x86_64-Win_GUI.exe",
+     "size": 25331264,
+     "digest_recorded": true
+    },
+    {
+     "name": "HandBrake-1.11.2-x86_64-Win_GUI.zip",
+     "size": 34937681,
+     "digest_recorded": true
+    },
+    {
+     "name": "HandBrakeCLI-1.11.2-win-aarch64.zip",
+     "size": 19316730,
+     "digest_recorded": true
+    },
+    {
+     "name": "HandBrakeCLI-1.11.2-win-x86_64.zip",
+     "size": 25721458,
+     "digest_recorded": true
+    },
+    {
+     "name": "LibHB-1.11.2-win-aarch64.zip",
+     "size": 19617953,
+     "digest_recorded": true
+    },
+    {
+     "name": "LibHB-1.11.2-win-x86_64.zip",
+     "size": 26207897,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "1.11.1",
+   "prerelease": false,
+   "published_at": "2026-03-22T19:34:20Z",
+   "assets": [
+    {
+     "name": "HandBrake-1.11.1-arm64-Win_GUI.exe",
+     "size": 18574312,
+     "digest_recorded": true
+    },
+    {
+     "name": "HandBrake-1.11.1-arm64-Win_GUI.zip",
+     "size": 27402290,
+     "digest_recorded": true
+    },
+    {
+     "name": "HandBrake-1.11.1-x86_64-Win_GUI.exe",
+     "size": 25303376,
+     "digest_recorded": true
+    },
+    {
+     "name": "HandBrake-1.11.1-x86_64-Win_GUI.zip",
+     "size": 34924713,
+     "digest_recorded": true
+    },
+    {
+     "name": "HandBrakeCLI-1.11.1-win-aarch64.zip",
+     "size": 19300401,
+     "digest_recorded": true
+    },
+    {
+     "name": "HandBrakeCLI-1.11.1-win-x86_64.zip",
+     "size": 25709191,
+     "digest_recorded": true
+    },
+    {
+     "name": "LibHB-1.11.1-win-aarch64.zip",
+     "size": 19602441,
+     "digest_recorded": true
+    },
+    {
+     "name": "LibHB-1.11.1-win-x86_64.zip",
+     "size": 26194600,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "1.10.0",
+   "prerelease": false,
+   "published_at": "2025-08-09T11:51:57Z",
+   "assets": [
+    {
+     "name": "HandBrake-1.10.0-arm64-Win_GUI.exe",
+     "size": 18201376,
+     "digest_recorded": true
+    },
+    {
+     "name": "HandBrake-1.10.0-arm64-Win_GUI.zip",
+     "size": 27090462,
+     "digest_recorded": true
+    },
+    {
+     "name": "HandBrake-1.10.0-x86_64-Win_GUI.exe",
+     "size": 24303992,
+     "digest_recorded": true
+    },
+    {
+     "name": "HandBrake-1.10.0-x86_64-Win_GUI.zip",
+     "size": 33444576,
+     "digest_recorded": true
+    },
+    {
+     "name": "HandBrakeCLI-1.10.0-win-aarch64.zip",
+     "size": 18147495,
+     "digest_recorded": true
+    },
+    {
+     "name": "HandBrakeCLI-1.10.0-win-x86_64.zip",
+     "size": 22664370,
+     "digest_recorded": true
+    },
+    {
+     "name": "LibHB-1.10.0-win-aarch64.zip",
+     "size": 18414778,
+     "digest_recorded": true
+    },
+    {
+     "name": "LibHB-1.10.0-win-x86_64.zip",
+     "size": 23169468,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "1.9.2",
+   "prerelease": false,
+   "published_at": "2025-02-23T11:29:38Z",
+   "assets": [
+    {
+     "name": "HandBrake-1.9.2-arm64-Win_GUI.exe",
+     "size": 17632832,
+     "digest_recorded": false
+    },
+    {
+     "name": "HandBrake-1.9.2-arm64-Win_GUI.zip",
+     "size": 26104373,
+     "digest_recorded": false
+    },
+    {
+     "name": "HandBrake-1.9.2-x86_64-Win_GUI.exe",
+     "size": 24281072,
+     "digest_recorded": false
+    },
+    {
+     "name": "HandBrake-1.9.2-x86_64-Win_GUI.zip",
+     "size": 33366316,
+     "digest_recorded": false
+    },
+    {
+     "name": "HandBrakeCLI-1.9.2-win-aarch64.zip",
+     "size": 17177971,
+     "digest_recorded": false
+    },
+    {
+     "name": "HandBrakeCLI-1.9.2-win-x86_64.zip",
+     "size": 22735078,
+     "digest_recorded": false
+    },
+    {
+     "name": "LibHB-1.9.2-win-aarch64.zip",
+     "size": 17455522,
+     "digest_recorded": false
+    },
+    {
+     "name": "LibHB-1.9.2-win-x86_64.zip",
+     "size": 23239095,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "1.4.0-beta.1",
+   "prerelease": true,
+   "published_at": "2020-11-11T19:06:00Z",
+   "assets": [
+    {
+     "name": "HandBrake-1.4.0-beta.1.dmg",
+     "size": 37297959,
+     "digest_recorded": false
+    },
+    {
+     "name": "HandBrakeCLI-1.4.0-beta.1.dmg",
+     "size": 32956283,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "1.2.1",
+   "prerelease": false,
+   "published_at": "2019-02-17T17:18:58Z",
+   "assets": [
+    {
+     "name": "HandBrake-1.2.1-x86_64-Win_GUI.exe",
+     "size": 13374184,
+     "digest_recorded": false
+    },
+    {
+     "name": "HandBrake-1.2.1-x86_64-Win_GUI.zip",
+     "size": 18519868,
+     "digest_recorded": false
+    },
+    {
+     "name": "HandBrakeCLI-1.2.1-win-x86_64.zip",
+     "size": 17197971,
+     "digest_recorded": false
+    },
+    {
+     "name": "LibHB-1.2.1-win-x86_64.zip",
+     "size": 17553424,
+     "digest_recorded": false
+    }
+   ]
+  }
+ ]
+}

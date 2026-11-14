@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>Downloads the current WizTree installer for Windows (the .exe) from the publisher's site and checks it against the SHA-256 that the publisher's download page gives inside the installer's own link. The installer, its version label and its hash are found by this folder's own processor (WizTreeInfoProvider), because no shared recipe reads this page: it requires exactly one link to files/wiztree_&lt;numbers&gt;_setup.exe, takes the hash only from inside that link (never the portable .zip's), and takes the label from the file name (underscores become dots, 4_33 gives 4.33), checked against the release text of the same link. The page is read from diskanalyzer.com without following a redirect; the installer's address answered with a redirect to the publisher's content delivery host, which the downloader follows, and the file is checked against the page's hash. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. The page was read on 2026-11-13; this recipe has not been run with AutoPkg yet. WizTree is free for personal use only: the vendor sells a licence for other use (see the README).</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.WizTree-Win</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>WizTree</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>WizTreeInfoProvider</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>URLDownloader</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/ChecksumVerifier</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>expected_sha256</key>
+                    <string>%expected_sha256%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

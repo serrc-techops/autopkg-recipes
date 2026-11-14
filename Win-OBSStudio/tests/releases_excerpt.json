@@ -1,0 +1,965 @@
+{
+ "_note": "Names, sizes and whether GitHub records a digest, read from the public release list of obsproject/obs-studio on 2026-11-13 (the newest 30 releases, newest first, in the order that GitHub listed them, back to 2025-09-19). Only the Windows files are kept (the installer, the x64 and arm64 zips and the PDB zips); the macOS, Linux and source files are left out. No release title and no digest value is kept.",
+ "releases": [
+  {
+   "tag_name": "33.0.1",
+   "prerelease": false,
+   "published_at": "2026-10-29T21:52:01Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-33.0.1-Windows-arm64-PDBs.zip",
+     "size": 59758532,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.1-Windows-arm64.zip",
+     "size": 200182561,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.1-Windows-x64-Installer.exe",
+     "size": 186662440,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.1-Windows-x64-PDBs.zip",
+     "size": 65912719,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.1-Windows-x64.zip",
+     "size": 223786669,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "33.0.0",
+   "prerelease": false,
+   "published_at": "2026-10-23T22:20:29Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-33.0.0-Windows-arm64-PDBs.zip",
+     "size": 59717603,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-Windows-arm64.zip",
+     "size": 200180302,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-Windows-x64-Installer.exe",
+     "size": 186671888,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-Windows-x64-PDBs.zip",
+     "size": 65925795,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-Windows-x64.zip",
+     "size": 223737114,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "33.0.0-rc3",
+   "prerelease": true,
+   "published_at": "2026-10-20T23:50:59Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-33.0.0-rc3-Windows-arm64-PDBs.zip",
+     "size": 59501184,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-rc3-Windows-arm64.zip",
+     "size": 199964674,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-rc3-Windows-x64-Installer.exe",
+     "size": 186624848,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-rc3-Windows-x64-PDBs.zip",
+     "size": 65729724,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-rc3-Windows-x64.zip",
+     "size": 223749158,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "33.0.0-rc2",
+   "prerelease": true,
+   "published_at": "2026-10-16T23:31:07Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-33.0.0-rc2-Windows-arm64-PDBs.zip",
+     "size": 59572560,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-rc2-Windows-arm64.zip",
+     "size": 199986739,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-rc2-Windows-x64-Installer.exe",
+     "size": 186710432,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-rc2-Windows-x64-PDBs.zip",
+     "size": 65682000,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-rc2-Windows-x64.zip",
+     "size": 223764203,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "33.0.0-rc1",
+   "prerelease": true,
+   "published_at": "2026-10-09T02:15:44Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-33.0.0-rc1-Windows-arm64-PDBs.zip",
+     "size": 59713890,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-rc1-Windows-arm64.zip",
+     "size": 200035992,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-rc1-Windows-x64-Installer.exe",
+     "size": 186673920,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-rc1-Windows-x64-PDBs.zip",
+     "size": 65615943,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-rc1-Windows-x64.zip",
+     "size": 223744918,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "33.0.0-beta6",
+   "prerelease": true,
+   "published_at": "2026-10-02T23:27:06Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-33.0.0-beta6-Windows-arm64-PDBs.zip",
+     "size": 59651854,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-beta6-Windows-arm64.zip",
+     "size": 199913964,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-beta6-Windows-x64-Installer.exe",
+     "size": 186600368,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-beta6-Windows-x64-PDBs.zip",
+     "size": 65872060,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-beta6-Windows-x64.zip",
+     "size": 223684562,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "33.0.0-beta5",
+   "prerelease": true,
+   "published_at": "2026-10-01T00:09:26Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-33.0.0-beta5-Windows-arm64-PDBs.zip",
+     "size": 59650417,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-beta5-Windows-arm64.zip",
+     "size": 199922086,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-beta5-Windows-x64-Installer.exe",
+     "size": 186657360,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-beta5-Windows-x64-PDBs.zip",
+     "size": 65926357,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-beta5-Windows-x64.zip",
+     "size": 223739376,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "33.0.0-beta4",
+   "prerelease": true,
+   "published_at": "2026-09-25T22:29:13Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-33.0.0-beta4-Windows-arm64-PDBs.zip",
+     "size": 59732194,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-beta4-Windows-arm64.zip",
+     "size": 199956893,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-beta4-Windows-x64-Installer.exe",
+     "size": 186555392,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-beta4-Windows-x64-PDBs.zip",
+     "size": 65983315,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-33.0.0-beta4-Windows-x64.zip",
+     "size": 223750687,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.2.2",
+   "prerelease": false,
+   "published_at": "2026-08-14T22:43:31Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.2.2-Windows-arm64-PDBs.zip",
+     "size": 57317650,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.2-Windows-arm64.zip",
+     "size": 167128219,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.2-Windows-x64-Installer.exe",
+     "size": 159809104,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.2-Windows-x64-PDBs.zip",
+     "size": 64011684,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.2-Windows-x64.zip",
+     "size": 187851583,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.2.1",
+   "prerelease": false,
+   "published_at": "2026-07-24T22:58:26Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.2.1-Windows-arm64-PDBs.zip",
+     "size": 57522349,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.1-Windows-arm64.zip",
+     "size": 167106178,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.1-Windows-x64-Installer.exe",
+     "size": 159828560,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.1-Windows-x64-PDBs.zip",
+     "size": 64054339,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.1-Windows-x64.zip",
+     "size": 187817017,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.2.0",
+   "prerelease": false,
+   "published_at": "2026-07-21T22:25:33Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.2.0-Windows-arm64-PDBs.zip",
+     "size": 57515095,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-Windows-arm64.zip",
+     "size": 167159427,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-Windows-x64-Installer.exe",
+     "size": 159845704,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-Windows-x64-PDBs.zip",
+     "size": 64255247,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-Windows-x64.zip",
+     "size": 187839836,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.2.0-rc2",
+   "prerelease": true,
+   "published_at": "2026-07-16T21:10:05Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.2.0-rc2-Windows-arm64-PDBs.zip",
+     "size": 57369150,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-rc2-Windows-arm64.zip",
+     "size": 167134213,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-rc2-Windows-x64-Installer.exe",
+     "size": 159847224,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-rc2-Windows-x64-PDBs.zip",
+     "size": 63951972,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-rc2-Windows-x64.zip",
+     "size": 187803547,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.2.0-rc1",
+   "prerelease": true,
+   "published_at": "2026-07-10T23:14:13Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.2.0-rc1-Windows-arm64-PDBs.zip",
+     "size": 57373978,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-rc1-Windows-arm64.zip",
+     "size": 167105746,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-rc1-Windows-x64-Installer.exe",
+     "size": 159855144,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-rc1-Windows-x64-PDBs.zip",
+     "size": 63959435,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-rc1-Windows-x64.zip",
+     "size": 187823070,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.2.0-beta3",
+   "prerelease": true,
+   "published_at": "2026-07-03T00:04:20Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.2.0-beta3-Windows-arm64-PDBs.zip",
+     "size": 57368481,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-beta3-Windows-arm64.zip",
+     "size": 167105399,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-beta3-Windows-x64-Installer.exe",
+     "size": 159821464,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-beta3-Windows-x64-PDBs.zip",
+     "size": 63930382,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-beta3-Windows-x64.zip",
+     "size": 187802304,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.2.0-beta2",
+   "prerelease": true,
+   "published_at": "2026-06-22T19:58:58Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.2.0-beta2-Windows-arm64-PDBs.zip",
+     "size": 57350814,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-beta2-Windows-arm64.zip",
+     "size": 167127165,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-beta2-Windows-x64-Installer.exe",
+     "size": 159819528,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-beta2-Windows-x64-PDBs.zip",
+     "size": 63894600,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.2.0-beta2-Windows-x64.zip",
+     "size": 187802035,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.1.2",
+   "prerelease": false,
+   "published_at": "2026-04-21T20:10:35Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.1.2-Windows-arm64-PDBs.zip",
+     "size": 53706077,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.2-Windows-arm64.zip",
+     "size": 163945604,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.2-Windows-x64-Installer.exe",
+     "size": 157809480,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.2-Windows-x64-PDBs.zip",
+     "size": 60696395,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.2-Windows-x64.zip",
+     "size": 184814726,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.1.1",
+   "prerelease": false,
+   "published_at": "2026-04-02T19:54:40Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.1.1-Windows-arm64-PDBs.zip",
+     "size": 53710967,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.1-Windows-arm64.zip",
+     "size": 163966086,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.1-Windows-x64-Installer.exe",
+     "size": 157769752,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.1-Windows-x64-PDBs.zip",
+     "size": 61033662,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.1-Windows-x64.zip",
+     "size": 184849320,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.1.0",
+   "prerelease": false,
+   "published_at": "2026-03-11T20:24:32Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.1.0-Windows-arm64-PDBs.zip",
+     "size": 53894648,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-Windows-arm64.zip",
+     "size": 163925000,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-Windows-x64-Installer.exe",
+     "size": 157804792,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-Windows-x64-PDBs.zip",
+     "size": 60571903,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-Windows-x64.zip",
+     "size": 184819056,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.1.0-rc4",
+   "prerelease": true,
+   "published_at": "2026-03-05T23:56:33Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.1.0-rc4-Windows-arm64-PDBs.zip",
+     "size": 53896928,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-rc4-Windows-arm64.zip",
+     "size": 163943070,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-rc4-Windows-x64-Installer.exe",
+     "size": 157795744,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-rc4-Windows-x64-PDBs.zip",
+     "size": 60745726,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-rc4-Windows-x64.zip",
+     "size": 184807903,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.1.0-rc3",
+   "prerelease": true,
+   "published_at": "2026-03-04T23:01:50Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.1.0-rc3-Windows-arm64-PDBs.zip",
+     "size": 53886726,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-rc3-Windows-arm64.zip",
+     "size": 163932714,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-rc3-Windows-x64-Installer.exe",
+     "size": 157832904,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-rc3-Windows-x64-PDBs.zip",
+     "size": 60769688,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-rc3-Windows-x64.zip",
+     "size": 184834612,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.1.0-rc2",
+   "prerelease": true,
+   "published_at": "2026-02-28T19:37:42Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.1.0-rc2-Windows-arm64-PDBs.zip",
+     "size": 53868226,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-rc2-Windows-arm64.zip",
+     "size": 163933072,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-rc2-Windows-x64-Installer.exe",
+     "size": 157784536,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-rc2-Windows-x64-PDBs.zip",
+     "size": 60775254,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-rc2-Windows-x64.zip",
+     "size": 184828021,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.1.0-rc1",
+   "prerelease": true,
+   "published_at": "2026-02-06T00:48:34Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.1.0-rc1-Windows-arm64-PDBs.zip",
+     "size": 53557555,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-rc1-Windows-arm64.zip",
+     "size": 163872191,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-rc1-Windows-x64-Installer.exe",
+     "size": 157793400,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-rc1-Windows-x64-PDBs.zip",
+     "size": 60760334,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-rc1-Windows-x64.zip",
+     "size": 184792669,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.1.0-beta2",
+   "prerelease": true,
+   "published_at": "2026-01-16T22:48:01Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.1.0-beta2-Windows-arm64-PDBs.zip",
+     "size": 53863334,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-beta2-Windows-arm64.zip",
+     "size": 164179136,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-beta2-Windows-x64-Installer.exe",
+     "size": 157934984,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-beta2-Windows-x64-PDBs.zip",
+     "size": 60889915,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-beta2-Windows-x64.zip",
+     "size": 185049646,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.1.0-beta1",
+   "prerelease": true,
+   "published_at": "2026-01-14T23:27:06Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.1.0-beta1-Windows-arm64-PDBs.zip",
+     "size": 53815516,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-beta1-Windows-arm64.zip",
+     "size": 164165506,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-beta1-Windows-x64-Installer.exe",
+     "size": 157935864,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-beta1-Windows-x64-PDBs.zip",
+     "size": 60957276,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.1.0-beta1-Windows-x64.zip",
+     "size": 185124916,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.0.4",
+   "prerelease": false,
+   "published_at": "2025-12-13T22:02:08Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.0.4-Windows-arm64-PDBs.zip",
+     "size": 53343083,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.4-Windows-arm64.zip",
+     "size": 163408594,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.4-Windows-x64-Installer.exe",
+     "size": 157503576,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.4-Windows-x64-PDBs.zip",
+     "size": 60284846,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.4-Windows-x64.zip",
+     "size": 184284985,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.0.3",
+   "prerelease": false,
+   "published_at": "2025-12-05T23:16:24Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.0.3-Windows-arm64-PDBs.zip",
+     "size": 53290501,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.3-Windows-arm64.zip",
+     "size": 163421952,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.3-Windows-x64-Installer.exe",
+     "size": 157489152,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.3-Windows-x64-PDBs.zip",
+     "size": 60233669,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.3-Windows-x64.zip",
+     "size": 184223690,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.0.2",
+   "prerelease": false,
+   "published_at": "2025-10-29T01:26:59Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.0.2-Windows-arm64-PDBs.zip",
+     "size": 53127354,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.2-Windows-arm64.zip",
+     "size": 163368512,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.2-Windows-x64-Installer.exe",
+     "size": 157490424,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.2-Windows-x64-PDBs.zip",
+     "size": 60196334,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.2-Windows-x64.zip",
+     "size": 184236797,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.0.1",
+   "prerelease": false,
+   "published_at": "2025-09-26T22:29:28Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.0.1-Windows-arm64-PDBs.zip",
+     "size": 53382169,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.1-Windows-arm64.zip",
+     "size": 163379163,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.1-Windows-x64-Installer.exe",
+     "size": 157441936,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.1-Windows-x64-PDBs.zip",
+     "size": 60373777,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.1-Windows-x64.zip",
+     "size": 184244942,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.0.0",
+   "prerelease": false,
+   "published_at": "2025-09-22T23:48:27Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.0.0-Windows-arm64-PDBs.zip",
+     "size": 53179876,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.0-Windows-arm64.zip",
+     "size": 163389159,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.0-Windows-x64-Installer.exe",
+     "size": 157456592,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.0-Windows-x64-PDBs.zip",
+     "size": 60645348,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.0-Windows-x64.zip",
+     "size": 184229928,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "32.0.0-rc1",
+   "prerelease": true,
+   "published_at": "2025-09-19T20:47:00Z",
+   "assets": [
+    {
+     "name": "OBS-Studio-32.0.0-rc1-Windows-arm64-PDBs.zip",
+     "size": 53263874,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.0-rc1-Windows-arm64.zip",
+     "size": 163383587,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.0-rc1-Windows-x64-Installer.exe",
+     "size": 157468136,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.0-rc1-Windows-x64-PDBs.zip",
+     "size": 60469114,
+     "digest_recorded": true
+    },
+    {
+     "name": "OBS-Studio-32.0.0-rc1-Windows-x64.zip",
+     "size": 184280664,
+     "digest_recorded": true
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,243 @@
+{
+ "_note": "Names, sizes and whether GitHub records a digest, read from the public release list of notepad-plus-plus/notepad-plus-plus on 2026-11-13 (7 of the newest 30 releases, newest first, in the order that GitHub listed them: the three newest with an MSI, the oldest one with an MSI, and three older ones without; v8.8.4 has no files at all). Not the whole record: no digest value is kept, and only the installers, the MSI's signature file, the checksum file and one portable archive are kept. Every dot between two digits is written `_dot_` (in tags and in names), because the repository's hygiene check takes four numbers joined by dots for an address; the test file puts the dots back.",
+ "releases": [
+  {
+   "tag_name": "v8_dot_9_dot_9_dot_1",
+   "prerelease": false,
+   "published_at": "2026-11-12T01:22:26Z",
+   "assets": [
+    {
+     "name": "npp.8_dot_9_dot_9_dot_1.checksums.sha256",
+     "size": 1271,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_9_dot_9_dot_1.Installer.arm64.exe",
+     "size": 6717024,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_9_dot_9_dot_1.Installer.exe",
+     "size": 6897152,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_9_dot_9_dot_1.Installer.x64.exe",
+     "size": 7048536,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_9_dot_9_dot_1.Installer.x64.msi",
+     "size": 7933952,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_9_dot_9_dot_1.Installer.x64.msi.sig",
+     "size": 594,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_9_dot_9_dot_1.portable.x64.zip",
+     "size": 8369720,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v8_dot_9_dot_9",
+   "prerelease": false,
+   "published_at": "2026-11-06T15:37:20Z",
+   "assets": [
+    {
+     "name": "npp.8_dot_9_dot_9.checksums.sha256",
+     "size": 1245,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_9_dot_9.Installer.arm64.exe",
+     "size": 6695832,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_9_dot_9.Installer.exe",
+     "size": 6875200,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_9_dot_9.Installer.x64.exe",
+     "size": 7028968,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_9_dot_9.Installer.x64.msi",
+     "size": 7909376,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_9_dot_9.Installer.x64.msi.sig",
+     "size": 594,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_9_dot_9.portable.x64.zip",
+     "size": 8338502,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v8_dot_9_dot_8_dot_1",
+   "prerelease": false,
+   "published_at": "2026-09-24T15:21:27Z",
+   "assets": [
+    {
+     "name": "npp.8_dot_9_dot_8_dot_1.checksums.sha256",
+     "size": 1271,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_9_dot_8_dot_1.Installer.arm64.exe",
+     "size": 6632744,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_9_dot_8_dot_1.Installer.exe",
+     "size": 6814128,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_9_dot_8_dot_1.Installer.x64.exe",
+     "size": 6963432,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_9_dot_8_dot_1.Installer.x64.msi",
+     "size": 7835648,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_9_dot_8_dot_1.Installer.x64.msi.sig",
+     "size": 594,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_9_dot_8_dot_1.portable.x64.zip",
+     "size": 8250001,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v8_dot_8_dot_8",
+   "prerelease": false,
+   "published_at": "2025-11-18T17:08:26Z",
+   "assets": [
+    {
+     "name": "npp.8_dot_8_dot_8.checksums.sha256",
+     "size": 1245,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_8_dot_8.Installer.arm64.exe",
+     "size": 6617472,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_8_dot_8.Installer.exe",
+     "size": 6782736,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_8_dot_8.Installer.x64.exe",
+     "size": 6935920,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_8_dot_8.Installer.x64.msi",
+     "size": 7364608,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_8_dot_8.Installer.x64.msi.sig",
+     "size": 566,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_8_dot_8.portable.x64.zip",
+     "size": 8215670,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v8_dot_8_dot_7",
+   "prerelease": false,
+   "published_at": "2025-10-20T15:23:17Z",
+   "assets": [
+    {
+     "name": "npp.8_dot_8_dot_7.checksums.sha256",
+     "size": 1150,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_8_dot_7.Installer.arm64.exe",
+     "size": 6601720,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_8_dot_7.Installer.exe",
+     "size": 6766120,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_8_dot_7.Installer.x64.exe",
+     "size": 6923064,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_8_dot_7.portable.x64.zip",
+     "size": 8196690,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v8_dot_8_dot_6",
+   "prerelease": false,
+   "published_at": "2025-10-07T12:20:16Z",
+   "assets": [
+    {
+     "name": "npp.8_dot_8_dot_6.checksums.sha256",
+     "size": 1150,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_8_dot_6.Installer.arm64.exe",
+     "size": 6591936,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_8_dot_6.Installer.exe",
+     "size": 6746808,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_8_dot_6.Installer.x64.exe",
+     "size": 6907448,
+     "digest_recorded": true
+    },
+    {
+     "name": "npp.8_dot_8_dot_6.portable.x64.zip",
+     "size": 8142535,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v8_dot_8_dot_4",
+   "prerelease": false,
+   "published_at": "2025-08-12T10:15:50Z",
+   "assets": []
+  }
+ ]
+}

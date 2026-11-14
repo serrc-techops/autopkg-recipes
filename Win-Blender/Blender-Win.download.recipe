@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>NOT run under AutoPkg: this recipe is new and nothing of it has run; the pages it reads were read on 2026-11-13. Downloads the newest release of Blender for Windows (the x64 MSI) from the Blender Foundation's download server and checks it against the SHA-256 that the server publishes in the hash file of that release, beside the MSI. The release is found in the server's index: the series folders (Blender5.3/) are compared by their numbers, not by the order of the links; in the folder of the series, the MSIs are compared by the numbers of each version. A newest folder without an x64 MSI is passed over for the next lower one. BLENDER_SERIES (empty by default) pins one series, for example to stay on a long-term line. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. It has its own processor (BlenderInfoProvider, in this folder) because no shared recipe reads that index.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.Blender-Win</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>Blender</string>
+            <key>BLENDER_SERIES</key>
+            <string></string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>BlenderInfoProvider</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>blender_series</key>
+                    <string>%BLENDER_SERIES%</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>URLDownloader</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/ChecksumVerifier</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>expected_sha256</key>
+                    <string>%expected_sha256%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

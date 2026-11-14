@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>Hands the downloaded GIMP installer (an EXE) to CimianImporter, which publishes it as a new version of the item into a Cimian repository (as a copy of the item's newest pkginfo, with what belongs to the installer file replaced), or says that nothing is new. For an EXE CimianImporter is given the version label: the recipe passes the GIMP version that the download recipe's GimpInfoProvider read from the installer's file name (three numbers, such as 3.2.8), never the installer's revision, so a re-issued installer of a version that the repository has is "nothing new". Whether the file has a version resource, and what the installed program reports, is NOT established: the first dry run shows the label. CimianImporter does not check that an EXE is the same product as the template (it only compares the upgrade code of an MSI). The download's SHA-256 comes from a mirror (see the download recipe): CimianImporter counts it as verified, but it is a transfer check, not proof of origin. This recipe was NOT run with AutoPkg. This is a dry run, which writes nothing, until the recipe's override sets cimian_dry_run to false. The repository is the input cimian_repo or the AutoPkg preference CIMIAN_REPO.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.cimian.GIMP</string>
+        <key>Input</key>
+        <dict>
+            <key>CIMIAN_NAME</key>
+            <string>gimp</string>
+            <key>CIMIAN_SUBDIRECTORY</key>
+            <string></string>
+            <key>NAME</key>
+            <string>GIMP</string>
+            <key>pkginfo</key>
+            <dict>
+                <key>developer</key>
+                <string>The GIMP Team</string>
+                <key>display_name</key>
+                <string>GIMP</string>
+            </dict>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>ParentRecipe</key>
+        <string>com.github.serrc-techops.download.GIMP-Win</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/CimianImporter</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>cimian_name</key>
+                    <string>%CIMIAN_NAME%</string>
+                    <key>cimian_subdirectory</key>
+                    <string>%CIMIAN_SUBDIRECTORY%</string>
+                    <key>version</key>
+                    <string>%version%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

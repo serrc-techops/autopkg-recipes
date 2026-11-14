@@ -1,0 +1,292 @@
+{
+ "_note": "Names, sizes and whether GitHub records a digest, read from the public release list of audacity/audacity on 2026-11-13 (the newest 10 releases of the saved list of 30, newest first, in the order that GitHub listed them, and 3.7.3, the newest release without a recorded digest). Not the whole record: no digest value is kept and the assets of the other systems are left out; the Windows files are all there.",
+ "releases": [
+  {
+   "tag_name": "Audacity-4.0.2",
+   "prerelease": false,
+   "published_at": "2026-11-02T10:01:34Z",
+   "assets": [
+    {
+     "name": "audacity-win-4.0.2-arm64.7z",
+     "size": 32843241,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-4.0.2-arm64.msi",
+     "size": 38240256,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-4.0.2-x86_64.7z",
+     "size": 44336109,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-4.0.2-x86_64.msi",
+     "size": 49823744,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "Audacity-4.0.1",
+   "prerelease": false,
+   "published_at": "2026-09-30T11:59:48Z",
+   "assets": [
+    {
+     "name": "audacity-win-4.0.1-arm64.7z",
+     "size": 32798863,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-4.0.1-arm64.msi",
+     "size": 38264832,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-4.0.1-x86_64.7z",
+     "size": 44322940,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-4.0.1-x86_64.msi",
+     "size": 49795072,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "Audacity-4.0.0",
+   "prerelease": false,
+   "published_at": "2026-09-03T10:19:48Z",
+   "assets": [
+    {
+     "name": "audacity-win-4.0.0-arm64.msi",
+     "size": 37949440,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-4.0.0-x86_64.msi",
+     "size": 49532928,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "Audacity-3.7.9",
+   "prerelease": false,
+   "published_at": "2026-09-01T15:05:46Z",
+   "assets": [
+    {
+     "name": "audacity-win-3.7.9-32bit.exe",
+     "size": 18485456,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.9-32bit.zip",
+     "size": 26453755,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.9-64bit.exe",
+     "size": 19943880,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.9-64bit.zip",
+     "size": 28591034,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.9-arm64.exe",
+     "size": 19543264,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.9-arm64.zip",
+     "size": 27513238,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "Audacity-4.0.0-beta-4",
+   "prerelease": true,
+   "published_at": "2026-08-28T15:25:10Z",
+   "assets": [
+    {
+     "name": "Audacity-4.0.0-beta4-aarch64.msi",
+     "size": 37126144,
+     "digest_recorded": true
+    },
+    {
+     "name": "Audacity-4.0.0-beta4-x86_64.msi",
+     "size": 48680960,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "Audacity-3.7.8",
+   "prerelease": false,
+   "published_at": "2026-06-11T14:32:48Z",
+   "assets": [
+    {
+     "name": "audacity-win-3.7.8-32bit.exe",
+     "size": 18940432,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.8-32bit.zip",
+     "size": 26911415,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.8-64bit.exe",
+     "size": 20400664,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.8-64bit.zip",
+     "size": 29041226,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.8-arm64.exe",
+     "size": 19993272,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.8-arm64.zip",
+     "size": 27963183,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "Audacity-4.0.0-beta-2",
+   "prerelease": true,
+   "published_at": "2026-06-11T14:33:00Z",
+   "assets": [
+    {
+     "name": "Audacity-4.0.0-beta2-x86_64.msi",
+     "size": 87695360,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "Audacity-3.7.7",
+   "prerelease": false,
+   "published_at": "2025-12-11T19:48:17Z",
+   "assets": [
+    {
+     "name": "audacity-win-3.7.7-32bit.exe",
+     "size": 17042704,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.7-32bit.zip",
+     "size": 25151423,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.7-64bit.exe",
+     "size": 18543040,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.7-64bit.zip",
+     "size": 27285342,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.7-arm64.exe",
+     "size": 18144088,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.7-arm64.zip",
+     "size": 26203265,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "Audacity-3.7.6",
+   "prerelease": false,
+   "published_at": "2025-12-04T18:24:15Z",
+   "assets": [
+    {
+     "name": "audacity-win-3.7.6-32bit.exe",
+     "size": 17036272,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.6-32bit.zip",
+     "size": 25149743,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.6-64bit.exe",
+     "size": 18542096,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.6-64bit.zip",
+     "size": 27283050,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.6-arm64.exe",
+     "size": 18132144,
+     "digest_recorded": true
+    },
+    {
+     "name": "audacity-win-3.7.6-arm64.zip",
+     "size": 26198620,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "Audacity-4.0.0-alpha-2",
+   "prerelease": true,
+   "published_at": "2025-11-03T11:42:02Z",
+   "assets": [
+    {
+     "name": "Audacity-4_dot_0_dot_0_dot_253031630_dot_f3e3e3b_dot_-x86_64_dot_msi",
+     "size": 48332800,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "Audacity-3.7.3",
+   "prerelease": false,
+   "published_at": "2025-03-13T13:07:29Z",
+   "assets": [
+    {
+     "name": "audacity-win-3.7.3-32bit.exe",
+     "size": 15528616,
+     "digest_recorded": false
+    },
+    {
+     "name": "audacity-win-3.7.3-32bit.zip",
+     "size": 24322665,
+     "digest_recorded": false
+    },
+    {
+     "name": "audacity-win-3.7.3-64bit.exe",
+     "size": 16959640,
+     "digest_recorded": false
+    },
+    {
+     "name": "audacity-win-3.7.3-64bit.zip",
+     "size": 26398933,
+     "digest_recorded": false
+    }
+   ]
+  }
+ ]
+}

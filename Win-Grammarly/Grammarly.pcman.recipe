@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>This import is NOT verified yet: the download has no hard check (no vendor hash found, no signature check). A real run is refused by the shared importer until a verification step exists, unless the override sets pcman_allow_unverified to true (the run then publishes with a WARNING, and the report says published, NOT verified). MAIN CAVEAT: by the vendor's own article Grammarly for Windows installs PER USER, into the profile of the account that runs the installer, and a per-machine install is unavailable by default (the vendor says its Customer Success Manager enables it for a subscription bought through its Sales team). A Cimian client runs installers as SYSTEM, so a plain /S item would install into the SYSTEM profile and no person would get the program, and an install check on a per-user path would never be true for the other users. Whether this item is usable through Cimian is NOT established: do not put it into a manifest until a person has read the vendor's article, chosen the parameters and proven on a test PC that a signed-in standard user gets Grammarly after an install by SYSTEM. The program also updates itself, about every two weeks by the vendor's article, so a published version is soon behind what the PCs run, and an install check by version would fight the updater: a check on presence, not on version, is the likely shape (a person's decision). Hands the downloaded Grammarly for Windows installer (an EXE) to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. For an EXE the package tool is given the version label: the recipe passes the version that the download recipe's WindowsExeVersion step read from the EXE itself (its ProductVersion when that is numbers and dots only, else the four numbers of its fixed file information). The label must equal what a person reads in the file's properties, which the first dry run shows. Whether the package tool has a check of the product for an EXE, like its upgrade code check for an MSI, was NOT established. This recipe was NOT rehearsed with AutoPkg. This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.pcman.Grammarly</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>Grammarly</string>
+            <key>PCMAN_TEMPLATE</key>
+            <string>grammarly</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>ParentRecipe</key>
+        <string>com.github.serrc-techops.download.Grammarly-Win</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.PcmanProcessors/PcmanImporter</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>pcman_template</key>
+                    <string>%PCMAN_TEMPLATE%</string>
+                    <key>pcman_version</key>
+                    <string>%version%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

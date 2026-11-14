@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>This download is NOT verified yet: no hash was found for the file, and a check of the signature is not built, so nothing proves that the file is what the vendor published. The shared importer therefore refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true (pcman_allow_unverified for the package tool's recipe). MAIN CAVEAT: by the vendor's own article Grammarly for Windows installs PER USER, into the profile of the account that runs the installer, and a per-machine install is unavailable by default (the vendor says its Customer Success Manager enables it for a subscription bought through its Sales team). A Cimian client runs installers as SYSTEM, so a plain /S item would install into the SYSTEM profile and no person would get the program, and an install check on a per-user path would never be true for the other users. Whether this item is usable through Cimian is NOT established: do not put it into a manifest until a person has read the vendor's article, chosen the parameters and proven on a test PC that a signed-in standard user gets Grammarly after an install by SYSTEM. The program also updates itself, about every two weeks by the vendor's article, so a published version is soon behind what the PCs run, and an install check by version would fight the updater: a check on presence, not on version, is the likely shape (a person's decision). Downloads the current Grammarly for Windows installer (the EXE at the fixed address that the vendor's article on deploying Grammarly for Windows links), kept under the file name of the address, and then reads the version from the EXE itself with the shared processor WindowsExeVersion, because the address has no version in it. The address was read in that article, and its answer to a HEAD request was read on 2026-11-13, but the file was NOT downloaded: whether it has a version resource is NOT established, and the first dry run shows it. This recipe was NOT rehearsed with AutoPkg: the first run on the build machine is the check of the rest. The recipe never stops on an unchanged download, so a failed import is tried again at the next run.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.Grammarly-Win</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>Grammarly</string>
+            <key>DOWNLOAD_URL</key>
+            <string>https://download-windows.grammarly.com/GrammarlyInstaller.exe</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>URLDownloader</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>url</key>
+                    <string>%DOWNLOAD_URL%</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/WindowsExeVersion</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

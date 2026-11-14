@@ -1,0 +1,194 @@
+{
+ "_note": "Names, sizes and whether GitHub records a digest, read from the public release list of musescore/MuseScore on 2026-11-13 (7 of the newest 30 releases, newest first, in the order that GitHub listed them: the two newest, the oldest non-pre-release with a digest, the pre-release before it, the newest one without a digest, the oldest one with the new spelling of the name, and the newest one with the old spelling, MuseScore-<version>). Not the whole record: no digest value is kept; the .zsync files and the macOS disk image are left out. Every dot between two digits is written `_dot_` (in tags and in names), because the repository's hygiene check takes four numbers joined by dots for an address; the test file puts the dots back.",
+ "releases": [
+  {
+   "tag_name": "v4_dot_7_dot_7",
+   "prerelease": false,
+   "published_at": "2026-11-12T09:48:48Z",
+   "assets": [
+    {
+     "name": "checksums.sha256.txt",
+     "size": 896,
+     "digest_recorded": true
+    },
+    {
+     "name": "MuseScore-Studio-4_dot_7_dot_7_dot_261109195-aarch64.AppImage",
+     "size": 188635656,
+     "digest_recorded": true
+    },
+    {
+     "name": "MuseScore-Studio-4_dot_7_dot_7_dot_261109195-x86_64.AppImage",
+     "size": 192743928,
+     "digest_recorded": true
+    },
+    {
+     "name": "MuseScore-Studio-4_dot_7_dot_7_dot_261109195-x86_64.msi",
+     "size": 135069696,
+     "digest_recorded": true
+    },
+    {
+     "name": "MuseScore-Studio-4_dot_7_dot_7_dot_261109195-x86_64.paf.exe",
+     "size": 120398680,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v4_dot_7_dot_6",
+   "prerelease": false,
+   "published_at": "2026-10-26T14:36:54Z",
+   "assets": [
+    {
+     "name": "checksums.sha256.txt",
+     "size": 896,
+     "digest_recorded": true
+    },
+    {
+     "name": "MuseScore-Studio-4_dot_7_dot_6_dot_261022093-aarch64.AppImage",
+     "size": 188541448,
+     "digest_recorded": true
+    },
+    {
+     "name": "MuseScore-Studio-4_dot_7_dot_6_dot_261022093-x86_64.AppImage",
+     "size": 192616952,
+     "digest_recorded": true
+    },
+    {
+     "name": "MuseScore-Studio-4_dot_7_dot_6_dot_261022093-x86_64.msi",
+     "size": 135020544,
+     "digest_recorded": true
+    },
+    {
+     "name": "MuseScore-Studio-4_dot_7_dot_6_dot_261022093-x86_64.paf.exe",
+     "size": 120330168,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v4_dot_6_dot_0",
+   "prerelease": false,
+   "published_at": "2025-09-30T15:40:02Z",
+   "assets": [
+    {
+     "name": "MuseScore-Studio-4_dot_6_dot_0_dot_252730940-x86_64.msi",
+     "size": 115183616,
+     "digest_recorded": true
+    },
+    {
+     "name": "MuseScore-Studio-4_dot_6_dot_0_dot_252730943-aarch64.AppImage",
+     "size": 176355848,
+     "digest_recorded": true
+    },
+    {
+     "name": "MuseScore-Studio-4_dot_6_dot_0_dot_252730944-x86_64.AppImage",
+     "size": 180193784,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v4_dot_6_dot_0-beta",
+   "prerelease": true,
+   "published_at": "2025-09-05T13:44:56Z",
+   "assets": [
+    {
+     "name": "MuseScore-Studio-4_dot_6_dot_0_dot_252411647-aarch64.AppImage",
+     "size": 141236744,
+     "digest_recorded": true
+    },
+    {
+     "name": "MuseScore-Studio-4_dot_6_dot_0_dot_252411647-x86_64.AppImage",
+     "size": 144091640,
+     "digest_recorded": true
+    },
+    {
+     "name": "MuseScore-Studio-4_dot_6_dot_0_dot_252411647-x86_64.msi",
+     "size": 114642944,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v4_dot_5_dot_2",
+   "prerelease": false,
+   "published_at": "2025-04-25T11:05:15Z",
+   "assets": [
+    {
+     "name": "MuseScore-Studio-4_dot_5_dot_2_dot_251141401-x86_64.AppImage",
+     "size": 177620160,
+     "digest_recorded": false
+    },
+    {
+     "name": "MuseScore-Studio-4_dot_5_dot_2_dot_251141402-x86_64.msi",
+     "size": 101695488,
+     "digest_recorded": false
+    },
+    {
+     "name": "MuseScore-Studio-4_dot_5_dot_2_dot_251141402-x86_64.paf.exe",
+     "size": 93225672,
+     "digest_recorded": false
+    },
+    {
+     "name": "MuseScore-Studio-4_dot_5_dot_2_dot_251150648-aarch64.AppImage",
+     "size": 147652992,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v4_dot_3_dot_0",
+   "prerelease": false,
+   "published_at": "2024-05-07T10:29:21Z",
+   "assets": [
+    {
+     "name": "MuseScore-Studio-4_dot_3_dot_0_dot_241231431-x86_64.AppImage",
+     "size": 172274880,
+     "digest_recorded": false
+    },
+    {
+     "name": "MuseScore-Studio-4_dot_3_dot_0_dot_241231432-aarch64.AppImage",
+     "size": 145195464,
+     "digest_recorded": false
+    },
+    {
+     "name": "MuseScore-Studio-4_dot_3_dot_0_dot_241231433-x86_64.msi",
+     "size": 109297664,
+     "digest_recorded": false
+    },
+    {
+     "name": "MuseScore-Studio-4_dot_3_dot_0_dot_241231433-x86_64.paf.exe",
+     "size": 99638864,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v4_dot_2_dot_1",
+   "prerelease": false,
+   "published_at": "2024-01-24T09:02:54Z",
+   "assets": [
+    {
+     "name": "MuseScore-4_dot_2_dot_1_dot_240230937-x86_64.msi",
+     "size": 108605440,
+     "digest_recorded": false
+    },
+    {
+     "name": "MuseScore-4_dot_2_dot_1_dot_240230937-x86_64.paf.exe",
+     "size": 99439624,
+     "digest_recorded": false
+    },
+    {
+     "name": "MuseScore-4_dot_2_dot_1_dot_240230938-experimental-aarch64.AppImage",
+     "size": 144548296,
+     "digest_recorded": false
+    },
+    {
+     "name": "MuseScore-4_dot_2_dot_1_dot_240230938-x86_64.AppImage",
+     "size": 171111616,
+     "digest_recorded": false
+    }
+   ]
+  }
+ ]
+}

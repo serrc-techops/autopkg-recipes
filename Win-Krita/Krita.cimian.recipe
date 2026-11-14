@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>Hands the downloaded Krita installer (an EXE) to CimianImporter, which publishes it as a new version of the item into a Cimian repository (as a copy of the item's newest pkginfo, with what belongs to the installer file replaced), or says that nothing is new. For an EXE CimianImporter is given the version label: the recipe passes the version of the folder that the download recipe's KritaInfoProvider used (three or four numbers, such as 6.0.4; a re-issue has a fourth number). Whether the file has a version resource, what the installed program reports, and how the Cimian client orders a version of four numbers beside one of three, is NOT established: the first dry run shows the label. CimianImporter does not check that an EXE is the same product as the template (it only compares the upgrade code of an MSI). This recipe was NOT run with AutoPkg. This is a dry run, which writes nothing, until the recipe's override sets cimian_dry_run to false. The repository is the input cimian_repo or the AutoPkg preference CIMIAN_REPO.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.cimian.Krita</string>
+        <key>Input</key>
+        <dict>
+            <key>CIMIAN_NAME</key>
+            <string>krita</string>
+            <key>CIMIAN_SUBDIRECTORY</key>
+            <string></string>
+            <key>NAME</key>
+            <string>Krita</string>
+            <key>pkginfo</key>
+            <dict>
+                <key>developer</key>
+                <string>Krita Foundation</string>
+                <key>display_name</key>
+                <string>Krita</string>
+            </dict>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>ParentRecipe</key>
+        <string>com.github.serrc-techops.download.Krita-Win</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/CimianImporter</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>cimian_name</key>
+                    <string>%CIMIAN_NAME%</string>
+                    <key>cimian_subdirectory</key>
+                    <string>%CIMIAN_SUBDIRECTORY%</string>
+                    <key>version</key>
+                    <string>%version%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>The SHA-256 check of this download is a transfer check, NOT proof of origin: the project's server answers SHA256SUMS with a redirect to a mirror, so the hash and the installer both come from mirrors, and the check proves only that the file is the file that a mirror's SHA256SUMS names, undamaged. The shared importers count it as verified all the same (ChecksumVerifier sets checksum_verified), and no signature check is built. Downloads the newest GIMP installer for Windows (the EXE) from the project's download server and checks it against the SHA-256 that SHA256SUMS of its folder gives for exactly that file. The series is read from the links of the server's top index (by default the highest series with an even second number; the input gimp_series pins one, gimp_allow_development allows an odd one), and the installer from the links of the series' windows folder (the highest version of three numbers, and for it the highest installer revision). The version label is the GIMP version, never the revision. It has its own processor (GimpInfoProvider, in this folder) because no shared recipe reads a directory index. The two index pages are read from download.gimp.org without following a redirect; SHA256SUMS may follow one redirect, to an https address whose path ends with the same folder and file, and the run names the host that served it. The installer's address is the download.gimp.org address; URLDownloader follows its redirect to a mirror. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. The layout of the server was read on 2026-11-13; this recipe was NOT run with AutoPkg.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.GIMP-Win</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>GIMP</string>
+            <key>gimp_series</key>
+            <string></string>
+            <key>gimp_allow_development</key>
+            <false/>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>GimpInfoProvider</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>URLDownloader</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/ChecksumVerifier</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>expected_sha256</key>
+                    <string>%expected_sha256%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

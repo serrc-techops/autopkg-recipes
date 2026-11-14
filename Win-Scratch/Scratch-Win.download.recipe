@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>This download is NOT verified yet: the Scratch Foundation publishes no hash for the file that was found, and a check of the signature is not built, so nothing proves that the file is what the Scratch Foundation published. The shared importer therefore refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true (pcman_allow_unverified for the package tool's recipe). Downloads the current Scratch 3 desktop app for Windows (the EXE installer). The address is found by ScratchInfoProvider (in this folder), which reads the Location header of the one answer of the fixed download address and follows no redirect. The version label is the version in the file name that the redirect names (Scratch 3.32.1 Setup.exe on 2026-11-13); the file itself is not read for a version, and whether it carries the same one is NOT established. The file is stored under a name without spaces. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. The answers were read from the Scratch Foundation's server on 2026-11-13 and the recipe was NOT run with AutoPkg.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.Scratch-Win</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>Scratch</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>ScratchInfoProvider</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>URLDownloader</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>filename</key>
+                    <string>Scratch-Setup-%version%.exe</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+        </array>
+    </dict>
+</plist>

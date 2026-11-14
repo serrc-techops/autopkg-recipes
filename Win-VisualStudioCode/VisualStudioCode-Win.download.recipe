@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>Downloads the current Visual Studio Code for Windows (the System Installer, an EXE, x64 by default, of the kind in VSCODE_PLATFORM) from Microsoft's download host and checks it against the SHA-256 that code.visualstudio.com gives for exactly that file. The current version, the address and the hash are read from Microsoft's release file by its own processor (VisualStudioCodeInfoProvider, in this folder), because no shared recipe reads that file. The User Installer and the zip are refused. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. The layout of the release file was read from the site on 2026-11-13; the installer was NOT downloaded, and the recipe was NOT run with AutoPkg.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.VisualStudioCode-Win</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>VisualStudioCode</string>
+            <key>VSCODE_PLATFORM</key>
+            <string>win32-x64</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>VisualStudioCodeInfoProvider</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>vscode_platform</key>
+                    <string>%VSCODE_PLATFORM%</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>URLDownloader</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>filename</key>
+                    <string>VSCodeSetup-%version%-%vscode_platform%.exe</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/ChecksumVerifier</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>expected_sha256</key>
+                    <string>%expected_sha256%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

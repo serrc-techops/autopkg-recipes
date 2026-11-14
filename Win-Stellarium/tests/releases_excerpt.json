@@ -1,0 +1,1345 @@
+{
+ "_note": "Names, sizes and whether GitHub records a digest, read from the public release list of Stellarium/stellarium on 2026-11-13 (a version of four numbers is saved with _dot_ for each dot, because the repository's hygiene check takes it for an address; the newest 30 releases, newest first, in the order that GitHub listed them). Not the whole record: only the Windows installers and their signature files, one Linux and one macOS file of each release are kept; no release title and no digest value is kept.",
+ "releases": [
+  {
+   "tag_name": "v26.3",
+   "prerelease": false,
+   "published_at": "2026-09-28T15:22:29Z",
+   "assets": [
+    {
+     "name": "stellarium-26.3-qt5-win64.exe",
+     "size": 501891176,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-26.3-qt5-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "Stellarium-26.3-qt5-x86_64.AppImage",
+     "size": 577864896,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-26.3-qt6-arm64.exe",
+     "size": 457224640,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-26.3-qt6-arm64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "Stellarium-26.3-qt6-macOS.zip",
+     "size": 552945699,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-26.3-qt6-win64.exe",
+     "size": 489006448,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-26.3-qt6-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "Stellarium-26.3-qt6-x86_64.AppImage",
+     "size": 598770880,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v26.2",
+   "prerelease": false,
+   "published_at": "2026-06-24T17:37:08Z",
+   "assets": [
+    {
+     "name": "stellarium-26.2-qt5-win64.exe",
+     "size": 490966848,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-26.2-qt5-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "Stellarium-26.2-qt5-x86_64.AppImage",
+     "size": 566506688,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-26.2-qt6-arm64.exe",
+     "size": 446137264,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-26.2-qt6-arm64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "Stellarium-26.2-qt6-macOS.zip",
+     "size": 540774033,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-26.2-qt6-win64.exe",
+     "size": 477906576,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-26.2-qt6-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "Stellarium-26.2-qt6-x86_64.AppImage",
+     "size": 592028864,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v26.1",
+   "prerelease": false,
+   "published_at": "2026-04-05T12:38:27Z",
+   "assets": [
+    {
+     "name": "stellarium-26.1-qt5-win64.exe",
+     "size": 473155512,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-26.1-qt5-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "Stellarium-26.1-qt5-x86_64.AppImage",
+     "size": 546596032,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-26.1-qt6-arm64.exe",
+     "size": 428441376,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-26.1-qt6-arm64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "Stellarium-26.1-qt6-macOS.zip",
+     "size": 550415995,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-26.1-qt6-win64.exe",
+     "size": 460202440,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-26.1-qt6-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "Stellarium-26.1-qt6-x86_64.AppImage",
+     "size": 571999424,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v25.4",
+   "prerelease": false,
+   "published_at": "2025-12-29T12:48:47Z",
+   "assets": [
+    {
+     "name": "stellarium-25.4-qt5-win64.exe",
+     "size": 462235120,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-25.4-qt5-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "Stellarium-25.4-qt5-x86_64.AppImage",
+     "size": 535635136,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-25.4-qt6-arm64.exe",
+     "size": 408603941,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-25.4-qt6-arm64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "Stellarium-25.4-qt6-macOS.zip",
+     "size": 538561927,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-25.4-qt6-win64.exe",
+     "size": 513078088,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-25.4-qt6-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "Stellarium-25.4-qt6-x86_64.AppImage",
+     "size": 560989376,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v25.3",
+   "prerelease": false,
+   "published_at": "2025-09-29T14:16:06Z",
+   "assets": [
+    {
+     "name": "stellarium-25.3-qt5-win64.exe",
+     "size": 407022296,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-25.3-qt5-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "Stellarium-25.3-qt5-x86_64.AppImage",
+     "size": 479495360,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-25.3-qt6-arm64.exe",
+     "size": 348131675,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-25.3-qt6-arm64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "Stellarium-25.3-qt6-macOS.zip",
+     "size": 441372755,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-25.3-qt6-win64.exe",
+     "size": 457754208,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-25.3-qt6-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "Stellarium-25.3-qt6-x86_64.AppImage",
+     "size": 504825024,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v25.2",
+   "prerelease": false,
+   "published_at": "2025-06-22T12:26:32Z",
+   "assets": [
+    {
+     "name": "stellarium-25.2-qt5-win64.exe",
+     "size": 393625072,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-25.2-qt5-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "Stellarium-25.2-qt5-x86_64.AppImage",
+     "size": 367027392,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-25.2-qt5.15-win64.exe",
+     "size": 402601872,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-25.2-qt5.15-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-25.2-qt6-arm64.exe",
+     "size": 348907344,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-25.2-qt6-arm64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "Stellarium-25.2-qt6-macOS.zip",
+     "size": 432027805,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-25.2-qt6-win64.exe",
+     "size": 379038392,
+     "digest_recorded": true
+    },
+    {
+     "name": "stellarium-25.2-qt6-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": true
+    },
+    {
+     "name": "Stellarium-25.2-qt6-x86_64.AppImage",
+     "size": 382801088,
+     "digest_recorded": true
+    }
+   ]
+  },
+  {
+   "tag_name": "v25.1",
+   "prerelease": false,
+   "published_at": "2025-03-23T12:43:56Z",
+   "assets": [
+    {
+     "name": "stellarium-25.1-qt5-win64.exe",
+     "size": 394607456,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-25.1-qt5-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-25.1-qt5-x86_64.AppImage",
+     "size": 368075968,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-25.1-qt6-arm64.exe",
+     "size": 357185512,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-25.1-qt6-arm64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-25.1-qt6-macOS.zip",
+     "size": 427189673,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-25.1-qt6-win64.exe",
+     "size": 380031240,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-25.1-qt6-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-25.1-qt6-x86_64.AppImage",
+     "size": 388457664,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v24.4",
+   "prerelease": false,
+   "published_at": "2024-12-22T11:13:49Z",
+   "assets": [
+    {
+     "name": "stellarium-24.4-qt5-win32.exe",
+     "size": 343295296,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.4-qt5-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.4-qt5-win64.exe",
+     "size": 353094872,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.4-qt5-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-24.4-qt5-x86_64.AppImage",
+     "size": 323282112,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.4-qt6-arm64.exe",
+     "size": 315647752,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.4-qt6-arm64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-24.4-qt6-macOS.zip",
+     "size": 387777907,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.4-qt6-win64.exe",
+     "size": 390141528,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.4-qt6-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-24.4-qt6-x86_64.AppImage",
+     "size": 341062848,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v24.3",
+   "prerelease": false,
+   "published_at": "2024-09-22T14:29:51Z",
+   "assets": [
+    {
+     "name": "stellarium-24.3-qt5-win32.exe",
+     "size": 363697688,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.3-qt5-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.3-qt5-win64.exe",
+     "size": 373494336,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.3-qt5-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-24.3-qt5-x86_64.AppImage",
+     "size": 322213056,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.3-qt6-arm64.exe",
+     "size": 336006328,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.3-qt6-arm64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-24.3-qt6-macOS.zip",
+     "size": 386279096,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.3-qt6-win64.exe",
+     "size": 410548144,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.3-qt6-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-24.3-qt6-x86_64.AppImage",
+     "size": 344622272,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v24.2",
+   "prerelease": false,
+   "published_at": "2024-06-23T10:16:32Z",
+   "assets": [
+    {
+     "name": "stellarium-24.2-qt5-win32.exe",
+     "size": 362072872,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.2-qt5-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.2-qt5-win64.exe",
+     "size": 371865144,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.2-qt5-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-24.2-qt5-x86_64.AppImage",
+     "size": 320877760,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.2-qt6-arm64.exe",
+     "size": 333852560,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.2-qt6-arm64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-24.2-qt6-macOS.zip",
+     "size": 384359278,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.2-qt6-win64.exe",
+     "size": 408926512,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.2-qt6-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-24.2-qt6-x86_64.AppImage",
+     "size": 343442624,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v24.1",
+   "prerelease": false,
+   "published_at": "2024-03-25T09:47:05Z",
+   "assets": [
+    {
+     "name": "stellarium-24.1-qt5-win32.exe",
+     "size": 361218728,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.1-qt5-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.1-qt5-win64.exe",
+     "size": 371006744,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.1-qt5-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-24.1-qt5-x86_64.AppImage",
+     "size": 323740864,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.1-qt6-arm64.exe",
+     "size": 333016480,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.1-qt6-arm64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-24.1-qt6-macOS.zip",
+     "size": 382883866,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.1-qt6-win64.exe",
+     "size": 408080272,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-24.1-qt6-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-24.1-qt6-x86_64.AppImage",
+     "size": 340956352,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v23.4",
+   "prerelease": false,
+   "published_at": "2023-12-23T11:43:24Z",
+   "assets": [
+    {
+     "name": "stellarium-23.4-qt5-win32.exe",
+     "size": 359995616,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.4-qt5-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.4-qt5-win64.exe",
+     "size": 369788088,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.4-qt5-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-23.4-qt5-x86_64.AppImage",
+     "size": 322421952,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.4-qt6-arm64.exe",
+     "size": 331794352,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.4-qt6-arm64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-23.4-qt6-macOS.zip",
+     "size": 381203906,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.4-qt6-win64.exe",
+     "size": 406857576,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.4-qt6-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-23.4-qt6-x86_64.AppImage",
+     "size": 344286400,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v23.3",
+   "prerelease": false,
+   "published_at": "2023-09-25T16:03:41Z",
+   "assets": [
+    {
+     "name": "stellarium-23.3-qt5-win32.exe",
+     "size": 351959464,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.3-qt5-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.3-qt5-win64.exe",
+     "size": 360832304,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.3-qt5-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-23.3-qt5-x86_64.AppImage",
+     "size": 316343488,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-23.3-qt6-macOS.zip",
+     "size": 375531581,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.3-qt6-win64.exe",
+     "size": 397820984,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.3-qt6-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v23.2",
+   "prerelease": false,
+   "published_at": "2023-07-02T12:09:08Z",
+   "assets": [
+    {
+     "name": "stellarium-23.2-qt5-win32.exe",
+     "size": 352167392,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.2-qt5-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.2-qt5-win64.exe",
+     "size": 361351760,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.2-qt5-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-23.2-qt5-x86_64.AppImage",
+     "size": 316200128,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-23.2-qt6-macOS.zip",
+     "size": 374944238,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.2-qt6-win64.exe",
+     "size": 395066096,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.2-qt6-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v23.1",
+   "prerelease": false,
+   "published_at": "2023-03-27T06:36:24Z",
+   "assets": [
+    {
+     "name": "stellarium-23.1-qt5-win32.exe",
+     "size": 350453992,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.1-qt5-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.1-qt5-win64.exe",
+     "size": 359529336,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.1-qt5-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-23.1-qt5-x86_64.AppImage",
+     "size": 390841536,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-23.1-qt6-macOS.zip",
+     "size": 406117462,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.1-qt6-win64.exe",
+     "size": 387660504,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-23.1-qt6-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v1.2",
+   "prerelease": false,
+   "published_at": "2022-12-25T16:02:45Z",
+   "assets": [
+    {
+     "name": "Stellarium-1.2-macOS.zip",
+     "size": 408008782,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-1.2-qt5-win32.exe",
+     "size": 375342616,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-1.2-qt5-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-1.2-qt5-win64.exe",
+     "size": 384421016,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-1.2-qt5-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-1.2-qt6-win64.exe",
+     "size": 410587520,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-1.2-qt6-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-1.2-x86_64.AppImage",
+     "size": 412185792,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v1.1",
+   "prerelease": false,
+   "published_at": "2022-10-31T15:05:57Z",
+   "assets": [
+    {
+     "name": "Stellarium-1.1.1-macOS.zip",
+     "size": 360042126,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-1.1.1-qt5-win32.exe",
+     "size": 365333408,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-1.1.1-qt5-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-1.1.1-qt5-win64.exe",
+     "size": 374397712,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-1.1.1-qt5-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-1.1.1-qt6-win64.exe",
+     "size": 399630128,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-1.1.1-qt6-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-1.1.1-x86_64.AppImage",
+     "size": 401429696,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v1.0",
+   "prerelease": false,
+   "published_at": "2022-10-01T12:25:34Z",
+   "assets": [
+    {
+     "name": "stellarium-0.22.3-win32.exe",
+     "size": 365293976,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.22.3-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.22.3-win64.exe",
+     "size": 374359832,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.22.3-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-1.0-macOS.zip",
+     "size": 361491250,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-1.0-x86_64.AppImage",
+     "size": 398677184,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-1.22.3-win64.exe",
+     "size": 398892672,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-1.22.3-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v0.22.2",
+   "prerelease": false,
+   "published_at": "2022-07-07T15:10:22Z",
+   "assets": [
+    {
+     "name": "stellarium-0.22.2-win32.exe",
+     "size": 347443008,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.22.2-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.22.2-win64.exe",
+     "size": 356523744,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.22.2-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-0.22.2-x86_64.AppImage",
+     "size": 382108864,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v0.22.1",
+   "prerelease": false,
+   "published_at": "2022-04-16T11:40:51Z",
+   "assets": [
+    {
+     "name": "stellarium-0.22.1-win32.exe",
+     "size": 348511800,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.22.1-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.22.1-win64.exe",
+     "size": 357556832,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.22.1-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-0.22.1-x86_64.AppImage",
+     "size": 392623296,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v0.22.0",
+   "prerelease": false,
+   "published_at": "2022-03-27T12:07:23Z",
+   "assets": [
+    {
+     "name": "stellarium-0.22.0-win32.exe",
+     "size": 347803952,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.22.0-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.22.0-win64.exe",
+     "size": 356844800,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.22.0-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v0.21.3",
+   "prerelease": false,
+   "published_at": "2021-12-25T10:51:12Z",
+   "assets": [
+    {
+     "name": "stellarium-0.21.3-win32.exe",
+     "size": 336242976,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.21.3-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.21.3-win64.exe",
+     "size": 345198752,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.21.3-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-0_dot_21_dot_3_dot_1-x86_64.AppImage",
+     "size": 312100032,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v0.21.2",
+   "prerelease": false,
+   "published_at": "2021-09-27T19:19:25Z",
+   "assets": [
+    {
+     "name": "stellarium-0.21.2-win32.exe",
+     "size": 304793160,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.21.2-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.21.2-win64.exe",
+     "size": 308361152,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.21.2-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-0.21.2-x86_64.AppImage",
+     "size": 308794560,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v0.21.1",
+   "prerelease": false,
+   "published_at": "2021-06-24T15:00:40Z",
+   "assets": [
+    {
+     "name": "stellarium-0.21.1-win32.exe",
+     "size": 274020392,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.21.1-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.21.1-win64.exe",
+     "size": 277581552,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.21.1-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-0.21.1-x86_64.AppImage",
+     "size": 282113216,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v0.21.0",
+   "prerelease": false,
+   "published_at": "2021-03-28T09:15:34Z",
+   "assets": [
+    {
+     "name": "stellarium-0.21.0-win32.exe",
+     "size": 266430896,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.21.0-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.21.0-win64.exe",
+     "size": 269988976,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.21.0-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-0.21.0-x86_64.AppImage",
+     "size": 276604096,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v0.20.4",
+   "prerelease": false,
+   "published_at": "2020-12-28T12:36:48Z",
+   "assets": [
+    {
+     "name": "stellarium-0.20.4-win32.exe",
+     "size": 263655480,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.20.4-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.20.4-win64.exe",
+     "size": 267200432,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.20.4-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-0.20.4-x86_64.AppImage",
+     "size": 297673920,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v0.20.3",
+   "prerelease": false,
+   "published_at": "2020-09-27T09:15:42Z",
+   "assets": [
+    {
+     "name": "stellarium-0.20.3-win32.exe",
+     "size": 268328544,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.20.3-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.20.3-win64.exe",
+     "size": 271848128,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.20.3-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-0_dot_20_dot_3_dot_1-x86_64.AppImage",
+     "size": 276664360,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v0.20.2",
+   "prerelease": false,
+   "published_at": "2020-06-22T17:26:25Z",
+   "assets": [
+    {
+     "name": "stellarium-0.20.2-win32.exe",
+     "size": 264283032,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.20.2-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.20.2-win64.exe",
+     "size": 267798384,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.20.2-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "Stellarium-0.20.2-x86_64.AppImage",
+     "size": 261828296,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v0.20.1",
+   "prerelease": false,
+   "published_at": "2020-04-20T13:52:07Z",
+   "assets": [
+    {
+     "name": "stellarium-0.20.1-win32.exe",
+     "size": 262987896,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.20.1-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.20.1-win64.exe",
+     "size": 266827584,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0.20.1-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    }
+   ]
+  },
+  {
+   "tag_name": "v0.20.0",
+   "prerelease": false,
+   "published_at": "2020-03-29T14:51:21Z",
+   "assets": [
+    {
+     "name": "Stellarium-0.20.0-x86_64.AppImage",
+     "size": 260955848,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0_dot_20_dot_0_dot_1-win32.exe",
+     "size": 262896336,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0_dot_20_dot_0_dot_1-win32.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0_dot_20_dot_0_dot_1-win64.exe",
+     "size": 266403576,
+     "digest_recorded": false
+    },
+    {
+     "name": "stellarium-0_dot_20_dot_0_dot_1-win64.exe.asc",
+     "size": 313,
+     "digest_recorded": false
+    }
+   ]
+  }
+ ]
+}

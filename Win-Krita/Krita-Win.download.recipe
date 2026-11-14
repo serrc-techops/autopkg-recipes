@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>Downloads the newest Krita installer for Windows (the 64-bit EXE) and checks it against the SHA-256 that KDE's own download server, download.kde.org, gives for exactly that file. The version is read from the links of the server's index of Krita's stable versions: the highest version folder (three or four numbers) whose own index links to krita-x64-(its version)-setup.exe; a newer folder without that link is passed over, at most three folders are read, and the run names the folders it passed over. The index, the folder's index and the .sha256 file are read from download.kde.org without following a redirect. The installer's address is the download.kde.org address; URLDownloader follows its redirect to a mirror, and the check shows that the mirror's file is the file that download.kde.org gives the hash for. No signature check is built. It has its own processor (KritaInfoProvider, in this folder) because no shared recipe reads a directory index. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. The layout of the server was read on 2026-11-13; this recipe was NOT run with AutoPkg.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.Krita-Win</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>Krita</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>KritaInfoProvider</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>URLDownloader</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/ChecksumVerifier</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>expected_sha256</key>
+                    <string>%expected_sha256%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>
