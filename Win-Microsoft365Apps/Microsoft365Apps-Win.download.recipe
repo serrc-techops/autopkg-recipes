@@ -28,6 +28,8 @@
         <string>O365BusinessRetail</string>
         <key>OFFICE_REMOVE_MSI</key>
         <true/>
+        <key>OFFICE_REMOVE_OTHER_LANGUAGES</key>
+        <true/>
         <key>OFFICE_UPDATES_ENABLED</key>
         <false/>
         <key>OFFICE_VERSION</key>
@@ -62,6 +64,8 @@
                 <string>%OFFICE_PRODUCT_ID%</string>
                 <key>office_remove_msi</key>
                 <string>%OFFICE_REMOVE_MSI%</string>
+                <key>office_remove_other_languages</key>
+                <string>%OFFICE_REMOVE_OTHER_LANGUAGES%</string>
                 <key>office_updates_enabled</key>
                 <string>%OFFICE_UPDATES_ENABLED%</string>
                 <key>office_version</key>

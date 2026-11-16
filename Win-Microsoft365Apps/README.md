@@ -78,6 +78,21 @@ an Office program is open; any language but `en-us`; any channel but Monthly Ent
   `AllowCdnFallback="FALSE"`, and a `SourcePath` that `prepare.ps1` (run by `setup.bat`) sets to the
   folder the EXE unpacked into. A source that is not complete fails the install; it is not fetched from
   Microsoft behind the back of the repository.
+- **One language.** Office's setup brings every product and every language on a PC to the
+  version it installs, and it wants the source of each. The EXE holds one language and the
+  fallback to Microsoft's servers is off, so on a PC whose Office also has Spanish and French
+  (a factory image) setup ends with 17002 (the Click-to-Run log: "Failed to download Stream
+  Cab. Fallback not allowed", error 30182) and leaves the PC between the versions; every later
+  run fails the same way. So `prepare.ps1` reads the Click-to-Run entries of the Windows
+  uninstall list (both registry views: it may run as a 32-bit program), writes `remove.xml`
+  with every other language of every product, and `setup.bat` runs
+  `setup.exe /configure remove.xml` before the install. A failed removal ends the EXE with
+  setup's code. Reproduced and proven on 2026-11-16 on a Windows 11 test PC with
+  16.0.20527.20150 (`O365HomePremRetail` and `OneNoteFreeRetail` in `en-us`, `es-es`, `fr-fr`,
+  `O365BusinessRetail` in `en-us`): the EXE without this step ended with 17002 after 2.7
+  minutes; the EXE with it, run over that failed state as SYSTEM, ended with 0 after 12
+  minutes, the three products at 16.0.20527.20194 in `en-us` only. The two languages together
+  are 680 MB more, which would bring the EXE to 4.0 GB; a third does not fit.
 - **4 GiB.** Windows does not start an EXE of 4 GiB or more. The processor stops with a
   message when the source has outgrown that; nothing is built.
 
@@ -106,6 +121,7 @@ The exit code of the EXE is the exit code of Microsoft's `setup.exe /configure`,
 | `OFFICE_UPDATES_ENABLED` | false | False: Office does not update itself; the version on a PC is the item's |
 | `OFFICE_MIGRATE_ARCHITECTURE` | true | A 32-bit Click-to-Run Office is changed to 64-bit |
 | `OFFICE_REMOVE_MSI` | true | An Office installed by Windows Installer is removed first |
+| `OFFICE_REMOVE_OTHER_LANGUAGES` | true | Every language but `OFFICE_LANGUAGE` is removed from the Click-to-Run Office products a PC has, before the install (the products stay). False: on a PC with an Office in another language the install fails with 17002 |
 | `OFFICE_INCLUDE_ARM64X` | false | True packs the stream for ARM PCs too (489 MB more; the EXE is then 3.8 GB, close to the 4 GiB that Windows allows). A 64-bit Intel or AMD PC installs without it |
 | `OFFICE_FORCE_APP_SHUTDOWN` | false | True closes open Office programs for the install (unsaved work is lost). False: the install fails while one is open and the next run tries again |
 | `SFX_SDK_URL`, `SFX_SDK_SHA256` | LZMA SDK 26.06 from the 7-Zip project's GitHub release | The archive that holds the stub, and its SHA-256 (the value GitHub records for the asset; compared on 2026-11-13). A different file stops the run |

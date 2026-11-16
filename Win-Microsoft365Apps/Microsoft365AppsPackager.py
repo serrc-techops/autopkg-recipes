@@ -34,7 +34,11 @@ and ends with setup.bat's exit code. setup.bat joins the parts, checks the
 sizes (join.ps1: one pass, each part appended once and deleted), makes
 configuration.xml ready for the PC (prepare.ps1: the folder's path becomes
 SourcePath; an excluded app of office_keep_if_installed that the PC has is no
-longer excluded, so setup keeps it) and runs
+longer excluded, so setup keeps it; with office_remove_other_languages, a
+remove.xml names every other language of every Click-to-Run Office product on
+the PC). When there is a remove.xml, `setup.exe /configure remove.xml` runs
+first: setup brings every installed product and language to the new version,
+and the EXE holds the source of one language only. Then
 `setup.exe /configure configuration.xml`; its exit code is setup.exe's. Exit
 codes 30 to 39 are setup.bat's own (see SETUP_BAT_CODES).
 
@@ -213,10 +217,16 @@ def part_names(path, size):
     return ["%s.part%03d" % (path, number) for number in range(1, count + 1)]
 
 
-def setup_bat(split_files, keep_if_installed=()):
+def setup_bat(split_files, keep_if_installed=(), keep_languages=()):
     """The text of setup.bat (CRLF lines). `split_files` is a list of
     (path below the folder, size, [part paths]) for every file that was cut;
-    `keep_if_installed` are the excluded apps that stay where a PC has them."""
+    `keep_if_installed` are the excluded apps that stay where a PC has them;
+    `keep_languages` are the only languages that an Office on the PC keeps
+    (empty: every language stays)."""
+    for language in keep_languages:
+        if language not in LANGUAGES:
+            raise ValueError("a language that is kept must be one of %s, not %r" % (
+                ", ".join(sorted(LANGUAGES)), str(language)[:20]))
     for app in keep_if_installed:
         if app not in KEEP_PROGRAMS:
             raise ValueError("an app that is kept where it is installed must be one of %s, not %r" % (
@@ -232,8 +242,13 @@ def setup_bat(split_files, keep_if_installed=()):
             'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File join.ps1 "%s" || exit 31' % target)
         lines.append('for %%%%F in ("%s") do if not "%%%%~zF"=="%d" exit 32' % (target, size))
     lines += [
-        'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File prepare.ps1 "%s" || exit 33'
-        % ",".join(keep_if_installed),
+        'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File prepare.ps1 "%s" "%s" || exit 33'
+        % (",".join(keep_if_installed), ",".join(keep_languages)),
+        # prepare.ps1 writes remove.xml only on a PC that has an Office in another language
+        "if not exist remove.xml goto configure",
+        'start "" /wait setup.exe /configure remove.xml',
+        'if not "%ERRORLEVEL%"=="0" exit %ERRORLEVEL%',
+        ":configure",
         'start "" /wait setup.exe /configure configuration.xml',
         "exit %ERRORLEVEL%",
     ]
@@ -247,7 +262,10 @@ PREPARE_PS1 = """\
 # Makes configuration.xml ready for this PC: the folder that the EXE unpacked into becomes
 # SourcePath, and an app of the list that is installed on the PC is taken out of the excluded
 # apps, so that Office's setup keeps it (setup removes an installed app that is excluded).
-param([string]$KeepIfInstalled = '')
+# With languages to keep, writes remove.xml: every other language of every Click-to-Run Office
+# product that Windows lists. Setup brings all products and languages on a PC to the new
+# version, and this folder holds the source of the kept language only.
+param([string]$KeepIfInstalled = '', [string]$KeepLanguages = '')
 $ErrorActionPreference = 'Stop'
 $here = (Get-Location).Path
 $path = Join-Path $here 'configuration.xml'
@@ -272,6 +290,50 @@ foreach ($app in ($KeepIfInstalled -split '[ ,]+' | Where-Object { $_ })) {
     }
 }
 $xml.Save($path)
+$keep = @($KeepLanguages -split '[ ,]+' | Where-Object { $_ } | ForEach-Object { $_.ToLowerInvariant() })
+if ($keep.Count -gt 0) {
+    $found = @{}
+    # Both views: this may be a 32-bit PowerShell, which sees only the 32-bit list by default.
+    foreach ($view in @([Microsoft.Win32.RegistryView]::Registry64, [Microsoft.Win32.RegistryView]::Registry32)) {
+        $base = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, $view)
+        $list = $base.OpenSubKey('SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall')
+        if ($null -ne $list) {
+            foreach ($name in $list.GetSubKeyNames()) {
+                $entry = $list.OpenSubKey($name)
+                if ($null -eq $entry) { continue }
+                $command = [string]$entry.GetValue('UninstallString')
+                $entry.Close()
+                # ... OfficeClickToRun.exe ... productstoremove=O365HomePremRetail.16_es-es_x-none ...
+                if ($command -match 'OfficeClickToRun\\.exe.*productstoremove=([A-Za-z0-9]+)\\.16_([A-Za-z0-9-]+)_x-none') {
+                    $culture = $Matches[2].ToLowerInvariant()
+                    if ($keep -notcontains $culture) { $found[$Matches[1] + '|' + $culture] = $true }
+                }
+            }
+            $list.Close()
+        }
+        $base.Close()
+    }
+    if ($found.Count -gt 0) {
+        $remove = New-Object System.Xml.XmlDocument
+        $root = $remove.AppendChild($remove.CreateElement('Configuration'))
+        $node = $root.AppendChild($remove.CreateElement('Remove'))
+        $products = @{}
+        foreach ($pair in ($found.Keys | Sort-Object)) {
+            $id, $culture = $pair -split '\\|'
+            if (-not $products.ContainsKey($id)) {
+                $products[$id] = $node.AppendChild($remove.CreateElement('Product'))
+                $products[$id].SetAttribute('ID', $id)
+            }
+            $language = $products[$id].AppendChild($remove.CreateElement('Language'))
+            $language.SetAttribute('ID', $culture)
+            Write-Output "$id in $culture is on this PC: that language is removed"
+        }
+        foreach ($copy in @('Property', 'Display')) {
+            foreach ($source in @($xml.SelectNodes("/Configuration/$copy"))) { [void]$root.AppendChild($remove.ImportNode($source, $true)) }
+        }
+        $remove.Save((Join-Path $here 'remove.xml'))
+    }
+}
 exit 0
 """ % "; ".join("%s = '%s'" % pair for pair in sorted(KEEP_PROGRAMS.items()))
 
@@ -430,6 +492,13 @@ class Microsoft365AppsPackager(Processor):
             "description": "Whether open Office programs are closed for the install (unsaved work is lost). "
                            "False: the install fails while one is open, and the next run tries again.",
         },
+        "office_remove_other_languages": {
+            "required": False,
+            "default": True,
+            "description": "Whether every language but office_language is removed from the Click-to-Run Office "
+                           "products a PC has, before the install. Setup brings every installed language to the new "
+                           "version and the EXE holds one: false makes the install fail (17002) on such a PC.",
+        },
         "office_keep_if_installed": {
             "required": False,
             "default": "Outlook",
@@ -523,14 +592,15 @@ class Microsoft365AppsPackager(Processor):
         try:
             flags = {name: as_bool(env.get(name, self.input_variables[name]["default"]), name) for name in (
                 "office_updates_enabled", "office_migrate_architecture", "office_remove_msi", "office_force_app_shutdown",
-                "office_include_arm64x")}
+                "office_include_arm64x", "office_remove_other_languages")}
             version = str(env.get("office_version") or "").strip() or self.offered_version(base)
             files = source_files(version, language, flags["office_include_arm64x"])
             configuration = configuration_xml(
                 version, channel, language, str(env.get("office_product_id") or "O365BusinessRetail"), exclude,
                 flags["office_updates_enabled"], flags["office_migrate_architecture"], flags["office_remove_msi"],
                 flags["office_force_app_shutdown"])
-            setup_bat([], keep)  # checks the kept apps before anything is downloaded
+            keep_languages = [language] if flags["office_remove_other_languages"] else []
+            setup_bat([], keep, keep_languages)  # checks the kept apps before anything is downloaded
         except ValueError as err:
             raise ProcessorError(str(err))
 
@@ -542,7 +612,8 @@ class Microsoft365AppsPackager(Processor):
         record_path = exe_path + ".json"
         settings = settings_digest({"configuration": configuration, "sdk": str(env["sfx_sdk_sha256"]).lower(),
                                     "part_bytes": PART_BYTES, "files": files,
-                                    "join": JOIN_PS1, "prepare": PREPARE_PS1, "keep": keep})
+                                    "join": JOIN_PS1, "prepare": PREPARE_PS1, "keep": keep,
+                                    "keep_languages": keep_languages})
         env["version"] = version
         try:
             with open(record_path, "r", encoding="utf-8") as handle:
@@ -603,7 +674,7 @@ class Microsoft365AppsPackager(Processor):
             with open(os.path.join(stage, "configuration.xml"), "w", encoding="utf-8", newline="\r\n") as handle:
                 handle.write(configuration)
             with open(os.path.join(stage, "setup.bat"), "w", encoding="ascii", newline="") as handle:
-                handle.write(setup_bat(split, keep))
+                handle.write(setup_bat(split, keep, keep_languages))
             with open(os.path.join(stage, "prepare.ps1"), "w", encoding="ascii", newline="\r\n") as handle:
                 handle.write(PREPARE_PS1)
             with open(os.path.join(stage, "join.ps1"), "w", encoding="ascii", newline="\r\n") as handle:

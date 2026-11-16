@@ -138,9 +138,36 @@ class SetupBatTests(unittest.TestCase):
         self.assertEqual(lines[-3], 'start "" /wait setup.exe /configure configuration.xml')
         self.assertEqual(lines[-2], "exit %ERRORLEVEL%")
         self.assertEqual(
-            lines[-4], 'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File prepare.ps1 "" || exit 33')
-        kept = packager.setup_bat([], ["Outlook", "Access"]).split("\r\n")
-        self.assertIn('-File prepare.ps1 "Outlook,Access" || exit 33', kept[-4])
+            lines[-8], 'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File prepare.ps1 "" "" || exit 33')
+        kept = packager.setup_bat([], ["Outlook", "Access"], ["en-us"]).split("\r\n")
+        self.assertIn('-File prepare.ps1 "Outlook,Access" "en-us" || exit 33', kept[-8])
+
+    def test_a_removal_runs_first_and_its_failure_ends_the_script(self):
+        lines = packager.setup_bat([], [], ["en-us"]).split("\r\n")
+        self.assertEqual(lines[-7:-2], [
+            "if not exist remove.xml goto configure",
+            'start "" /wait setup.exe /configure remove.xml',
+            'if not "%ERRORLEVEL%"=="0" exit %ERRORLEVEL%',
+            ":configure",
+            'start "" /wait setup.exe /configure configuration.xml',
+        ])
+
+    def test_only_known_languages_can_be_kept(self):
+        for language in ("de-de", 'en-us" & del', "EN-US"):
+            with self.subTest(language=language):
+                with self.assertRaises(ValueError):
+                    packager.setup_bat([], [], [language])
+
+    def test_the_prepare_script_lists_the_other_languages_from_both_registry_views(self):
+        text = packager.PREPARE_PS1
+        self.assertIn("[string]$KeepLanguages = ''", text)
+        self.assertIn("Registry64", text)
+        self.assertIn("Registry32", text)
+        self.assertIn(r"productstoremove=([A-Za-z0-9]+)\.16_([A-Za-z0-9-]+)_x-none", text)
+        self.assertIn("'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall'", text)
+        self.assertIn("if ($keep -notcontains $culture)", text)
+        self.assertIn("'remove.xml'", text)
+        self.assertNotIn("%", text)  # the text is a %-template in the processor
 
     def test_only_known_apps_can_be_kept(self):
         for app in ("Word", "Outlook\" & del", "outlook"):
@@ -240,7 +267,7 @@ class BuildTests(unittest.TestCase):
         self.assertIn(b"<ExcludeApp ID=\"Outlook\"", self.staged["configuration.xml"])
         self.assertEqual(self.staged["setup.exe"][:2], b"MZ")
         self.assertIn(b".part*", self.staged["join.ps1"])
-        self.assertIn(b'prepare.ps1 "Outlook"', self.staged["setup.bat"])
+        self.assertIn(b'prepare.ps1 "Outlook" "en-us"', self.staged["setup.bat"])
         self.assertIn(b"OUTLOOK.EXE", self.staged["prepare.ps1"])
         self.assertNotIn(b"\n", self.staged["join.ps1"].replace(b"\r\n", b""))
         self.assertEqual([name for name in os.listdir(self.folder.name) if name.startswith("m365-build-")], [])
