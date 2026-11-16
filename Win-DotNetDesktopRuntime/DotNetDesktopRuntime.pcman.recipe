@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>Hands the downloaded .NET Desktop Runtime installer (an EXE) to the package tool (pcman), which publishes it as a new version of the template item into the Cimian repository, or says that nothing is new. For an EXE the package tool is given the version label: the recipe passes the runtime's version of three numbers that the download recipe's DotNetDesktopRuntimeInfoProvider read from Microsoft's metadata. On 2026-11-16 the silent arguments /install /quiet /norestart ended with exit code 0 on one Windows 11 test PC; the right install check, the uninstall command, and whether a newer release of a channel replaces the older one on a PC are NOT established. This recipe (the package tool's way) was NOT run with AutoPkg; its sibling, the Cimian recipe, was. This is a dry run, which writes nothing, until the recipe's override sets pcman_dry_run to false.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.pcman.DotNetDesktopRuntime</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>DotNetDesktopRuntime</string>
+            <key>PCMAN_TEMPLATE</key>
+            <string>dotnet-desktop-runtime</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>ParentRecipe</key>
+        <string>com.github.serrc-techops.download.DotNetDesktopRuntime-Win</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.PcmanProcessors/PcmanImporter</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>pcman_template</key>
+                    <string>%PCMAN_TEMPLATE%</string>
+                    <key>pcman_version</key>
+                    <string>%version%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

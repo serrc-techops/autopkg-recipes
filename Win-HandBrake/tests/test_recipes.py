@@ -650,7 +650,7 @@ class ReadmeTests(unittest.TestCase):
         self.assertEqual(self.raw.index("# Win-HandBrake"), 0)
         paragraph = re.sub(r"\s+", " ", self.raw[i:self.raw.index("\n\n", i)])
         self.assertTrue(paragraph.endswith("**"))
-        for needle in ("`requires` on a Microsoft .NET Desktop Runtime item that this repository does not have yet",
+        for needle in ("`requires` on a Microsoft .NET Desktop Runtime item that this repository has a recipe pair for, `Win-DotNetDesktopRuntime` (run once into a scratch repository on 2026-11-16), and no item yet in any real repository",
                        "`https://api.github.com/repos/HandBrake/HandBrake/releases`", "the newest 30 releases",
                        "no file was downloaded",
                        "`1.11.2`, published 2026-06-07, is the newest release and is not a pre-release",
@@ -667,7 +667,7 @@ class ReadmeTests(unittest.TestCase):
                        "NOT established: that the installer is an NSIS installer, that `/S` installs it silently, and that its uninstaller is `uninst.exe /S` in the install folder",
                        "the writer did not read the vendor's own word and tested nothing",
                        "the install path and the architecture of the installed program",
-                       "which .NET Desktop Runtime the current HandBrake needs, and that the installer does not bring it",
+                       "that the installer does not bring the .NET Desktop Runtime",
                        "the version that the installed program reports about itself",
                        "that the next release keeps this spelling of the name",
                        "any run with AutoPkg; any install on a PC",
@@ -692,9 +692,12 @@ class ReadmeTests(unittest.TestCase):
         self.assertLess(self.raw.index("| Recipe |"), i)
         self.assertLess(i, self.raw.index("**Three recipes.**"))
         section = re.sub(r"\s+", " ", self.raw[i:self.raw.index("**Three recipes.**")])
-        for needle in ("**HandBrake's Windows GUI needs Microsoft's .NET Desktop Runtime, and this repository has no item for it yet.",
-                       "Third-party packagers install \".NET Desktop Runtime 8.0 (x64)\" together with HandBrake",
-                       "NOT read: which runtime version the current HandBrake needs",
+        for needle in ("**HandBrake's Windows GUI needs Microsoft's .NET Desktop Runtime, and this repository has a recipe pair for it (`Win-DotNetDesktopRuntime`, run once into a scratch repository on 2026-11-16) and no item yet in any real repository.",
+                       "HandBrake 1.11.2's own release notes name \".NET Desktop Runtime version 10.0\" and link `https://aka.ms/dotnet/10.0/windowsdesktop-runtime-win-x64.exe`",
+                       "READ on 2026-11-16, from the GitHub release of the tag `1.11.2`", "Third-party packaging guides had said 8.0 (x64)",
+                       "the recipe pair of `../Win-DotNetDesktopRuntime/`",
+                       "was still running after 40 seconds with no dialog window seen; that is weak evidence only", "not proof that HandBrake works",
+                       "NOT read: the runtime version of any release other than `1.11.2`",
                        "whether the installer brings the runtime itself", "that is NOT established",
                        "the Cimian item needs a `requires` on a .NET Desktop Runtime item of the right version"):
             self.assertIn(needle, section)

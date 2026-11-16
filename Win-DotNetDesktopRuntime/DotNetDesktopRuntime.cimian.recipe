@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>Hands the downloaded .NET Desktop Runtime installer (an EXE) to CimianImporter, which publishes it as a new version of the item into a Cimian repository (as a copy of the item's newest pkginfo, with what belongs to the installer file replaced), or says that nothing is new. For an EXE CimianImporter is given the version label: the recipe passes the runtime's version of three numbers that the download recipe's DotNetDesktopRuntimeInfoProvider read from Microsoft's metadata. The first number is below 20, so the Cimian client does not read the label as a build date. On 2026-11-16 the silent arguments /install /quiet /norestart ended with exit code 0 on one Windows 11 test PC, and the bundle's own uninstall entry reported 10.0.15 with a fourth number 50000 (its four MSI entries report another number); the right install check, the uninstall command, an install through the Cimian client, and whether a newer release of a channel replaces the older one on a PC are NOT established, and a person completes the pkginfo (the importer warns that it has no install check). CimianImporter does not check that an EXE is the same product as the template (it only compares the upgrade code of an MSI). On 2026-11-16 this recipe ran once under AutoPkg 2.9.0 into a scratch repository (a dry run, a real run that published 10.0.15, and a second run that said nothing is new). This is a dry run, which writes nothing, until the recipe's override sets cimian_dry_run to false. The repository is the input cimian_repo or the AutoPkg preference CIMIAN_REPO.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.cimian.DotNetDesktopRuntime</string>
+        <key>Input</key>
+        <dict>
+            <key>CIMIAN_NAME</key>
+            <string>dotnet-desktop-runtime</string>
+            <key>CIMIAN_SUBDIRECTORY</key>
+            <string></string>
+            <key>NAME</key>
+            <string>DotNetDesktopRuntime</string>
+            <key>pkginfo</key>
+            <dict>
+                <key>developer</key>
+                <string>Microsoft</string>
+                <key>display_name</key>
+                <string>.NET Desktop Runtime</string>
+            </dict>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>ParentRecipe</key>
+        <string>com.github.serrc-techops.download.DotNetDesktopRuntime-Win</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/CimianImporter</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>cimian_name</key>
+                    <string>%CIMIAN_NAME%</string>
+                    <key>cimian_subdirectory</key>
+                    <string>%CIMIAN_SUBDIRECTORY%</string>
+                    <key>version</key>
+                    <string>%version%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

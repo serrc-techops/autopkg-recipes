@@ -1,0 +1,608 @@
+"""Tests of GrammarlyPerUserPackager. Nothing here uses the network, 7z,
+PowerShell or AutoPkg: the scripts that the PC runs are made by plain
+functions, and their text is pinned here; a build is run with the stub and 7z
+replaced. A test parses the scripts only where `pwsh` is installed (it is
+skipped otherwise); what ran on a PC is in the README.
+"""
+import os
+import plistlib
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+import base64
+import hashlib
+
+TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
+RECIPE_DIR = os.path.dirname(TESTS_DIR)
+SHARED_TESTS_DIR = os.path.join(os.path.dirname(RECIPE_DIR), "Win-SharedProcessors", "tests")
+PCMAN_TESTS_DIR = os.path.join(os.path.dirname(RECIPE_DIR), "Win-PcmanProcessors", "tests")
+for folder in (SHARED_TESTS_DIR, PCMAN_TESTS_DIR, RECIPE_DIR):
+    if folder not in sys.path:
+        sys.path.insert(0, folder)
+
+import _win_support  # noqa: E402,F401  (installs the autopkglib stand-in)
+import GrammarlyPerUserPackager as packager  # noqa: E402
+
+ProcessorError = sys.modules["autopkglib"].ProcessorError
+VERSION = "1.2.312.2004"
+SHA = "ab" * 32
+OTHER_SHA = "cd" * 32
+
+
+def load(name):
+    with open(os.path.join(RECIPE_DIR, name), "rb") as handle:
+        return plistlib.load(handle)
+
+
+def all_scripts(arguments=()):
+    return {
+        "setup.bat": packager.setup_bat(),
+        "install-machine.ps1": packager.machine_script(VERSION, SHA),
+        "install-user.ps1": packager.user_script(VERSION, SHA, arguments),
+        "remove.ps1": packager.remove_script(),
+    }
+
+
+def code_lines(text):
+    """The lines of a PowerShell script without its comment lines."""
+    return [line for line in text.split("\r\n") if not line.lstrip().startswith("#")]
+
+
+class ArgumentTests(unittest.TestCase):
+    def test_the_vendors_names_are_taken_in_order(self):
+        self.assertEqual(packager.parse_installer_arguments(""), [])
+        self.assertEqual(packager.parse_installer_arguments(None), [])
+        self.assertEqual(
+            packager.parse_installer_arguments("/disable-launch-at-startup, /do-not-create-desktop-shortcut"),
+            ["/disable-launch-at-startup", "/do-not-create-desktop-shortcut"])
+        self.assertEqual(packager.parse_installer_arguments(" ".join(packager.ALLOWED_ARGUMENTS)),
+                         list(packager.ALLOWED_ARGUMENTS))
+
+    def test_the_allowlist_is_the_vendors_documented_parameters(self):
+        self.assertEqual(set(packager.ALLOWED_ARGUMENTS), {
+            "/do-not-create-desktop-shortcut", "/disable-launch-at-startup", "/ignore-os-version"})
+
+    def test_anything_else_is_refused(self):
+        for text in ("/S", "/uninstall", "/Disable-Launch-At-Startup", "/do-not-create-desktop-shortcut'",
+                     "/ignore-os-version;calc", "/windows-store", "--disable-launch-at-startup",
+                     "/disable-launch-at-startup /disable-launch-at-startup"):
+            with self.subTest(text=text):
+                with self.assertRaises(ValueError):
+                    packager.parse_installer_arguments(text)
+
+    def test_the_user_script_refuses_what_the_parser_refuses(self):
+        with self.assertRaises(ValueError):
+            packager.user_script(VERSION, SHA, ["/uninstall"])
+
+
+class VersionAndHashTests(unittest.TestCase):
+    def test_versions(self):
+        for good in (VERSION, "1.2", "1.2.312"):
+            self.assertEqual(packager.check_version(good), good)
+        for bad in ("", "1", "1.2.312.2004.7", "v1.2", "1.2'; x", "1.2.312.2004 ", "1..2"):
+            if bad.strip() == VERSION:
+                continue
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    packager.check_version(bad)
+
+    def test_a_bad_hash_is_refused(self):
+        for bad in ("", "ab" * 31, "zz" * 32, SHA + "00"):
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    packager.machine_script(VERSION, bad)
+
+
+class AllScriptsTests(unittest.TestCase):
+    def test_ascii_crlf_and_every_placeholder_filled(self):
+        for name, text in all_scripts(["/disable-launch-at-startup"]).items():
+            with self.subTest(name=name):
+                text.encode("ascii")
+                self.assertNotIn("\n", text.replace("\r\n", ""))
+                self.assertTrue(text.endswith("\r\n"))
+                self.assertIsNone(re.search(r"@[A-Z_]+@", text))
+
+    def test_the_same_input_gives_the_same_text(self):
+        self.assertEqual(all_scripts(), all_scripts())
+
+    def test_no_script_names_an_organisation_a_share_or_a_host(self):
+        for name, text in all_scripts().items():
+            with self.subTest(name=name):
+                self.assertIsNone(re.search(r"\\\\[A-Za-z0-9]", text))  # a UNC path
+                self.assertNotIn("http", text)
+                self.assertNotIn(".local", text)
+        self.assertEqual(packager.MARKER_KEY_NAME, "GrammarlyPerUserDeployment")
+        self.assertEqual(packager.FOLDER_NAME, "Grammarly Deployment")
+
+    def test_every_exit_code_is_described(self):
+        used = set()
+        for name in ("setup.bat", "install-machine.ps1"):
+            text = all_scripts()[name]
+            used |= {int(code) for code in re.findall(r"exit (4[0-9])", text)}
+            used |= {int(code) for code in re.findall(r"Fail (4[0-9])", text)}
+        self.assertEqual(used, set(packager.SETUP_CODES))
+        text = packager.remove_script()
+        used = {int(code) for code in re.findall(r"(?:exit|Fail) (4[0-9])", text)}
+        self.assertEqual(used, set(packager.REMOVE_CODES))
+
+    @unittest.skipUnless(shutil.which("pwsh"), "pwsh is not installed: the scripts were not parsed")
+    def test_powershell_parses_the_scripts(self):  # pragma: no cover - only where pwsh exists
+        folder = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, folder)
+        for name, text in all_scripts(["/ignore-os-version"]).items():
+            if not name.endswith(".ps1"):
+                continue
+            path = os.path.join(folder, name)
+            with open(path, "w", encoding="ascii", newline="") as handle:
+                handle.write(text)
+            command = ("$e = $null; [void][Management.Automation.Language.Parser]::ParseFile('%s', [ref]$null, [ref]$e); "
+                       "if ($e) { $e | ForEach-Object { $_.Message }; exit 1 }" % path)
+            result = subprocess.run(["pwsh", "-NoProfile", "-Command", command], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, name + ": " + result.stdout + result.stderr)
+
+
+class SetupBatTests(unittest.TestCase):
+    def test_the_64_bit_powershell_runs_the_machine_script_and_its_code_comes_back(self):
+        lines = packager.setup_bat().split("\r\n")
+        self.assertEqual(lines[:3], ["@echo off", "setlocal", r'cd /d "%SystemRoot%\System32" || exit 40'])
+        self.assertEqual(lines[3], r'set "PS=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"')
+        self.assertEqual(lines[4], r'if exist "%SystemRoot%\Sysnative\WindowsPowerShell\v1.0\powershell.exe" '
+                                   r'set "PS=%SystemRoot%\Sysnative\WindowsPowerShell\v1.0\powershell.exe"')
+        self.assertEqual(lines[5], '"%PS%" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%~dp0install-machine.ps1"')
+        self.assertNotIn("%~dp0" + '"', packager.setup_bat())  # the extraction folder is never the current folder
+        self.assertEqual(lines[6], "exit %ERRORLEVEL%")
+        self.assertEqual(lines[7:], [""])
+
+
+class MachineScriptTests(unittest.TestCase):
+    def setUp(self):
+        self.text = packager.machine_script(VERSION, SHA)
+        self.code = "\r\n".join(code_lines(self.text))
+
+    def test_the_values(self):
+        self.assertIn("$Version = '%s'" % VERSION, self.text)
+        self.assertIn("$Sha256 = '%s'" % SHA.upper(), self.text)
+        self.assertIn("$UsersSid = 'S-1-5-32-545'", self.text)
+        self.assertIn("$TaskName = 'Grammarly per-user install'", self.text)
+
+    def test_it_needs_an_administrator_and_the_64_bit_powershell(self):
+        self.assertIn("IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { Fail 41", self.text)
+        self.assertIn("[Environment]::Is64BitOperatingSystem -and -not [Environment]::Is64BitProcess) { Fail 46", self.text)
+        self.assertIn("$ProgramFolder = $env:ProgramFiles", self.text)
+
+    def test_the_unpacked_and_the_staged_installer_are_compared_with_the_packed_hash(self):
+        self.assertIn("(Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -ne $Sha256) { Fail 43", self.text)
+        self.assertIn("Install-Staged (Join-Path $Folder 'GrammarlyInstaller.exe') $Sha256 $null $source", self.text)
+        self.assertIn("'GrammarlyInstaller.exe' = $Sha256", self.text)
+        self.assertIn("if ((Get-FileHash -LiteralPath (Join-Path $Folder $name) -Algorithm SHA256).Hash -ne $staged[$name])",
+                      self.text)
+
+    def test_the_access_list_is_set_explicitly_and_checked(self):
+        self.assertIn("$security.SetAccessRuleProtection($true, $false)", self.text)
+        self.assertIn("$security.SetOwner((New-Object Security.Principal.SecurityIdentifier('S-1-5-32-544')))", self.text)
+        self.assertIn("@(('S-1-5-18', 'FullControl'), ('S-1-5-32-544', 'FullControl'), ($UsersSid, 'ReadAndExecute'))",
+                      self.text)
+        self.assertEqual(self.code.count("AddAccessRule("), 1)
+        self.assertIn("$problem = Test-FolderAccess $Folder $true", self.text)
+        self.assertIn("if (($rule.FileSystemRights -band $writeRights) -ne 0) { return \"$sid may change $Path\" }", self.text)
+        for right in ("WriteData", "AppendData", "Delete", "ChangePermissions", "TakeOwnership"):
+            self.assertIn(right, self.text.split("$writeRights = ")[1].split("\r\n")[0])
+
+    def test_the_task_runs_at_any_sign_in_as_the_users_group_with_least_privilege_hidden(self):
+        self.assertIn("$trigger = New-ScheduledTaskTrigger -AtLogOn\r\n", self.text)  # no -User: any user
+        self.assertIn("$taskPrincipal = New-ScheduledTaskPrincipal -GroupId $UsersSid -RunLevel Limited", self.text)
+        self.assertIn("-WindowStyle Hidden -ExecutionPolicy Bypass -File", self.text)
+        self.assertIn("-MultipleInstances Parallel", self.text)
+        self.assertIn("$trigger.Delay = 'PT30S'", self.text)
+        self.assertIn("-ExecutionTimeLimit (New-TimeSpan -Minutes 30)", self.text)
+        self.assertIn("Register-ScheduledTask -TaskName $TaskName -TaskPath '\\' ", self.text)
+        self.assertIn("-Force | Out-Null", self.text)
+        # read back: anything but the Users group with least privilege stops the run
+        self.assertIn("if ($group -ne $UsersSid) { Fail 44", self.text)
+        self.assertIn("if ([string]$task.Principal.RunLevel -ne 'Limited') { Fail 44", self.text)
+        for word in ("-RunLevel Highest", "-UserId", "-LogonType ServiceAccount", "RunAs"):
+            self.assertNotIn(word, self.code)
+        self.assertEqual(self.code.count("New-ScheduledTaskPrincipal"), 1)
+
+    def test_the_order_files_then_task_then_the_entry_with_its_version_last(self):
+        stage = self.code.index("Install-Staged (Join-Path $Folder 'GrammarlyInstaller.exe')")
+        task = self.code.index("Register-ScheduledTask")
+        entry = self.code.index("Set-ItemProperty -LiteralPath $MarkerKey -Name 'DisplayName'")
+        version = self.code.index("Set-ItemProperty -LiteralPath $MarkerKey -Name 'DisplayVersion' -Value $Version")
+        self.assertLess(stage, task)
+        self.assertLess(task, entry)
+        self.assertLess(entry, version)
+        self.assertEqual(self.code[version:].count("Set-ItemProperty"), 1)
+        self.assertIn(r"$MarkerKey = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\' + $MarkerKeyName", self.text)
+
+    def test_files_are_swapped_in_after_a_compared_copy(self):
+        self.assertIn("$new = $To + '.new'", self.text)
+        self.assertIn("[IO.File]::Replace($new, $To, [NullString]::Value)", self.text)
+        self.assertIn("if ((Get-FileHash -LiteralPath $new -Algorithm SHA256).Hash -ne $Hash) {", self.text)
+        # the owner is checked for the folder, the rights for each staged file
+        self.assertIn("if ($Owner -and @('S-1-5-18', 'S-1-5-32-544') -notcontains $ownerSid)", self.text)
+        self.assertIn("foreach ($name in $staged.Keys) {\r\n    # A file's owner", self.text)
+        self.assertIn("$problem = Test-FolderAccess (Join-Path $Folder $name) $false", self.text)
+        self.assertIn("if (@('S-1-5-18', 'S-1-5-32-544') -contains $sid) { continue }", self.text)
+
+    def embedded(self, name):
+        match = re.search(r"Install-Staged \(Join-Path \$Folder '%s'\) '([0-9A-F]{64})' "
+                          r"\(\[Convert\]::FromBase64String\('([A-Za-z0-9+/=]+)'\)\) ''" % re.escape(name), self.text)
+        self.assertTrue(match, name)
+        return match.group(1), base64.b64decode(match.group(2))
+
+    def test_the_two_scripts_are_carried_inside_with_their_hashes(self):
+        for name, expected in (("install-user.ps1", packager.user_script(VERSION, SHA)),
+                               ("remove.ps1", packager.remove_script())):
+            with self.subTest(name=name):
+                digest, body = self.embedded(name)
+                self.assertEqual(body, expected.encode("ascii"))
+                self.assertEqual(digest, hashlib.sha256(body).hexdigest().upper())
+                self.assertIn("'%s' = '%s'" % (name, digest), self.text)
+        arguments = packager.machine_script(VERSION, SHA, ["/ignore-os-version"])
+        self.assertIn(base64.b64encode(packager.user_script(VERSION, SHA, ["/ignore-os-version"]).encode("ascii")).decode(),
+                      arguments)
+
+    def test_nothing_but_the_installer_is_taken_from_the_extraction_folder(self):
+        self.assertEqual(self.code.count("Join-Path $here"), 1)
+        self.assertIn("$source = Join-Path $here 'GrammarlyInstaller.exe'", self.text)
+        self.assertNotIn("Join-Path $here $name", self.text)
+
+    def test_the_extraction_folder_must_hold_only_what_the_exe_put_there(self):
+        self.assertIn("$expected = @('setup.bat', 'install-machine.ps1', 'GrammarlyInstaller.exe')", self.text)
+        self.assertIn("Get-ChildItem -LiteralPath $here -Force -Recurse", self.text)
+        self.assertIn("if ($extra.Count -gt 0) { Fail 48", self.text)
+        check = self.code.index("if ($extra.Count -gt 0) { Fail 48")
+        self.assertLess(check, self.code.index("Get-FileHash -LiteralPath $source"))
+        self.assertLess(check, self.code.index("New-Item -ItemType Directory -Path $Folder"))
+        self.assertEqual(tuple(packager.EXTRACTED_NAMES), ("setup.bat", "install-machine.ps1", "GrammarlyInstaller.exe"))
+
+    def test_the_task_is_started_once_after_the_entry_and_a_failure_is_only_reported(self):
+        start = self.code.index("Start-ScheduledTask -TaskName $TaskName -TaskPath '\\'")
+        self.assertGreater(start, self.code.index("-Name 'DisplayVersion' -Value $Version"))
+        self.assertIn("} catch { $started = 'could not start it now (", self.code)
+        self.assertLess(start, self.code.index("exit 0"))
+
+    def test_no_program_is_called_by_a_bare_name(self):
+        for word in ("schtasks", "icacls", "reg.exe", "cmd.exe", "& '", "Invoke-Expression", "iex "):
+            self.assertNotIn(word, self.code)
+
+    def test_success_is_the_only_exit_0_and_it_is_last(self):
+        self.assertEqual(self.code.count("exit 0"), 1)
+        self.assertTrue(self.text.rstrip("\r\n").endswith("exit 0"))
+
+
+class UserScriptTests(unittest.TestCase):
+    def setUp(self):
+        self.text = packager.user_script(VERSION, SHA, ["/do-not-create-desktop-shortcut", "/disable-launch-at-startup"])
+        self.code = "\r\n".join(code_lines(self.text))
+
+    def test_nothing_for_system_and_service_accounts_and_before_anything_else(self):
+        guard = "if ($sid -notmatch '^S-1-(5-21|12-1)-') { exit 0 }"
+        self.assertIn(guard, self.text)
+        self.assertLess(self.code.index(guard), self.code.index("HKCU:"))
+        self.assertLess(self.code.index(guard), self.code.index("$env:LOCALAPPDATA"))
+        for sid in ("S-1-5-18", "S-1-5-19", "S-1-5-20", "S-1-5-80-1", "S-1-5-90-0-1"):
+            self.assertIsNone(re.match(r"^S-1-(5-21|12-1)-", sid), sid)
+        self.assertIsNotNone(re.match(r"^S-1-(5-21|12-1)-", "S-1-5-21-1-2-3-1001"))
+
+    def test_nothing_for_the_first_setup_and_sandbox_accounts(self):
+        self.assertIn("if ($account -like 'defaultuser*' -or $account -eq 'WDAGUtilityAccount') { exit 0 }", self.text)
+        self.assertLess(self.code.index("$account -like 'defaultuser*'"), self.code.index("HKCU:"))
+
+    def test_it_reads_the_vendors_key_in_the_users_own_hive(self):
+        self.assertIn(r"$vendorKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Grammarly Desktop Integrations'",
+                      self.text)
+        self.assertIn("(Get-ItemProperty -LiteralPath $vendorKey -Name 'DisplayVersion' -ErrorAction Stop).DisplayVersion",
+                      self.text)
+        self.assertIn("if ($present) { Finish ('present (' + $present + '): nothing to do') 0 }", self.text)
+        self.assertNotIn("HKLM:", self.code)
+        self.assertNotIn("Registry::HKEY_USERS", self.code)
+
+    def test_it_runs_the_installer_silently_with_the_allowed_parameters_and_never_elevates(self):
+        self.assertIn("$InstallerArguments = @('/do-not-create-desktop-shortcut', '/disable-launch-at-startup')", self.text)
+        self.assertIn("$info.Arguments = (@('/S') + $InstallerArguments) -join ' '", self.text)
+        self.assertIn("$info.UseShellExecute = $false", self.text)
+        for word in ("RunAs", "Start-Process", "-Verb", "runas"):
+            self.assertNotIn(word, self.code)
+        self.assertIn("$InstallerArguments = @()", packager.user_script(VERSION, SHA))
+
+    def test_it_waits_for_the_installer_only_and_never_loops(self):
+        self.assertIn("$process.WaitForExit($WaitSeconds * 1000)", self.text)
+        self.assertIn("$WaitSeconds = %d" % packager.INSTALLER_WAIT_SECONDS, self.text)
+        self.assertEqual(len(re.findall(r"\b(while|for|foreach|do)\s*[({]", self.code)), 0)
+        self.assertIn("$MaxAttempts = 3", self.text)
+        self.assertIn("if ($attempts -ge $MaxAttempts) { Finish", self.text)
+
+    def test_the_vendors_key_decides_success_not_the_exit_code(self):
+        decision = self.code.index("if ($after) {")
+        self.assertLess(self.code.index("$code = 'exit code ' + $process.ExitCode"), decision)
+        self.assertNotIn("ExitCode -eq", self.code)
+        self.assertIn("Finish ('installed ' + $after", self.code[decision:])
+
+    def test_it_runs_a_checked_copy_and_does_not_count_a_copy_of_a_changing_file(self):
+        copy = self.code.index("Copy-Item -LiteralPath $staged -Destination $copy")
+        check = self.code.index("(Get-FileHash -LiteralPath $copy -Algorithm SHA256).Hash -ne $Sha256")
+        count = self.code.index("-Name 'Attempts' -Value ($attempts + 1)")
+        start = self.code.index("[Diagnostics.Process]::Start($info)")
+        self.assertLess(copy, check)
+        self.assertLess(check, count)
+        self.assertLess(count, start)
+        self.assertIn("$Sha256 = '%s'" % SHA.upper(), self.text)
+
+    def test_one_log_line_per_run_in_the_users_own_folder(self):
+        self.assertIn("$logFolder = Join-Path $env:LOCALAPPDATA 'GrammarlyPerUserDeployment'", self.text)
+        self.assertEqual(self.code.count("Add-Content"), 1)
+        self.assertEqual(len(re.findall(r"\bexit (?:\$Code|[0-9])", self.code)), 4)  # two account guards, the lock, Finish
+        self.assertIn("-Encoding Ascii", self.text)
+
+    def test_one_run_per_person_at_a_time(self):
+        self.assertIn("[IO.File]::Open((Join-Path $logFolder 'install.lock'), 'OpenOrCreate', 'ReadWrite', 'None')", self.text)
+
+
+class RemoveScriptTests(unittest.TestCase):
+    def setUp(self):
+        self.text = packager.remove_script()
+        self.code = "\r\n".join(code_lines(self.text))
+
+    def test_it_removes_the_task_the_folder_and_last_the_entry(self):
+        task = self.code.index("Unregister-ScheduledTask -TaskName $TaskName -TaskPath '\\' -Confirm:$false")
+        folder = self.code.index("Remove-Item -LiteralPath $Folder -Recurse -Force")
+        entry = self.code.index("Remove-Item -LiteralPath $MarkerKey -Recurse -Force")
+        self.assertLess(task, folder)
+        self.assertLess(folder, entry)
+        self.assertIn("if ($failed.Count -eq 0) {", self.code[folder:entry])
+
+    def test_it_says_that_grammarly_stays_and_returns_0_only_when_all_is_gone(self):
+        self.assertIn("Grammarly stays in every profile that has it", self.text)
+        self.assertEqual(self.code.count("exit 0"), 1)
+        self.assertIn("exit 47", self.code)
+        self.assertNotIn("HKCU", self.code)
+        self.assertNotIn("/uninstall", self.code)
+
+    def test_the_same_names_as_the_install(self):
+        machine = packager.machine_script(VERSION, SHA)
+        for line in ("$FolderName = 'Grammarly Deployment'", "$TaskName = 'Grammarly per-user install'",
+                     "$MarkerKeyName = 'GrammarlyPerUserDeployment'"):
+            self.assertIn(line, self.text)
+            self.assertIn(line, machine)
+
+
+class BuildTests(unittest.TestCase):
+    """A whole run with the stub and 7z replaced: what is packed, and when nothing is built."""
+
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        self.installer = os.path.join(self.folder.name, "downloads", "GrammarlyInstaller.exe")
+        os.makedirs(os.path.dirname(self.installer))
+        with open(self.installer, "wb") as handle:
+            handle.write(b"MZ" + b"g" * 100)
+        self.staged = {}
+        self.packs = 0
+        test = self
+
+        class Fake(packager.GrammarlyPerUserPackager):
+            def stub(self, work):
+                path = os.path.join(work, "stub.sfx")
+                with open(path, "wb") as handle:
+                    handle.write(b"MZstub")
+                return path
+
+            def sevenzip(self):
+                return "/usr/bin/true"
+        self.Fake = Fake
+        real_run = packager.subprocess.run
+
+        def run(command, **kwargs):
+            if command[0] == "/usr/bin/true" and command[1] == "a":
+                test.packs += 1
+                test.staged.clear()
+                stage = kwargs["cwd"]
+                for name in os.listdir(stage):
+                    with open(os.path.join(stage, name), "rb") as handle:
+                        test.staged[name] = handle.read()
+                with open(command[command.index("-y") + 1], "wb") as handle:
+                    handle.write(b"ARCHIVE")
+            return real_run(["/usr/bin/true"], capture_output=True, text=True)
+        packager.subprocess.run = run
+        self.addCleanup(lambda: setattr(packager.subprocess, "run", real_run))
+
+    def env(self, **more):
+        env = {"RECIPE_CACHE_DIR": self.folder.name, "pathname": self.installer, "version": VERSION,
+               "sfx_sdk_url": "https://example.invalid/sdk.7z", "sfx_sdk_sha256": "0" * 64,
+               "grammarly_installer_arguments": ""}
+        env.update(more)
+        return env
+
+    def test_a_build_and_then_nothing_to_build(self):
+        processor = self.Fake(env=self.env())
+        processor.main()
+        exe = processor.env["pathname"]
+        self.assertEqual(os.path.basename(exe), "GrammarlyPerUser-%s.exe" % VERSION)
+        with open(exe, "rb") as handle:
+            self.assertEqual(handle.read(), b"MZstubARCHIVE")
+        self.assertEqual(processor.env["version"], VERSION)
+        self.assertNotIn("checksum_verified", processor.env)
+        self.assertNotIn("checksum_sha256", processor.env)
+        self.assertEqual(sorted(self.staged), sorted(packager.EXTRACTED_NAMES))
+        self.assertEqual(self.staged["GrammarlyInstaller.exe"], b"MZ" + b"g" * 100)
+        sha = packager.sha256_of_file(self.installer)
+        self.assertEqual(processor.env["grammarly_installer_sha256"], sha)
+        self.assertEqual(self.staged["install-machine.ps1"].decode("ascii"), packager.machine_script(VERSION, sha))
+        self.assertIn(base64.b64encode(packager.user_script(VERSION, sha).encode("ascii")).decode(),
+                      self.staged["install-machine.ps1"].decode("ascii"))
+        self.assertEqual(self.staged["setup.bat"].decode("ascii"), packager.setup_bat())
+        self.assertEqual([name for name in os.listdir(self.folder.name) if name.startswith("grammarly-build-")], [])
+
+        again = self.Fake(env=self.env())
+        again.main()
+        self.assertEqual(again.env["pathname"], exe)
+        self.assertEqual(self.packs, 1)
+
+    def test_other_parameters_build_again_into_the_user_script(self):
+        self.Fake(env=self.env()).main()
+        self.Fake(env=self.env(grammarly_installer_arguments="/disable-launch-at-startup")).main()
+        self.assertEqual(self.packs, 2)
+        user = packager.user_script(VERSION, packager.sha256_of_file(self.installer), ["/disable-launch-at-startup"])
+        self.assertIn(b"$InstallerArguments = @('/disable-launch-at-startup')", user.encode("ascii"))
+        self.assertIn(base64.b64encode(user.encode("ascii")), self.staged["install-machine.ps1"])
+
+    def test_a_cached_exe_that_changed_is_built_again_and_no_partial_is_left(self):
+        processor = self.Fake(env=self.env())
+        processor.main()
+        exe = processor.env["pathname"]
+        with open(exe, "r+b") as handle:  # the same size, other content
+            handle.write(b"XX")
+        self.Fake(env=self.env()).main()
+        self.assertEqual(self.packs, 2)
+        with open(exe, "rb") as handle:
+            self.assertEqual(handle.read(), b"MZstubARCHIVE")
+        with open(exe, "ab") as handle:  # another size
+            handle.write(b"!")
+        self.Fake(env=self.env()).main()
+        self.assertEqual(self.packs, 3)
+        self.assertFalse([name for name in os.listdir(self.folder.name) if name.endswith(".partial")])
+
+    def test_an_older_exe_is_removed(self):
+        self.Fake(env=self.env(version="1.2.311.1999")).main()
+        self.Fake(env=self.env()).main()
+        names = sorted(name for name in os.listdir(self.folder.name) if name.startswith("GrammarlyPerUser-"))
+        self.assertEqual(names, ["GrammarlyPerUser-%s.exe" % VERSION, "GrammarlyPerUser-%s.exe.json" % VERSION])
+
+    def test_what_is_refused_before_anything_is_built(self):
+        cases = [{"version": "1.2'x"}, {"grammarly_installer_arguments": "/uninstall"},
+                 {"sfx_sdk_sha256": "short"}, {"pathname": os.path.join(self.folder.name, "missing.exe")}]
+        for more in cases:
+            with self.subTest(more=more):
+                with self.assertRaises(ProcessorError):
+                    self.Fake(env=self.env(**more)).main()
+        with open(self.installer, "wb") as handle:
+            handle.write(b"<html>not a program</html>")
+        with self.assertRaises(ProcessorError):
+            self.Fake(env=self.env()).main()
+        self.assertEqual(self.packs, 0)
+
+    def test_a_file_too_large_for_the_stub_is_refused(self):
+        saved = packager.MAX_INSTALLER_BYTES
+        packager.MAX_INSTALLER_BYTES = 10
+        self.addCleanup(lambda: setattr(packager, "MAX_INSTALLER_BYTES", saved))
+        with self.assertRaises(ProcessorError):
+            self.Fake(env=self.env()).main()
+        self.assertEqual(self.packs, 0)
+
+
+class StubTests(unittest.TestCase):
+    """The stub: the SDK must have its SHA-256, be small, and hold a Windows program."""
+
+    def setUp(self):
+        self.work = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.work)
+        self.body = b"sdk archive"
+        self.saved = packager.fetch_bytes
+        self.addCleanup(lambda: setattr(packager, "fetch_bytes", self.saved))
+        self.member = b"MZ stub"
+        test = self
+
+        class Stub(packager.GrammarlyPerUserPackager):
+            def run_sevenzip(self, arguments, what, cwd=None):
+                with open(os.path.join(test.work, "7zS2con.sfx"), "wb") as handle:
+                    handle.write(test.member)
+        self.Stub = Stub
+
+    def processor(self, sha=None):
+        packager.fetch_bytes = lambda url, max_bytes, what: self.body
+        return self.Stub(env={"sfx_sdk_url": "https://example.invalid/sdk.7z",
+                              "sfx_sdk_sha256": sha or hashlib.sha256(self.body).hexdigest()})
+
+    def test_the_right_archive_gives_the_stub(self):
+        self.assertEqual(self.processor().stub(self.work), os.path.join(self.work, "7zS2con.sfx"))
+
+    def test_another_archive_stops_the_run(self):
+        with self.assertRaises(ProcessorError):
+            self.processor(sha="0" * 64).stub(self.work)
+
+    def test_a_member_that_is_not_a_windows_program_stops_the_run(self):
+        self.member = b"<html>"
+        with self.assertRaises(ProcessorError):
+            self.processor().stub(self.work)
+
+    def test_a_hash_that_is_not_a_sha256_stops_the_run(self):
+        with self.assertRaises(ProcessorError):
+            self.processor(sha="short").stub(self.work)
+
+    def test_an_oversized_download_is_refused(self):
+        class Response:
+            def __init__(self, body):
+                self.body = body
+
+            def read(self, count):
+                return self.body[:count]
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        class Opener:
+            def open(self, request, timeout):
+                return Response(b"x" * 20)
+        saved = packager.urllib.request.build_opener
+        packager.urllib.request.build_opener = lambda *handlers: Opener()
+        self.addCleanup(lambda: setattr(packager.urllib.request, "build_opener", saved))
+        with self.assertRaises(ProcessorError):
+            self.saved("https://example.invalid/sdk.7z", 10, "the SDK")
+        self.assertEqual(self.saved("https://example.invalid/sdk.7z", 20, "the SDK"), b"x" * 20)
+
+
+class RecipeTests(unittest.TestCase):
+    def packer_step(self):
+        steps = [step for step in load("Grammarly-Win.download.recipe")["Process"]
+                 if step["Processor"] == "GrammarlyPerUserPackager"]
+        self.assertEqual(len(steps), 1)
+        return steps[0]
+
+    def test_the_packer_is_the_last_step_and_gets_only_declared_inputs(self):
+        recipe = load("Grammarly-Win.download.recipe")
+        self.assertEqual(recipe["Process"][-1]["Processor"], "GrammarlyPerUserPackager")
+        declared = packager.GrammarlyPerUserPackager.input_variables
+        arguments = self.packer_step()["Arguments"]
+        self.assertEqual(set(arguments) | {"sevenzip_path"}, set(declared))
+        for key, flags in declared.items():
+            if flags.get("required"):
+                self.assertIn(key, arguments)
+        self.assertEqual(arguments["pathname"], "%pathname%")
+        self.assertEqual(arguments["version"], "%version%")
+
+    def test_the_inputs_of_the_packer(self):
+        recipe = load("Grammarly-Win.download.recipe")
+        self.assertEqual(recipe["Input"]["GRAMMARLY_INSTALLER_ARGUMENTS"], "")
+        self.assertEqual(packager.parse_installer_arguments(recipe["Input"]["GRAMMARLY_INSTALLER_ARGUMENTS"]), [])
+        for value in self.packer_step()["Arguments"].values():
+            name = value.strip("%")
+            self.assertTrue(name in recipe["Input"] or name in ("pathname", "version"), name)
+
+    def test_the_stub_is_the_same_sdk_as_the_office_folders(self):
+        office = os.path.join(os.path.dirname(RECIPE_DIR), "Win-Microsoft365Apps", "Microsoft365Apps-Win.download.recipe")
+        with open(office, "rb") as handle:
+            office_input = plistlib.load(handle)["Input"]
+        recipe = load("Grammarly-Win.download.recipe")
+        for key in ("SFX_SDK_URL", "SFX_SDK_SHA256"):
+            self.assertEqual(recipe["Input"][key], office_input[key])
+        self.assertTrue(recipe["Input"]["SFX_SDK_URL"].startswith("https://"))
+
+    def test_the_processor_is_folder_local_and_imports_nothing_from_another_folder(self):
+        with open(os.path.join(RECIPE_DIR, "GrammarlyPerUserPackager.py"), encoding="utf-8") as handle:
+            text = handle.read()
+        imports = re.findall(r"^(?:from|import) (\w+)", text, re.M)
+        self.assertEqual(sorted(set(imports)), sorted({"base64", "hashlib", "json", "os", "re", "shutil", "subprocess",
+                                                        "tempfile", "urllib", "autopkglib"}))
+        text.encode("ascii")
+
+
+if __name__ == "__main__":
+    unittest.main()

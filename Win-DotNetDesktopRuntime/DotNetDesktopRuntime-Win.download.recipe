@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>Downloads the newest Microsoft .NET Desktop Runtime installer for Windows (the EXE of one channel and one runtime identifier, win-x64 by default) and checks it against the SHA-512 that Microsoft's own release metadata gives for exactly that file. The processor DotNetDesktopRuntimeInfoProvider (in this folder) reads https://builds.dotnet.microsoft.com/dotnet/release-metadata/(the channel)/releases.json without following a redirect, takes the release that the metadata names as its latest release, and refuses a preview or release candidate, a channel whose support phase is not active or maintenance (an end-of-life channel only when the override sets dotnet_allow_eol to true), and an address that is not the expected https address on builds.dotnet.microsoft.com. The version is the runtime's version of three numbers. The SHA-512 comes from the same vendor but is another file than the installer; the metadata's detached signature is NOT checked. Because the shared ChecksumVerifier takes a SHA-256 only and is not changed, this folder has its own Sha512ChecksumVerifier, which sets the same two outputs (checksum_verified and checksum_sha256) that the importers read. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. The facts of the metadata were read on 2026-11-16. On the same day this recipe ran once under AutoPkg 2.9.0 as the parent of the Cimian recipe, into a scratch Cimian repository: the SHA-512 of the 10.0.15 installer was verified and the installer was imported; the installer's own signature was not checked.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.DotNetDesktopRuntime-Win</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>DotNetDesktopRuntime</string>
+            <key>dotnet_allow_eol</key>
+            <false/>
+            <key>dotnet_channel</key>
+            <string>10.0</string>
+            <key>dotnet_rid</key>
+            <string>win-x64</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>DotNetDesktopRuntimeInfoProvider</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>URLDownloader</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>Sha512ChecksumVerifier</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>expected_sha512</key>
+                    <string>%expected_sha512%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

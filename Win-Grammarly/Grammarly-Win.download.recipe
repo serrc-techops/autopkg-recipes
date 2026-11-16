@@ -1,44 +1,67 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
+<dict>
+    <key>Description</key>
+    <string>This download is NOT verified yet: no hash was found for the file, and a check of the signature is not built, so nothing proves that the file is what the vendor published. The shared importer therefore refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true (pcman_allow_unverified for the package tool's recipe). This recipe's output pathname is the PACKED EXE built below, not the vendor's file: every child recipe gets the packed EXE. MAIN CAVEAT: Grammarly for Windows installs PER USER, into the profile of the account that runs its installer (the vendor's article; seen on a test PC on 2026-11-13, where the installer run as SYSTEM installed into SYSTEM's own profile), and a per-machine install needs a subscription bought through the vendor's Sales team. A Cimian client runs installers as SYSTEM, so the downloaded installer is NOT published as it is: it is packed into one self-extracting EXE (GrammarlyPerUserPackager, in this folder) that stages the installer under Program Files and registers a scheduled task that runs at the sign-in of any user, as that user, and installs Grammarly into that person's profile when the person has none; the EXE starts the task once for whoever is signed in. So every person who signs in on a PC with this item gets Grammarly (about 85 MB each): it suits PCs of one person, not shared ones. Grammarly then updates itself in each profile, so the item's version is only the version of the staged installer, and the item's install check reads the entry that the EXE writes, not any person's Grammarly. On 2026-11-16 a build of this recipe ran under AutoPkg into a scratch repository, the packed EXE ran as SYSTEM on one Windows 11 test PC with exit code 0, and an on-demand start of the task gave Grammarly to that PC's one signed-in user (an administrator); that was the first build. The current form, which carries the two per-user scripts inside install-machine.ps1, checks the extraction folder and starts the task once itself, also ran there under AutoPkg and as SYSTEM on that PC (exit code 0; its start of the task found Grammarly present), but with it the per-user install path and the removal have not run. NOT established: a real sign-in, a standard user, an upgrade, the item through the Cimian client. Downloads the current Grammarly for Windows installer (the EXE at the fixed address that the vendor's article on deploying Grammarly for Windows links), kept under the file name of the address, reads the version from the EXE itself with the shared processor WindowsExeVersion, because the address has no version in it, and then packs it with GrammarlyPerUserPackager. The packer needs a 7z program on the build machine and the stub 7zS2con.sfx of the public-domain LZMA SDK, downloaded from SFX_SDK_URL and compared with SFX_SDK_SHA256 (the same archive as the Microsoft 365 Apps folder's). GRAMMARLY_INSTALLER_ARGUMENTS takes the vendor's documented parameters beside /S (/do-not-create-desktop-shortcut, /disable-launch-at-startup, /ignore-os-version; the names are case-sensitive); empty by default. The recipe never stops on an unchanged download, so a failed import is tried again at the next run.</string>
+    <key>Identifier</key>
+    <string>com.github.serrc-techops.download.Grammarly-Win</string>
+    <key>Input</key>
     <dict>
-        <key>Description</key>
-        <string>This download is NOT verified yet: no hash was found for the file, and a check of the signature is not built, so nothing proves that the file is what the vendor published. The shared importer therefore refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true (pcman_allow_unverified for the package tool's recipe). MAIN CAVEAT: by the vendor's own article Grammarly for Windows installs PER USER, into the profile of the account that runs the installer, and a per-machine install is unavailable by default (the vendor says its Customer Success Manager enables it for a subscription bought through its Sales team). A Cimian client runs installers as SYSTEM, so a plain /S item would install into the SYSTEM profile and no person would get the program, and an install check on a per-user path would never be true for the other users. Whether this item is usable through Cimian is NOT established: do not put it into a manifest until a person has read the vendor's article, chosen the parameters and proven on a test PC that a signed-in standard user gets Grammarly after an install by SYSTEM. The program also updates itself, about every two weeks by the vendor's article, so a published version is soon behind what the PCs run, and an install check by version would fight the updater: a check on presence, not on version, is the likely shape (a person's decision). Downloads the current Grammarly for Windows installer (the EXE at the fixed address that the vendor's article on deploying Grammarly for Windows links), kept under the file name of the address, and then reads the version from the EXE itself with the shared processor WindowsExeVersion, because the address has no version in it. The address was read in that article, and its answer to a HEAD request was read on 2026-11-13, but the file was NOT downloaded: whether it has a version resource is NOT established, and the first dry run shows it. This recipe was NOT rehearsed with AutoPkg: the first run on the build machine is the check of the rest. The recipe never stops on an unchanged download, so a failed import is tried again at the next run.</string>
-        <key>Identifier</key>
-        <string>com.github.serrc-techops.download.Grammarly-Win</string>
-        <key>Input</key>
-        <dict>
-            <key>NAME</key>
-            <string>Grammarly</string>
-            <key>DOWNLOAD_URL</key>
-            <string>https://download-windows.grammarly.com/GrammarlyInstaller.exe</string>
-        </dict>
-        <key>MinimumVersion</key>
-        <string>1.0.0</string>
-        <key>Process</key>
-        <array>
-            <dict>
-                <key>Processor</key>
-                <string>URLDownloader</string>
-                <key>Arguments</key>
-                <dict>
-                    <key>url</key>
-                    <string>%DOWNLOAD_URL%</string>
-                </dict>
-            </dict>
-            <dict>
-                <key>Processor</key>
-                <string>EndOfCheckPhase</string>
-            </dict>
-            <dict>
-                <key>Processor</key>
-                <string>com.github.serrc-techops.SharedProcessors/WindowsExeVersion</string>
-                <key>Arguments</key>
-                <dict>
-                    <key>pathname</key>
-                    <string>%pathname%</string>
-                </dict>
-            </dict>
-        </array>
+        <key>NAME</key>
+        <string>Grammarly</string>
+        <key>DOWNLOAD_URL</key>
+        <string>https://download-windows.grammarly.com/GrammarlyInstaller.exe</string>
+        <key>GRAMMARLY_INSTALLER_ARGUMENTS</key>
+        <string></string>
+        <key>SFX_SDK_SHA256</key>
+        <string>1d9da340870b12712e9068be178a4436fbad785486b62aed6e2aa88ea1e3bb65</string>
+        <key>SFX_SDK_URL</key>
+        <string>https://github.com/ip7z/7zip/releases/download/26.06/lzma2606.7z</string>
     </dict>
+    <key>MinimumVersion</key>
+    <string>1.0.0</string>
+    <key>Process</key>
+    <array>
+        <dict>
+            <key>Processor</key>
+            <string>URLDownloader</string>
+            <key>Arguments</key>
+            <dict>
+                <key>url</key>
+                <string>%DOWNLOAD_URL%</string>
+            </dict>
+        </dict>
+        <dict>
+            <key>Processor</key>
+            <string>EndOfCheckPhase</string>
+        </dict>
+        <dict>
+            <key>Processor</key>
+            <string>com.github.serrc-techops.SharedProcessors/WindowsExeVersion</string>
+            <key>Arguments</key>
+            <dict>
+                <key>pathname</key>
+                <string>%pathname%</string>
+            </dict>
+        </dict>
+        <dict>
+            <key>Processor</key>
+            <string>GrammarlyPerUserPackager</string>
+            <key>Arguments</key>
+            <dict>
+                <key>pathname</key>
+                <string>%pathname%</string>
+                <key>version</key>
+                <string>%version%</string>
+                <key>grammarly_installer_arguments</key>
+                <string>%GRAMMARLY_INSTALLER_ARGUMENTS%</string>
+                <key>sfx_sdk_sha256</key>
+                <string>%SFX_SDK_SHA256%</string>
+                <key>sfx_sdk_url</key>
+                <string>%SFX_SDK_URL%</string>
+            </dict>
+        </dict>
+    </array>
+</dict>
 </plist>

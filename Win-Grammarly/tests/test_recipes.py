@@ -1,4 +1,5 @@
-"""Tests of the two Grammarly recipes. Nothing here runs AutoPkg or uses the network.
+"""Tests of the three Grammarly recipes and this README. Nothing here runs AutoPkg or uses the network.
+The packer's scripts are tested in test_packager.py.
 
 The recipes are read as property lists. The step that names our shared
 processor is compared with what that processor declares (see
@@ -8,12 +9,12 @@ The download of this program has NO hard check (no vendor hash, no signature
 check). The tests make sure that nobody can overlook that: the Description of
 both recipes and the top of the README say it, and no recipe invents a check.
 
-Nothing of this folder was rehearsed with AutoPkg, and the installer was never downloaded.
-Some facts of the source were read on 2026-11-13 (the answer to a HEAD request for the
-address, and the vendor's article on deploying the program): the README's status line
-says which, and a test checks it. The main caveat (the program installs per user, a Cimian
-client installs as SYSTEM) is in the Description of every recipe and at the top of the
-README, and tests check that nobody can overlook it. The version label is
+The plain installer was rehearsed on 2026-11-13 (under AutoPkg, and as SYSTEM on a test PC,
+where it installed into SYSTEM's own profile). So the download recipe now packs it with
+GrammarlyPerUserPackager into an EXE that installs Grammarly for each person at sign-in; that
+packed form that ran on 2026-11-16 is pinned below. The main caveat (the program installs per user, a Cimian
+client installs as SYSTEM, so the item installs at each sign-in) is in the Description of every
+recipe and at the top of the README, and tests check that nobody can overlook it. The version label is
 read from the EXE by the shared processor WindowsExeVersion: the tests check that
 the recipes use it as the brief says (a step after EndOfCheckPhase, the label passed
 on as pcman_version) and compare its arguments with what it declares.
@@ -36,6 +37,8 @@ if SHARED_TESTS_DIR not in sys.path:
 
 if PCMAN_TESTS_DIR not in sys.path:
     sys.path.insert(0, PCMAN_TESTS_DIR)
+if RECIPE_DIR not in sys.path:
+    sys.path.insert(0, RECIPE_DIR)  # GrammarlyPerUserPackager
 
 import _win_support  # noqa: E402,F401  (installs the autopkglib stand-in, imports the processors)
 import _pcman_support  # noqa: E402,F401  (the stand-in for the package tool, and its processor)
@@ -118,13 +121,15 @@ class RecipeFileTests(unittest.TestCase):
 
     def test_the_download_steps_in_order(self):
         steps = [step["Processor"] for step in load(DOWNLOAD)["Process"]]
-        self.assertEqual(steps, ["URLDownloader", "EndOfCheckPhase", SHARED_PREFIX + "WindowsExeVersion"])
+        self.assertEqual(steps, ["URLDownloader", "EndOfCheckPhase", SHARED_PREFIX + "WindowsExeVersion",
+                                 "GrammarlyPerUserPackager"])
 
     def test_the_version_step_comes_after_the_end_of_the_check_phase_with_only_the_pathname(self):
         steps = load(DOWNLOAD)["Process"]
         names = [step["Processor"] for step in steps]
         self.assertGreater(names.index(SHARED_PREFIX + "WindowsExeVersion"), names.index("EndOfCheckPhase"))
-        self.assertEqual(steps[-1].get("Arguments"), {"pathname": "%pathname%"})
+        version_step = steps[names.index(SHARED_PREFIX + "WindowsExeVersion")]
+        self.assertEqual(version_step.get("Arguments"), {"pathname": "%pathname%"})
         # nothing of the processor's inputs is changed: set_version stays at its default
         self.assertNotIn("set_version", read(DOWNLOAD))
 
@@ -160,10 +165,11 @@ class RecipeFileTests(unittest.TestCase):
 
     def test_the_download_description_says_what_was_fetched_and_what_was_not_rehearsed(self):
         text = re.sub(r"\s+", " ", load(DOWNLOAD)["Description"])
-        self.assertIn("its answer to a HEAD request was read on 2026-11-13, but the file was NOT downloaded", text)
-        self.assertIn("whether it has a version resource is NOT established", text)
-        self.assertIn("This recipe was NOT rehearsed with AutoPkg", text)
-        self.assertIn("the first run on the build machine is the check of the rest", text)
+        self.assertIn("seen on a test PC on 2026-11-13, where the installer run as SYSTEM installed into SYSTEM's own profile", text)
+        self.assertIn("On 2026-11-16 a build of this recipe ran under AutoPkg into a scratch repository", text)
+        self.assertIn("but with it the per-user install path and the removal have not run", text)
+        self.assertIn("This recipe's output pathname is the PACKED EXE built below, not the vendor's file", text[:900])
+        self.assertIn("then packs it with GrammarlyPerUserPackager", text)
 
     def test_the_download_description_says_that_the_version_is_read_from_the_exe(self):
         text = re.sub(r"\s+", " ", load(DOWNLOAD)["Description"])
@@ -172,9 +178,11 @@ class RecipeFileTests(unittest.TestCase):
 
     def test_the_pcman_description_says_where_the_label_comes_from(self):
         text = re.sub(r"\s+", " ", load(PCMAN)["Description"])
-        self.assertIn("the recipe passes the version that the download recipe's WindowsExeVersion step read from the EXE itself", text)
-        self.assertIn("The label must equal what a person reads in the file's properties", text)
-        self.assertIn("This recipe was NOT rehearsed with AutoPkg", text)
+        self.assertIn("The version label is the one that the download recipe's WindowsExeVersion step read from the "
+                      "downloaded installer itself", text)
+        self.assertIn("the packed EXE carries that installer and keeps its version", text)
+        self.assertIn("The label must equal what a person reads in the installer's properties", text)
+        self.assertIn("that was the first build", text)
 
     def test_no_description_claims_a_rehearsal(self):
         for path in (DOWNLOAD, PCMAN):
@@ -206,7 +214,10 @@ class RecipeFileTests(unittest.TestCase):
         self.assertNotIn("pcman_version", read(DOWNLOAD))
         text = read(PCMAN)
         self.assertEqual(text.count("<key>pcman_version</key>"), 1)
-        self.assertIn("<key>pcman_version</key>\n                    <string>%version%</string>", text)
+        self.assertEqual(load(PCMAN)["Process"][0]["Arguments"]["pcman_version"], "%version%")
+        # the packer passes the label on unchanged: it gets %version% and has no input that sets another
+        packer = [step for step in load(DOWNLOAD)["Process"] if step["Processor"] == "GrammarlyPerUserPackager"][0]
+        self.assertEqual(packer["Arguments"]["version"], "%version%")
         for key in ("VERSION", "PCMAN_VERSION", "LABEL"):
             self.assertNotIn("<key>%s</key>" % key, text)
             self.assertNotIn("<key>%s</key>" % key, read(DOWNLOAD))
@@ -297,18 +308,23 @@ class NotVerifiedTests(unittest.TestCase):
         self.assertFalse(set(names) & set(setters))
 
     def test_no_recipe_invents_a_checksum_step(self):
-        for path in (DOWNLOAD, PCMAN):
+        """The only hash in a recipe is the LZMA SDK's (the stub of the packer), the same value as the
+        Microsoft 365 Apps folder's; nothing claims a hash of the download."""
+        office = os.path.join(os.path.dirname(RECIPE_DIR), "Win-Microsoft365Apps", "Microsoft365Apps-Win.download.recipe")
+        sdk = load(office)["Input"]["SFX_SDK_SHA256"]
+        for path in (DOWNLOAD, CIMIAN, PCMAN):
             text = read(path)
             self.assertNotIn("ChecksumVerifier", text)
             self.assertNotIn("expected_sha256", text)
-            self.assertNotIn("sha256", text.lower())
-            self.assertIsNone(HEX_64.search(text))
             self.assertNotIn("CodeSignatureVerifier", text)
+            self.assertEqual(HEX_64.findall(text), [sdk] if path == DOWNLOAD else [])
+            hashes = re.findall(r"(?i)<key>([^<]*sha256[^<]*)</key>", text)
+            self.assertEqual(hashes, ["SFX_SDK_SHA256", "sfx_sdk_sha256"] if path == DOWNLOAD else [])
 
     def test_the_readme_opens_with_a_status_line_and_a_not_verified_line_both_bold(self):
         lines = [line for line in read(README).splitlines() if line.strip()]
         self.assertTrue(lines[0].startswith("# "))
-        self.assertTrue(lines[1].startswith("A Windows recipe pair: Grammarly for Windows, the `.exe` installer"))
+        self.assertTrue(lines[1].startswith("A Windows recipe pair: Grammarly for Windows, the vendor's `.exe` installer packed"))
         status, not_verified = lines[2], lines[3]
         self.assertTrue(status.startswith("**Status. Main caveat:"), status[:100])
         self.assertTrue(status.endswith("**"))
@@ -317,47 +333,54 @@ class NotVerifiedTests(unittest.TestCase):
         for needle in ("signature check", "REFUSES a real run", "cimian_allow_unverified", "pcman_allow_unverified",
                        "Do not set it before the signature check exists",
                        "pcman import <file> --template grammarly --version <label>", "the label of an EXE",
-                       "Nothing was run for this folder, and nothing has been installed on a PC",
-                       "Do not put the item into a manifest before the test on the status line has been done"):
+                       "The packed EXE in its current form has run once on one test PC, as SYSTEM; no person has received "
+                       "Grammarly through it",
+                       "the packed EXE carries that unverified file, so it is NOT verified either",
+                       "Do not put the item into a manifest before the steps of \"What must be proven on a PC\" have been done"):
             self.assertIn(needle, not_verified)
 
     def test_the_status_line_says_what_was_read_and_what_was_not_established(self):
         status = [line for line in read(README).splitlines() if line.startswith("**Status.")][0]
         text = re.sub(r"\s+", " ", status)
         for needle in (
-                "This recipe set is new and NOT rehearsed: nothing was run under AutoPkg, nothing was downloaded, "
-                "nothing was imported into any repository and nothing was installed on a PC",
+                "That was the first build", "also ran the same day:",
+                "**With the current form the per-user INSTALL path (a person without Grammarly) and the removal have not "
+                "run**; they ran with the first build only",
+                "NOT established: a real sign-in starting the task; a standard user; a second user; a first sign-in with "
+                "a new profile; an upgrade to a newer staged version; the failure counter; a non-zero exit code coming "
+                "back through the stub; the item through the Cimian client (install, check, removal); Windows 10; a PC "
+                "whose policy sets an execution policy, or with AppLocker or WDAC",
+                "and not roaming profiles",
                 "Read on 2026-11-13: `https://download-windows.grammarly.com/GrammarlyInstaller.exe` answered a HEAD "
                 "request with 200, no redirect",
                 "`Content-Length` 87044640", "the address holds no version",
                 "was read in full on that day and links that same address as its installer",
                 "`GrammarlyInstaller.exe /S`", "`GrammarlyInstaller.exe /S /uninstall`", "`/ignore-os-version`",
                 "No hash for the file was found",
-                "NOT established:", "that the file has a version resource (the file was not downloaded",
-                "the architecture of the EXE", "that `/S` installs silently on a test PC and where",
-                "that a per-machine install is possible for this organization", "any install check; any install",
+                "READ on 2026-11-16: Microsoft's Store catalog", "installer type `exe`, scope `user`",
+                "the silent switch `/windows-store`", "the Store product is the same per-user EXE, not an app package, "
+                "so nothing can be provisioned for all users",
                 "When a run fails, STOP: nothing was written",
-                "correct the recipe, and only then look at the trust information",
+                "and only then look at the trust information",
                 "Never accept new trust information first"):
             self.assertIn(needle, text)
         for gone in ("Run on 2026-10", "was REFUSED on", "ran for real", "pcman catalogs` ran"):
             self.assertNotIn(gone, text)
 
-    def test_the_status_line_opens_with_the_main_caveat(self):
+    def test_the_status_line_opens_with_the_main_caveat_and_its_consequences(self):
         status = re.sub(r"\s+", " ", [line for line in read(README).splitlines() if line.startswith("**Status.")][0])
         head = status[:900]
-        for needle in ("installs PER USER, into the profile of the account that runs the installer",
-                       "a per-machine install is unavailable by default",
-                       "A Cimian client runs installers as SYSTEM",
-                       "a plain `/S` item would install into the SYSTEM profile and no person would get the program",
-                       "an install check on a per-user path would never be true for the other users"):
+        for needle in ("installs PER USER, into the profile of the account that runs its installer",
+                       "a Cimian client runs installers as SYSTEM",
+                       "the plain installer as an item gives the program to nobody",
+                       "a PACKED EXE", "registers a scheduled task that runs at the sign-in of any user, as that user"):
             self.assertIn(needle, head)
-        for needle in ("Whether the per-machine mode makes this item usable through Cimian is NOT established",
-                       "the item must NOT go into a manifest until a person has read the vendor's article, chosen the "
-                       "parameters and proven on a test PC that a signed-in standard user gets Grammarly after an "
-                       "install by SYSTEM",
-                       "updates itself", "a check on presence, not on version, is the likely shape",
-                       "that is a person's decision"):
+        for needle in ("every person who signs in on a PC with this item gets Grammarly in their profile (about 85 MB each), "
+                       "so it suits PCs of one person and not shared ones",
+                       "the item's version is only the version of the staged installer, and the install check is the "
+                       "entry (and the task), not any person's Grammarly",
+                       "each real run then publishes about 87 MB more, and a person decides how often to run it",
+                       "The item must NOT go into a manifest until the steps of \"What must be proven on a PC\" below have been done"):
             self.assertIn(needle, status)
 
     def test_the_readme_has_a_section_on_the_label_with_the_two_lines_of_the_processor(self):
@@ -371,8 +394,9 @@ class NotVerifiedTests(unittest.TestCase):
 
     def test_the_readme_says_that_the_program_updates_itself_so_a_hosted_version_is_a_floor(self):
         text = re.sub(r"\s+", " ", read(README))
-        self.assertIn("Grammarly updates itself on the PCs, so a hosted version sets a floor at best", text)
-        self.assertIn("an install check by version would fight the updater", text)
+        self.assertIn("Grammarly updates itself in each profile, so a hosted version sets a floor at best", text)
+        self.assertIn("a check by Grammarly's own version would fight the updater", text)
+        self.assertIn("it changes nobody's Grammarly", text)
         self.assertIn("**Grammarly installs per user.**", text)
 
     def test_the_readme_says_what_still_protects_and_that_it_is_not_enough(self):
@@ -488,7 +512,9 @@ class HygieneTests(unittest.TestCase):
         names = sorted(os.path.relpath(path, RECIPE_DIR) for path in self.files())
         self.assertEqual(names, sorted([
             "Grammarly-Win.download.recipe", "Grammarly.cimian.recipe", "Grammarly.pcman.recipe", "README.md",
+            "GrammarlyPerUserPackager.py",
             os.path.join("tests", "__init__.py"), os.path.join("tests", "test_recipes.py"),
+            os.path.join("tests", "test_packager.py"),
         ]))
 
 
@@ -593,9 +619,8 @@ class ReadmeTests(unittest.TestCase):
                        "would still publish under the setup file's number",
                        "that number orders the versions in the repository",
                        "does not check this at any run", "A person checks it, at the first dry run",
-                       "with `-v`", "the Details tab", "Nobody has looked at the properties on a PC",
-                       "the vendor's release notes", "stop and tell the owner before anything is published",
-                       "Nobody has done that comparison"):
+                       "with `-v`", "the Details tab", "that was one file",
+                       "the vendor's release notes", "stop and tell the owner before anything is published"):
             self.assertIn(needle, section)
         self.assertLess(self.raw.index(heading), self.raw.index("## a."))
         step = self.raw[self.raw.index("## c."):self.raw.index("## d.")]
@@ -613,36 +638,59 @@ class ReadmeTests(unittest.TestCase):
         self.assertIn("--version <the label that the first dry run prints>", command)
         self.assertIn("--no-prompt", command)
 
-    def test_the_first_import_is_a_proposal_that_was_not_run_and_guesses_nothing_that_was_not_read(self):
-        """The switch is the vendor's, from its article, and was not tested. The architecture of the EXE and
-        an install path were not read, so the command gives neither."""
+    def test_the_first_import_is_a_proposal_of_the_packed_exe_with_no_arguments(self):
+        """The packed EXE runs its own setup.bat: no install arguments. The architecture was not read."""
         match = re.search(r"pcman import ([^`]*?--build)", self.raw, re.S)
         command = re.sub(r"\s+", " ", match.group(1))
-        for flag in ("--display-name", "--category", "--developer", "--description", "--directory",
-                     "--install-arguments=/S", "--icon"):
+        self.assertTrue(command.startswith("<the override's cache folder>/GrammarlyPerUser-<version>.exe "))
+        for flag in ("--display-name", "--category", "--developer", "--description", "--directory", "--icon"):
             self.assertIn(flag, command)
-        self.assertNotIn("--install-path", command)
-        self.assertNotIn("--architectures", command)
-        self.assertNotIn("Program Files", command)
+        for flag in ("--install-arguments", "--install-path", "--architectures", "Program Files", "/S"):
+            self.assertNotIn(flag, command)
         step = re.sub(r"\s+", " ", self.raw[self.raw.index("3. **The template item"):self.raw.index("## b.")])
-        for needle in ("as a proposal that was NOT run",
-                       "The switch `/S` is from the vendor's article (read on 2026-11-13) and was NOT tested on a PC",
-                       "a plain `/S` install is a per-user install",
-                       "run by SYSTEM it would not give the program to any person",
-                       "`--architectures` is left out because the architecture of the EXE was not read",
-                       "a check on a per-user path is never true for another user",
-                       "A check on presence, not on version, is the likely shape"):
+        for needle in ("as a proposal that was NOT run", "No install arguments: the packed EXE takes none",
+                       "neither is an item made from the plain installer",
+                       "name: 'Grammarly per-user deployment'", "uninstall_command:", "uninstall_arguments:",
+                       "Grammarly Deployment\\remove.ps1",
+                       "A check on a per-user path is never true for another user",
+                       "a check by Grammarly's own version would fight the updater"):
             self.assertIn(needle, step)
 
-    def test_the_readme_does_not_claim_a_rehearsal_of_this_folder(self):
+    def test_the_readme_says_what_was_rehearsed_and_what_was_not(self):
         self.assertNotIn("Rehearsed on", self.raw)
         self.assertIn("carries `--override-dir`", self.text)
-        self.assertIn("Nothing was run for this folder, and nothing has been installed on a PC", self.text)
-        self.assertNotIn("has NOT been run by anyone", self.text)
+        self.assertIn("**Results of 2026-11-13, for the plain installer (before this folder packed it).**", self.raw)
+        self.assertIn("None of those runs used the packer", self.text)
         self.assertIn("NOT seen for this recipe", self.text)
-        for history in ("2026-10-04", "2026-10-02", "ran on 2026", "Chocolatey", "106 items"):
-            self.assertNotIn(history.replace("2026-10-04", "used on 2026-10-04"), self.text)
+        self.assertIn("## What must be proven on a PC", self.raw)
+        self.assertIn("The per-user install path ran with the first build only, for an administrator, started on demand", self.text)
+        self.assertIn("### Races, as designed (NOT proven)", self.raw)
+        self.assertIn("**Results of 2026-11-16, for the packed EXE, first build (", self.raw)
+        self.assertIn("**Results of 2026-11-16, for the packed EXE, current form.**", self.raw)
+        for needle in ("87224890 bytes", "exit code 0 after 69 seconds", "held only the three expected files, so check 48 passed",
+                       "`install-user.ps1` (5114 bytes) and `remove.ps1` (2135 bytes), written from the embedded text",
+                       "which already had Grammarly from the first build's test",
+                       "So with this form the per-user INSTALL path (a person without Grammarly) has not run, and neither has the removal",
+                       "only by lacking the two lines that skip the first-setup and Windows Sandbox accounts"):
+            self.assertIn(needle, self.text)
+        for needle in ("87169096 bytes", "87220102 bytes", "exit code 0 after 20 seconds",
+                       "(so `Register-ScheduledTask` accepted the group's SID)", "started ON DEMAND (`schtasks /run`), not by a sign-in",
+                       "a member of Administrators (NOT a standard user)", "What window flashed was not seen",
+                       "ended with exit code 0 after 5 seconds", "the user's Grammarly and log stayed"):
+            self.assertIn(needle, self.text)
+        self.assertIn("**The extraction folder, and what remains.**", self.raw)
+        for needle in ("`(CI)(S,WD,AD,X)`", "it is NOT a proof", "they may not list `C:\\Windows\\TEMP`"):
+            self.assertIn(needle, self.text)
+        self.assertIn("`remove.ps1` and the install path of `install-user.ps1` have not run in the current form", self.text)
+        for history in ("ran on 2026", "Chocolatey item", "106 items"):
+            self.assertNotIn(history, self.text)
         self.assertNotIn("was REFUSED on", self.text)
+
+    def test_the_readme_lists_the_exit_codes_of_the_packer(self):
+        import GrammarlyPerUserPackager as packager
+        for code in packager.SETUP_CODES:
+            self.assertRegex(self.raw, r"\n\| %d \| " % code)
+        self.assertIn("`remove.ps1` returns 0, 41, 46 or 47", self.raw)
 
     def test_the_readme_says_what_to_do_when_the_server_does_not_answer_the_changed_file_question(self):
         self.assertIn("whether this server answers that question is NOT established", self.text)
@@ -672,21 +720,28 @@ class SourceFactsTests(unittest.TestCase):
     def test_the_second_run_line_is_not_promised_for_a_fresh_override(self):
         self.assertIn("A new override gets a new cache folder, so its first run downloads the file again", self.text)
 
-    def test_the_readme_says_the_file_was_not_downloaded(self):
-        self.assertIn("nothing was downloaded", self.text)
-        self.assertIn("the file was not downloaded", self.text)
-        self.assertIn("Nobody has seen it for this file: it was not downloaded", self.text)
+    def test_the_readme_keeps_the_dated_facts(self):
+        self.assertIn("`/ignore-os-version` (needed on Windows Server 2016 and 2019)", self.text)
+        self.assertIn("READ on 2026-11-16", self.text)
+        self.assertIn("`1.2.305(.1980)`", self.text)
+        self.assertIn("**It installed into the profile of the account that ran it**", self.text)
+        self.assertIn("a process that it started was still running fifteen minutes later", self.text)
 
 
 class CaveatTests(unittest.TestCase):
     """The per-user caveat must be in every recipe's Description, not only in the README."""
 
     NEEDLES = ("MAIN CAVEAT", "installs PER USER", "A Cimian client runs installers as SYSTEM",
-               "would install into the SYSTEM profile and no person would get the program",
-               "Whether this item is usable through Cimian is NOT established",
-               "do not put it into a manifest until a person has read the vendor's article",
-               "proven on a test PC that a signed-in standard user gets Grammarly after an install by SYSTEM",
-               "updates itself", "a check on presence, not on version, is the likely shape (a person's decision)")
+               "where the installer run as SYSTEM installed into SYSTEM's own profile",
+               "the downloaded installer is NOT published as it is",
+               "registers a scheduled task that runs at the sign-in of any user, as that user",
+               "every person who signs in on a PC with this item gets Grammarly (about 85 MB each): it suits PCs of one "
+               "person, not shared ones",
+               "updates itself", "the item's version is only the version of the staged installer",
+               "the item's install check reads the entry that the EXE writes, not any person's Grammarly",
+               "that was the first build", "but with it the per-user install path and the removal have not run",
+               "NOT established: a real sign-in, a standard user, an upgrade, the item through the Cimian client",
+               "the EXE starts the task once for whoever is signed in")
 
     def test_every_recipe_description_carries_the_caveat(self):
         for path in (DOWNLOAD, CIMIAN, PCMAN):
@@ -941,8 +996,11 @@ class CimianReadmeTests(unittest.TestCase):
             self.assertIn("What a person completes by hand for an `.exe`", self.generic)
             self.assertIn("an install check", self.generic)
             self.assertIn("StatusService.cs:194-219", self.generic)
-            self.assertIn("does NOT give the silent arguments", self.generic)
-            self.assertNotIn("installer: {args: [/S]}", self.generic.replace("`installer: {args: [...]}`", ""))
+            self.assertIn("the recipe's `pkginfo` gives no arguments, no install check and no uninstaller", self.generic)
+            self.assertIn("The packed EXE takes **no arguments**", self.generic)
+            self.assertIn("name: 'Grammarly per-user deployment'", self.generic)
+            self.assertIn("is NOT a template for the packed EXE", self.generic)
+            self.assertNotIn("args: [/S]", self.generic)
         else:
             self.assertIn("For an `.msi` nothing needs completing for a silent install", self.generic)
             self.assertIn("InstallerService.cs:936-948", self.generic)
@@ -951,6 +1009,18 @@ class CimianReadmeTests(unittest.TestCase):
             self.assertIn("an argument of a step wins over an override's `Input`", self.generic)
             self.assertIn("`cimian_allow_product_change`", self.generic)
             self.assertIn("or that has none where the template's item had one", self.generic)
+
+    def test_the_uninstaller_and_the_check_are_given_with_their_source_lines(self):
+        text = re.sub(r"\s+", " ", self.generic)
+        for needle in ("`windowsadmins/cimian` `main` at commit `6384299f` (2026-10-28)",
+                       "That is the development branch, not a release",
+                       "uninstaller: - type: exe", "args: ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File',",
+                       "`cli/managedsoftwareupdate/Services/StatusService.cs:1628-1700`",
+                       "`cli/managedsoftwareupdate/Models/UpdateModels.cs:479`", "`Services/InstallerService.cs:723-735`",
+                       "`InstallerService.cs:1574-1593`", "`InstallerService.cs:1701-1745`",
+                       "So `version` is only a switch", "so give the `uninstaller` explicitly"):
+            self.assertIn(needle, text)
+        self.assertNotIn("/Users/", self.generic)
 
     def test_the_recipes_pkginfo_does_not_change_a_template_says_the_generic_way(self):
         for needle in ("The recipe's `pkginfo` does not change a template", "a NOTE names each",

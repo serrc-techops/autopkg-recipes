@@ -1,0 +1,110 @@
+{
+  "channel-version": "10.0",
+  "latest-release": "10.0.15",
+  "latest-release-date": "2026-11-10",
+  "latest-release-security": true,
+  "latest-runtime": "10.0.15",
+  "support-phase": "active",
+  "release-type": "lts",
+  "eol-date": "2028-11-14",
+  "signature": {
+    "expiration": "2027-02-08T16:26:03+00:00",
+    "file": "releases.json.20261110162603.p7s"
+  },
+  "releases": [
+    {
+      "release-date": "2026-11-10",
+      "release-version": "10.0.15",
+      "security": true,
+      "windowsdesktop": {
+        "version": "10.0.15",
+        "version-display": "10.0.15",
+        "files": [
+          {
+            "name": "windowsdesktop-runtime-win-arm64.exe",
+            "rid": "win-arm64",
+            "url": "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.15/windowsdesktop-runtime-10.0.15-win-arm64.exe",
+            "hash": "11111113111111131111111311111113111111131111111311111113111111131111111311111113111111131111111311111113111111131111111311111113"
+          },
+          {
+            "name": "windowsdesktop-runtime-win-arm64.zip",
+            "rid": "win-arm64",
+            "url": "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.15/windowsdesktop-runtime-10.0.15-win-arm64.zip",
+            "hash": "22222226222222262222222622222226222222262222222622222226222222262222222622222226222222262222222622222226222222262222222622222226"
+          },
+          {
+            "name": "windowsdesktop-runtime-win-x64.exe",
+            "rid": "win-x64",
+            "url": "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.15/windowsdesktop-runtime-10.0.15-win-x64.exe",
+            "hash": "33333339333333393333333933333339333333393333333933333339333333393333333933333339333333393333333933333339333333393333333933333339"
+          },
+          {
+            "name": "windowsdesktop-runtime-win-x64.zip",
+            "rid": "win-x64",
+            "url": "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.15/windowsdesktop-runtime-10.0.15-win-x64.zip",
+            "hash": "4444444c4444444c4444444c4444444c4444444c4444444c4444444c4444444c4444444c4444444c4444444c4444444c4444444c4444444c4444444c4444444c"
+          },
+          {
+            "name": "windowsdesktop-runtime-win-x86.exe",
+            "rid": "win-x86",
+            "url": "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.15/windowsdesktop-runtime-10.0.15-win-x86.exe",
+            "hash": "5555555f5555555f5555555f5555555f5555555f5555555f5555555f5555555f5555555f5555555f5555555f5555555f5555555f5555555f5555555f5555555f"
+          },
+          {
+            "name": "windowsdesktop-runtime-win-x86.zip",
+            "rid": "win-x86",
+            "url": "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.15/windowsdesktop-runtime-10.0.15-win-x86.zip",
+            "hash": "66666662666666626666666266666662666666626666666266666662666666626666666266666662666666626666666266666662666666626666666266666662"
+          }
+        ]
+      }
+    },
+    {
+      "release-date": "2026-10-13",
+      "release-version": "10.0.14",
+      "security": true,
+      "windowsdesktop": {
+        "version": "10.0.14",
+        "version-display": "10.0.14",
+        "files": [
+          {
+            "name": "windowsdesktop-runtime-win-arm64.exe",
+            "rid": "win-arm64",
+            "url": "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.14/windowsdesktop-runtime-10.0.14-win-arm64.exe",
+            "hash": "77777775777777757777777577777775777777757777777577777775777777757777777577777775777777757777777577777775777777757777777577777775"
+          },
+          {
+            "name": "windowsdesktop-runtime-win-arm64.zip",
+            "rid": "win-arm64",
+            "url": "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.14/windowsdesktop-runtime-10.0.14-win-arm64.zip",
+            "hash": "88888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888"
+          },
+          {
+            "name": "windowsdesktop-runtime-win-x64.exe",
+            "rid": "win-x64",
+            "url": "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.14/windowsdesktop-runtime-10.0.14-win-x64.exe",
+            "hash": "9999999b9999999b9999999b9999999b9999999b9999999b9999999b9999999b9999999b9999999b9999999b9999999b9999999b9999999b9999999b9999999b"
+          },
+          {
+            "name": "windowsdesktop-runtime-win-x64.zip",
+            "rid": "win-x64",
+            "url": "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.14/windowsdesktop-runtime-10.0.14-win-x64.zip",
+            "hash": "aaaaaaaeaaaaaaaeaaaaaaaeaaaaaaaeaaaaaaaeaaaaaaaeaaaaaaaeaaaaaaaeaaaaaaaeaaaaaaaeaaaaaaaeaaaaaaaeaaaaaaaeaaaaaaaeaaaaaaaeaaaaaaae"
+          },
+          {
+            "name": "windowsdesktop-runtime-win-x86.exe",
+            "rid": "win-x86",
+            "url": "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.14/windowsdesktop-runtime-10.0.14-win-x86.exe",
+            "hash": "bbbbbbb1bbbbbbb1bbbbbbb1bbbbbbb1bbbbbbb1bbbbbbb1bbbbbbb1bbbbbbb1bbbbbbb1bbbbbbb1bbbbbbb1bbbbbbb1bbbbbbb1bbbbbbb1bbbbbbb1bbbbbbb1"
+          },
+          {
+            "name": "windowsdesktop-runtime-win-x86.zip",
+            "rid": "win-x86",
+            "url": "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.14/windowsdesktop-runtime-10.0.14-win-x86.zip",
+            "hash": "ccccccc4ccccccc4ccccccc4ccccccc4ccccccc4ccccccc4ccccccc4ccccccc4ccccccc4ccccccc4ccccccc4ccccccc4ccccccc4ccccccc4ccccccc4ccccccc4"
+          }
+        ]
+      }
+    }
+  ]
+}

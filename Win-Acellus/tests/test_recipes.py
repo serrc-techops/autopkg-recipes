@@ -567,6 +567,14 @@ class FrameworkReadmeTests(unittest.TestCase):
         for key in ("`installer.args`", "`switches`", "`product_code`", "`upgrade_code`"):
             self.assertIn(key, self.section)
 
+    def test_the_readme_points_at_the_recipe_set_that_makes_the_framework_item_and_keeps_the_by_hand_way(self):
+        raw = _text(os.path.join(RECIPE_DIR, "README.md"))
+        self.assertGreaterEqual(raw.count("../Win-WindowsAppRuntime/"), 3)
+        self.assertTrue(os.path.isdir(os.path.join(os.path.dirname(RECIPE_DIR), "Win-WindowsAppRuntime")))
+        for needle in ("By hand, or as the fallback", "run once in a scratch repository on 2026-11-16, x64 only",
+                       "the x64 framework alone was enough for Acellus"):
+            self.assertIn(needle, self.section.replace("  ", " ") + raw.replace("\n", " "))
+
     def test_the_cimian_recipe_does_not_add_the_requires_itself(self):
         """The framework item's name is the repository's own: it is set in the override or the template."""
         self.assertNotIn("requires", load(CIMIAN)["Input"]["pkginfo"])
