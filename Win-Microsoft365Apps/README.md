@@ -165,6 +165,9 @@ and in the item file:
     supported_architectures: ['x64']
     # Seconds. The EXE unpacks 3.3 GB, joins the parts and runs Office's setup.
     installer_timeout: 3600
+    # With OFFICE_FORCE_APP_SHUTDOWN false, Microsoft's setup ends with 17006 while an Office
+    # program is open. The client leaves the item for a run in which one of these runs.
+    blocking_applications: [WINWORD, EXCEL, POWERPNT, OUTLOOK, ONENOTE, MSACCESS, MSPUB]
     # No install arguments: the EXE runs its own setup.bat.
     # Windows lists the product as "Microsoft 365 Apps for business - en-us" with the Office version;
     # an equal or newer version counts as installed.
