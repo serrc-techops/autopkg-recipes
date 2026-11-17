@@ -18,7 +18,7 @@ download (`ChecksumVerifier`, `GitHubAssetDigest`, `WindowsExeVersion`) are in
 
 | File | What it is |
 | --- | --- |
-| `PcmanImporter.py` | Hands a downloaded `.msi`, `.exe` or app package (`.msix`, `.appx`, `.msixbundle`, `.appxbundle`) to the package tool (`pcman`). The last step of a recipe |
+| `PcmanImporter.py` | Hands a downloaded `.msi`, `.exe`, app package (`.msix`, `.appx`, `.msixbundle`, `.appxbundle`) or print driver `.zip` to the package tool (`pcman`). The last step of a recipe |
 | `PcmanProcessors.recipe` | Stub. Carries the identifier `com.github.serrc-techops.PcmanProcessors`. Does nothing |
 | `tests/` | Tests. They need no AutoPkg and no network. They import `../Win-SharedProcessors/` (the `ChecksumVerifier` that the guard's tests run, and the stand-in for `autopkglib`) |
 
@@ -86,6 +86,12 @@ cover its `Input`.
 the hash of the file it checked under a named key, and this guard must then accept that
 key in the same way, with the same comparison with the file that is imported.
 
+**A print driver zip** (`.zip`) is passed with a version, always (`pcman_version`; the tool never
+takes one from the zip). It is for a template that is an item of the kind `printer_driver`: the zip
+holds one folder named exactly like the zip without `.zip`, with the driver's `.inf` and its files.
+The tool refuses the import when a driver name that the template lists is not a model line of the
+INF, and refuses a `.zip` for any other kind of template. No `msiinfo` is needed.
+
 **An app package** (`.msix`, `.appx`, `.msixbundle`, `.appxbundle`) is passed as an
 `.msi` is. The tool imports it as an item of the kind `msix` and reads the package
 itself, with Python's standard library (no `msiinfo`, nothing extracted to disk): a
@@ -103,15 +109,15 @@ download's checksum is the verification, as for any other installer.
 
 | Input | Required | Default | Meaning |
 | --- | --- | --- | --- |
-| `pathname` | yes | | The downloaded installer. It must exist and end in `.msi`, `.exe`, `.msix`, `.appx`, `.msixbundle` or `.appxbundle` (any letter case) |
+| `pathname` | yes | | The downloaded installer. It must exist and end in `.msi`, `.exe`, `.msix`, `.appx`, `.msixbundle`, `.appxbundle` or `.zip` (any letter case) |
 | `pcman_template` | yes | | The item name of the program's template in the package tool: letters, numbers, dots, underscores and hyphens, as the tool allows. Not a path, no white space, no control character, not beginning with `-` or `.` |
-| `pcman_version` | `.exe` only | | The version label: numeric parts separated by dots, such as `2.5.1.300`. No white space, control character, path separator or leading `-`. Leave it out for an `.msi` and an app package: the tool takes the MSI's own ProductVersion, or the package's `Identity` `Version`. When it is given for either, it is passed on as `--version` and the tool refuses a label that is not that version. An empty or blank value counts as not given |
+| `pcman_version` | `.exe` and `.zip` | | The version label: numeric parts separated by dots, such as `2.5.1.300`. A `.zip` needs it too. No white space, control character, path separator or leading `-`. Leave it out for an `.msi` and an app package: the tool takes the MSI's own ProductVersion, or the package's `Identity` `Version`. When it is given for either, it is passed on as `--version` and the tool refuses a label that is not that version. An empty or blank value counts as not given |
 | `pcman_root` | yes | none | The folder of the package tool. A leading `~` is expanded. Set it as an AutoPkg preference or in an override, never in a recipe |
 | `pcman_python` | no | `<pcman_root>/.venv/bin/python3` | The Python of the tool. AutoPkg's own Python is not used |
 | `pcman_dry_run` | no | `true` | `true`: plan only. `false`: a real run. Only a boolean or the text `false`, `no` or `0` (any letter case) makes a real run; `off`, `n`, `f`, an empty value or a number other than the text `0` is an error |
 | `pcman_allow_unverified` | no | `false` | `true`: a real run of an unverified download goes on, with a WARNING (see above). Parsed like `pcman_dry_run`: only a boolean or the text `true`, `yes`, `1`, `false`, `no`, `0` (any letter case); anything else is an error, also for a verified download. Set it in an override, never in a recipe |
 | `pcman_timeout` | no | 1800 | Seconds to wait for the tool, from 60 to 14400. On a time-out, on Ctrl-C and on a termination of AutoPkg the tool and its child processes are killed |
-| `pcman_path` | no | `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin` | The `PATH` of the tool. For an `.msi`, `msiinfo` must be found here. An `.exe` and an app package need no `msiinfo` |
+| `pcman_path` | no | `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin` | The `PATH` of the tool. For an `.msi`, `msiinfo` must be found here. An `.exe`, a `.zip` and an app package need no `msiinfo` |
 | `pcman_cimian_repo` | no | | Passed to the tool as `PCMAN_CIMIAN_REPO` |
 | `pcman_config` | no | | Passed as `PCMAN_CONFIG` |
 | `pcman_cimian_catalogs` | no | | Passed as `PCMAN_CIMIAN_CATALOGS` |
@@ -274,7 +280,7 @@ lines to expect, is in the README of the product folder (for example
   environment has the upper-case name.
 
 The download must have a file name that ends in `.msi`, `.exe`, `.msix`, `.appx`,
-`.msixbundle` or `.appxbundle`. If the vendor's URL has none, set `filename` for
+`.msixbundle`, `.appxbundle` or `.zip`. If the vendor's URL has none, set `filename` for
 `URLDownloader` in the download recipe.
 
 When a processor or a recipe changes, the override fails with "Failed local trust

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>This import is NOT verified: the download has no hard check (Kyocera publishes no checksum, and none is pinned). A real run is refused by the shared importer until the override sets pcman_allow_unverified to true (the run then publishes with a WARNING, and the report says published, NOT verified); the dry run is the default and writes nothing. Hands the print driver zip that the download recipe repacked (KyoceraKXDriver-&lt;version&gt;.zip, one folder of the same name with the driver's INF and files) to the package tool (pcman) with the version that the repacker read from the INF's DriverVer line. The template must be an item of the kind printer_driver; the package tool refuses the import when a driver name that the template lists is not a model line of the INF, and refuses a zip for a template of any other kind. The shared importer accepts a .zip only together with a version. On 2026-11-17 this recipe ran under AutoPkg 2.9.0 into a scratch Cimian repository with a scratch copy of the package tool: a dry run wrote nothing, a real run without the allowance was refused, with it the package tool published KyoceraKXDriver 8.7.0917.0, and a second run said nothing is new. A PC installs this driver version silently only when the vendor's own signing certificate is a trusted publisher on it (on one Windows 11 test PC pnputil refused the package until the certificate was in the TrustedPublisher store); the recipe adds no trust and does not check who signed the catalog, and the certificate changes when it expires. Not established: a run through the Cimian client. There is no cimian recipe in this folder: the direct Cimian importer writes the pkginfo of an installer, and a print driver item needs the package tool's scripts.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.pcman.KyoceraKXDriver</string>
+        <key>Input</key>
+        <dict>
+            <key>NAME</key>
+            <string>KyoceraKXDriver</string>
+            <key>PCMAN_TEMPLATE</key>
+            <string>KyoceraKXDriver</string>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>ParentRecipe</key>
+        <string>com.github.serrc-techops.download.KyoceraKXDriver-Win</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.PcmanProcessors/PcmanImporter</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>pcman_template</key>
+                    <string>%PCMAN_TEMPLATE%</string>
+                    <key>pcman_version</key>
+                    <string>%version%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

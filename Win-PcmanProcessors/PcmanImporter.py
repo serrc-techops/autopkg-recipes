@@ -16,8 +16,13 @@ A dry run is the default: the tool shows its plan and writes nothing. A real
 run needs pcman_dry_run set to false, in the recipe's override on the machine
 that runs it.
 
-What is passed as the file: an .msi, an .exe, or an app package (.msix, .appx,
-.msixbundle, .appxbundle). An .exe needs pcman_version. An .msi and an app
+What is passed as the file: an .msi, an .exe, an app package (.msix, .appx,
+.msixbundle, .appxbundle) or a print driver zip (.zip). An .exe and a .zip need
+pcman_version: the tool never takes a version from them. A .zip is for a template
+that is an item of the kind printer_driver (the zip holds one folder named like the
+zip, with the driver's .inf and its files); the tool refuses it for any other
+template, and refuses a driver name of the template that the INF does not list.
+No msiinfo is needed for a .zip. An .msi and an app
 package do not: the tool reads the MSI's ProductVersion, or the package's
 Identity Version (for a bundle, the bundle's own version). A version that is
 given for an .msi or an app package is passed on as --version, and the tool
@@ -117,11 +122,15 @@ FORBIDDEN_FLAGS = (
 
 MSI_EXTENSION = ".msi"
 EXE_EXTENSION = ".exe"
+# A print driver zip (an item of the kind printer_driver in the tool).
+ZIP_EXTENSION = ".zip"
+# The files whose version the tool never reads from the file itself.
+VERSION_REQUIRED_EXTENSIONS = (EXE_EXTENSION, ZIP_EXTENSION)
 # The app packages that the tool imports as an item of the kind msix (the tool's
 # `installers.MSIX_EXTENSIONS`).
 APP_PACKAGE_EXTENSIONS = (".msix", ".appx", ".msixbundle", ".appxbundle")
-INSTALLER_EXTENSIONS = (MSI_EXTENSION, EXE_EXTENSION) + APP_PACKAGE_EXTENSIONS
-# For the messages: ".msi, .exe, .msix, .appx, .msixbundle or .appxbundle".
+INSTALLER_EXTENSIONS = (MSI_EXTENSION, EXE_EXTENSION) + APP_PACKAGE_EXTENSIONS + (ZIP_EXTENSION,)
+# For the messages: ".msi, .exe, .msix, .appx, .msixbundle, .appxbundle or .zip".
 EXTENSIONS_TEXT = "%s or %s" % (", ".join(INSTALLER_EXTENSIONS[:-1]), INSTALLER_EXTENSIONS[-1])
 # `bin/pcman` of the tool and the Python of the tool's own virtual environment.
 TOOL_SCRIPT = os.path.join("bin", "pcman")
@@ -406,8 +415,9 @@ class PcmanImporter(Processor):
         "pathname": {
             "required": True,
             "description": (
-                "Path to the downloaded installer (.msi or .exe) or app "
-                "package (.msix, .appx, .msixbundle, .appxbundle)."
+                "Path to the downloaded installer (.msi or .exe), app "
+                "package (.msix, .appx, .msixbundle, .appxbundle) or print "
+                "driver zip (.zip)."
             ),
         },
         "pcman_template": {
@@ -417,7 +427,8 @@ class PcmanImporter(Processor):
         "pcman_version": {
             "required": False,
             "description": (
-                "The version label. Required for an .exe: numeric parts "
+                "The version label. Required for an .exe and a print driver "
+                ".zip: numeric parts "
                 "separated by dots. Left out for an .msi (the tool takes the "
                 "MSI's own ProductVersion) and for an app package (the tool "
                 "takes the package's Identity Version); when given for either, "
@@ -531,10 +542,10 @@ class PcmanImporter(Processor):
             check_version(version)
         else:
             version = ""
-        if not version and extension == EXE_EXTENSION:
+        if not version and extension in VERSION_REQUIRED_EXTENSIONS:
             raise ProcessorError(
-                "An .exe needs pcman_version: the tool never takes a version "
-                "from the file."
+                "%s needs pcman_version: the tool never takes a version "
+                "from the file." % ("An .exe" if extension == EXE_EXTENSION else "A .zip file")
             )
 
         root_text = text_or_empty(self.env.get("pcman_root"))

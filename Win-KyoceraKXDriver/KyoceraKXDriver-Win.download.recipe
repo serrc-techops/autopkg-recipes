@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Description</key>
+        <string>This download is NOT verified: Kyocera publishes no checksum for the file, and this recipe pins none, so nothing proves that the file is what Kyocera published. The shared importer therefore refuses a real run of the pcman recipe unless the override sets pcman_allow_unverified to true. Downloads Kyocera's KX print driver zip (all KX printers, about 252 MB) from the one fixed address that serves the current version (on 2026-11-17 the server named the file KX Driver 8.7.0917.zip in its content-disposition header, and a header request answered 200 with no ETag, no Last-Modified and no Content-Length, and a ranged request was answered 200 with the whole file, so AutoPkg cannot tell an unchanged file and downloads it at every run). Then the folder-local processor KyoceraKXDriverRepacker takes the folder KX_ARCHITECTURE_FOLDER (default 64bit) out of it, reads the driver version from the DriverVer line of its OEMSETUP.INF, checks that every name in the list input kx_required_driver_names (it is read from the Input directly, not through a %variable%, so that it stays a list; default: the universal driver's name) is a model line of the INF, and writes KyoceraKXDriver-&lt;version&gt;.zip, a zip of one folder of the same name, always with the same bytes for the same vendor zip. That zip is the pathname that the importer gets, and its SHA-256 is the checksum_sha256 (checksum_verified stays false). On 2026-11-17 the recipe ran under AutoPkg 2.9.0 in a scratch folder (with the pcman recipe): URLDownloader downloaded the file with no special header and the repacker wrote KyoceraKXDriver-8.7.0917.0.zip (718 files, 549 driver names); every run downloaded the whole file again. Not established: a run through the Cimian client, an install on a PC without an older version, and the folders 32bit and arm64. The recipe never stops on an unchanged download, so a failed import is tried again at the next run.</string>
+        <key>Identifier</key>
+        <string>com.github.serrc-techops.download.KyoceraKXDriver-Win</string>
+        <key>Input</key>
+        <dict>
+            <key>KX_ARCHITECTURE_FOLDER</key>
+            <string>64bit</string>
+            <key>NAME</key>
+            <string>KyoceraKXDriver</string>
+            <key>kx_required_driver_names</key>
+            <array>
+                <string>KX DRIVER for Universal Printing</string>
+            </array>
+        </dict>
+        <key>MinimumVersion</key>
+        <string>1.0.0</string>
+        <key>Process</key>
+        <array>
+            <dict>
+                <key>Processor</key>
+                <string>URLDownloader</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>url</key>
+                    <string>https://www.kyoceradocumentsolutions.us/content/dam/download-center-americas-cf/us/drivers/drivers/KX_Print_Driver_zip.download.zip</string>
+                    <key>filename</key>
+                    <string>KX_Print_Driver.zip</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>EndOfCheckPhase</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>KyoceraKXDriverRepacker</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>kx_architecture_folder</key>
+                    <string>%KX_ARCHITECTURE_FOLDER%</string>
+                </dict>
+            </dict>
+        </array>
+    </dict>
+</plist>

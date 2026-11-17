@@ -985,9 +985,9 @@ class CheckBeforeTheCallTests(ToolTestCase):
 
     def test_the_installer_must_exist_and_end_in_a_known_extension(self):
         self.assertIn("does not exist", self.refused(installer=os.path.join(self.downloads, "gone.exe")))
-        other = self.make_installer("Example.zip")
+        other = self.make_installer("Example.txt")
         self.assertIn(
-            "must end in .msi, .exe, .msix, .appx, .msixbundle or .appxbundle: Example.zip",
+            "must end in .msi, .exe, .msix, .appx, .msixbundle, .appxbundle or .zip: Example.txt",
             self.refused(installer=other),
         )
         self.refused(pathname="")
@@ -1125,9 +1125,51 @@ class AppPackageTests(ToolTestCase):
         )
 
     def test_a_name_that_only_contains_an_extension_is_refused(self):
-        for name in ("Example.msix.zip", "Example.msixbundle.part", "Example-msix"):
+        for name in ("Example.msix.zipped", "Example.msixbundle.part", "Example-msix"):
             with self.subTest(name=name):
                 self.assertIn("must end in", self.refused(installer=self.make_installer(name)))
+
+
+class PrinterDriverZipTests(ToolTestCase):
+    """A print driver zip (.zip) is passed with a version, which is required; it needs no msiinfo."""
+
+    def setUp(self):
+        super().setUp()
+        self.driver = self.make_installer("ExampleDriver-1026.2.3.4.zip")
+
+    def refused(self, **overrides):
+        with self.assertRaises(ProcessorError) as caught:
+            run_processor(PCMAN, self.env(**overrides))
+        self.assertFalse(self.was_run(), "the tool must not run after a refused input")
+        return str(caught.exception)
+
+    def test_zip_is_an_accepted_extension(self):
+        self.assertIn(".zip", importer.INSTALLER_EXTENSIONS)
+        self.assertIn(".zip", importer.VERSION_REQUIRED_EXTENSIONS)
+
+    def test_a_zip_without_a_version_is_refused(self):
+        for value in (None, "", " "):
+            with self.subTest(value=value):
+                self.assertIn("A .zip file needs pcman_version", self.refused(installer=self.driver, pcman_version=value))
+
+    def test_a_zip_with_a_version_is_passed_on_with_it(self):
+        run_processor(PCMAN, self.env(installer=self.driver, pcman_version="1026.2.3.4"))
+        argv = self.record()["argv"]
+        self.assertEqual(argv[argv.index("--version") + 1], "1026.2.3.4")
+        self.assertEqual(argv[1], self.driver)
+
+    def test_a_zip_needs_no_msiinfo(self):
+        with mock.patch.object(importer.shutil, "which", side_effect=AssertionError("looked for")):
+            run_processor(PCMAN, self.env(installer=self.driver, pcman_version="1026.2.3.4"))
+
+    def test_the_extension_is_read_in_any_letter_case(self):
+        shouting = self.make_installer("EXAMPLEDRIVER-1026.2.3.4.ZIP")
+        run_processor(PCMAN, self.env(installer=shouting, pcman_version="1026.2.3.4"))
+        self.assertIn(shouting, self.record()["argv"])
+
+    def test_an_unverified_zip_is_refused_in_a_real_run(self):
+        message = self.refused(installer=self.driver, pcman_version="1026.2.3.4", checksum_verified=None)
+        self.assertIn("not verified", message)
 
 
 class DeclarationTests(unittest.TestCase):
