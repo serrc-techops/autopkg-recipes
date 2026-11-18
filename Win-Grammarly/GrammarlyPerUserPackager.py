@@ -17,14 +17,17 @@ full path, in the 64-bit Windows PowerShell. That script
  1. makes the folder FOLDER_NAME under Program Files and gives it an explicit
     access list (SYSTEM and Administrators full control, Users read and run,
     nothing inherited) and checks it;
- 2. writes GrammarlyInstaller.exe, install-user.ps1 and remove.ps1 into it,
-    each beside its place, compared with a SHA-256 written into
-    install-machine.ps1 at build time, then swapped in. The two scripts are
-    carried INSIDE install-machine.ps1 (base64) and written from there: from
+ 2. writes GrammarlyInstaller.exe, install-user.ps1, remove.ps1,
+    uninstall-user.ps1 and cleanup.ps1 into it, each beside its place,
+    compared with a SHA-256 written into install-machine.ps1 at build time,
+    then swapped in. The four scripts are carried INSIDE install-machine.ps1
+    (base64) and written from there: from
     the extraction folder, which a standard user may add files to (it lies
     under SYSTEM's temp folder), only the installer is taken, and only by its
     SHA-256; and install-machine.ps1 stops when that folder holds anything
-    the EXE did not put there (a narrowing, not a proof);
+    the EXE did not put there (a narrowing, not a proof). Before that it
+    takes a pending removal away (its two tasks and the key of its date), so
+    that an install after a removal works;
  3. registers the scheduled task TASK_NAME: at the sign-in of any user, as the
     group Users (S-1-5-32-545) with least privilege, so it runs as the person
     who signed in, in that person's session, with that person's rights; its
@@ -43,8 +46,29 @@ the person's local application data. It never upgrades: Grammarly updates
 itself. After MAX_ATTEMPTS failed runs with one staged version it stops trying
 until another version is staged.
 
-remove.ps1 removes the task, the folder and the uninstall entry. Grammarly
-stays in every profile that has it.
+remove.ps1 (SYSTEM; decided 2026-11-18) also removes each person's copy, and
+nothing that runs as SYSTEM runs a file from, or writes into, a profile. In
+this order: it compares uninstall-user.ps1 and cleanup.ps1 with the SHA-256
+written into it; unregisters the install task and deletes the staged
+installer and install-user.ps1; registers the task REMOVAL_TASK_NAME (any
+sign-in, the group Users, least privilege, hidden: uninstall-user.ps1) and
+starts it once; registers the task CLEANUP_TASK_NAME (SYSTEM, at each start
+and once a day: cleanup.ps1); records the removal's UTC date in the HKLM
+key SOFTWARE, MARKER_KEY_NAME; last deletes the uninstall entry.
+
+uninstall-user.ps1 (as the person, the guards of install-user.ps1) runs the
+person's own QuietUninstallString only when it is exactly the quoted path of
+VENDOR_UNINSTALLER under the person's LOCALAPPDATA followed by /S, and waits up to
+UNINSTALL_WAIT_SECONDS until the person's uninstall entry is gone: the entry
+decides, not the exit code.
+
+cleanup.ps1 (SYSTEM) only tests with Test-Path whether a person's profile
+still holds Grammarly's uninstaller. When none does, or the removal is older
+than REMOVAL_KEEP_DAYS days, it unregisters both removal tasks and deletes the
+folder and the key of the date (both tasks first, then the files, cleanup.ps1
+last); otherwise it does nothing. install-machine.ps1 and cleanup.ps1 share
+the named mutex MUTEX_NAME, so a cleanup run never deletes what an install is
+staging.
 
 The scripts are made by the pure functions below, so tests can pin their text.
 The stub is 7zS2con.sfx of the public-domain LZMA SDK, as in the
@@ -62,7 +86,8 @@ archive) under AutoPkg, as SYSTEM on one PC, one on-demand start of the task
 that installed Grammarly for an administrator, and the removal; this form
 under AutoPkg and as SYSTEM on the same PC, where its own start of the task
 found Grammarly present. With this form the per-user install path and the
-removal have not run.
+removal have not run. The removal of 2026-11-18 (uninstall-user.ps1,
+cleanup.ps1 and the new remove.ps1) has not run on any PC.
 """
 import base64
 import hashlib
@@ -86,8 +111,13 @@ __all__ = [
     "machine_script",
     "user_script",
     "remove_script",
+    "uninstall_script",
+    "cleanup_script",
     "settings_digest",
     "SETUP_CODES",
+    "REMOVE_CODES",
+    "UNINSTALL_USER_CODES",
+    "CLEANUP_CODES",
 ]
 
 # What the PC gets. None of these names an organisation.
@@ -99,8 +129,24 @@ INSTALLER_NAME = "GrammarlyInstaller.exe"
 USER_SCRIPT_NAME = "install-user.ps1"
 REMOVE_SCRIPT_NAME = "remove.ps1"
 MACHINE_SCRIPT_NAME = "install-machine.ps1"
+UNINSTALL_SCRIPT_NAME = "uninstall-user.ps1"
+CLEANUP_SCRIPT_NAME = "cleanup.ps1"
+# The two tasks of a removal: one runs as each person at sign-in, one as SYSTEM.
+REMOVAL_TASK_NAME = "Grammarly per-user removal"
+CLEANUP_TASK_NAME = "Grammarly removal cleanup"
+# The value under HKLM:\SOFTWARE\<MARKER_KEY_NAME> that holds the removal's UTC date, and its form.
+REMOVAL_DATE_VALUE = "RemovedUtc"
+REMOVAL_DATE_FORMAT = "yyyy-MM-dd"
 # The vendor's detection rule: this key in the user's own hive, value DisplayVersion.
 VENDOR_UNINSTALL_KEY = "Grammarly Desktop Integrations"
+# The person's own uninstaller of Grammarly, under the person's local application data; that
+# key's QuietUninstallString is this path in quotes followed by /S (read on a PC on 2026-11-18).
+VENDOR_UNINSTALLER = r"Grammarly\DesktopIntegrations\Uninstall.exe"
+VENDOR_UNINSTALL_ARGUMENT = "/S"
+# Where local application data lies in a profile (for the look of cleanup.ps1 only).
+PROFILE_LOCAL_APPDATA = r"AppData\Local"
+# The SIDs of people: local and domain accounts, and Microsoft Entra accounts.
+PERSON_SID_PATTERN = "^S-1-(5-21|12-1)-"
 USERS_SID = "S-1-5-32-545"
 SYSTEM_SID = "S-1-5-18"
 ADMINISTRATORS_SID = "S-1-5-32-544"
@@ -111,6 +157,21 @@ INSTALLER_WAIT_SECONDS = 900
 # The sign-in trigger waits this long, so that the session is up first.
 LOGON_DELAY = "PT30S"
 TASK_TIME_LIMIT_MINUTES = 30
+# How long a person's removal run waits for that person's uninstall entry to go (seconds), and
+# how often it looks: the vendor's uninstaller may hand over to a copy of itself and return early.
+UNINSTALL_WAIT_SECONDS = 600
+UNINSTALL_POLL_SECONDS = 5
+# A removal ends this many days after its date even when a profile still has Grammarly.
+REMOVAL_KEEP_DAYS = 90
+# The cleanup task runs at each start and once a day at this local time.
+CLEANUP_DAILY_AT = "12:00"
+# One lock that install-machine.ps1 and cleanup.ps1 share (a named mutex in the Global namespace):
+# a cleanup run that is already going when an install starts would otherwise delete the folder
+# that the install stages (Unregister-ScheduledTask does not stop a running instance). The
+# install waits for it up to MUTEX_WAIT_SECONDS; cleanup does not wait and does nothing when it
+# is held.
+MUTEX_NAME = r"Global\GrammarlyPerUserDeployment"
+MUTEX_WAIT_SECONDS = 120
 
 # The parameters of the vendor's article "How to deploy Grammarly for Windows"
 # (read on 2026-11-13). The names are case-sensitive. /S is always given.
@@ -142,13 +203,36 @@ SETUP_CODES = {
     45: "the entry of the uninstall list could not be written",
     46: "a 32-bit PowerShell on a 64-bit Windows (the 64-bit one could not be started)",
     48: "the extraction folder holds a file or folder that the EXE did not put there",
+    49: "a pending removal (its two tasks or the key of its date) could not be taken away, or the lock shared "
+        "with the cleanup could not be taken: at once when another account holds its name with an access list "
+        "that refuses SYSTEM, else after MUTEX_WAIT_SECONDS",
 }
 # What the stub unpacks; anything else in the extraction folder stops the run.
 EXTRACTED_NAMES = ("setup.bat", "install-machine.ps1", "GrammarlyInstaller.exe")
 REMOVE_CODES = {
     41: "remove.ps1 was not run as an administrator or SYSTEM",
     46: "a 32-bit PowerShell on a 64-bit Windows",
-    47: "the task, the folder or the entry could not be removed",
+    47: "the install task, the staged installer, install-user.ps1 or (last) the uninstall entry could not be removed",
+    50: "uninstall-user.ps1 or cleanup.ps1 is missing or not the one that was packed, or the folder or one of "
+        "them may be changed by an account other than SYSTEM and Administrators (nothing was changed)",
+    51: "the per-user removal task could not be registered, or it is not the one that was asked for",
+    52: "the cleanup task could not be registered, or it is not the one that was asked for",
+    53: "the date of the removal could not be recorded",
+}
+UNINSTALL_USER_CODES = {
+    0: "nothing to do for this account, another run of the same person is going on, no Grammarly in "
+       "this profile, or Grammarly was removed (the person's uninstall entry is gone)",
+    1: "not removed: the person's uninstall command is not the expected one, the uninstaller is missing, "
+       "the entry is still there after the wait, or an error",
+}
+CLEANUP_CODES = {
+    0: "nothing to do yet (an install is there, or a profile still has Grammarly within the days), or the "
+       "removal was ended",
+    41: "cleanup.ps1 was not run as an administrator or SYSTEM",
+    46: "a 32-bit PowerShell on a 64-bit Windows",
+    54: "a removal task could not be unregistered (nothing was deleted; the next run tries again), or, with both "
+        "tasks already unregistered, a file, the folder or the key of the date could not be deleted (they stay, "
+        "inert: no task runs them; an administrator deletes them, or the next install takes them over)",
 }
 
 
@@ -231,11 +315,52 @@ if ([Environment]::Is64BitOperatingSystem -and -not [Environment]::Is64BitProces
 $ProgramFolder = $env:ProgramFiles
 $Folder = Join-Path $ProgramFolder $FolderName
 $MarkerKey = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\' + $MarkerKeyName
+$RemovalKey = 'HKLM:\SOFTWARE\' + $MarkerKeyName
 """
+
+# The check of an access list: SYSTEM and Administrators may do anything, Users may read and run,
+# nobody else may change anything. Shared by install-machine.ps1 and remove.ps1.
+_FOLDER_ACCESS = r"""
+$writeRights = [Security.AccessControl.FileSystemRights]'WriteData, AppendData, WriteExtendedAttributes, WriteAttributes, Delete, DeleteSubdirectoriesAndFiles, ChangePermissions, TakeOwnership'
+function Test-FolderAccess([string]$Path, [bool]$Owner) {
+    $acl = Get-Acl -LiteralPath $Path
+    $ownerSid = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
+    if ($Owner -and @('@SYSTEM_SID@', '@ADMINISTRATORS_SID@') -notcontains $ownerSid) { return "the owner of $Path is $ownerSid" }
+    $usersRead = $false
+    foreach ($rule in $acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])) {
+        if ($rule.AccessControlType -ne 'Allow') { continue }
+        $sid = $rule.IdentityReference.Value
+        if (@('@SYSTEM_SID@', '@ADMINISTRATORS_SID@') -contains $sid) { continue }
+        if (($rule.FileSystemRights -band $writeRights) -ne 0) { return "$sid may change $Path" }
+        if ($sid -eq $UsersSid -and ($rule.FileSystemRights -band [Security.AccessControl.FileSystemRights]::ReadAndExecute) -eq [Security.AccessControl.FileSystemRights]::ReadAndExecute) { $usersRead = $true }
+    }
+    if (-not $usersRead) { return "Users may not read $Path" }
+    return ''
+}
+"""
+
+# The accounts that a per-user run leaves alone. Shared by install-user.ps1 and uninstall-user.ps1.
+_PERSON_GUARDS = r"""
+# Nothing for SYSTEM, the service accounts and other built-in accounts: only a local or
+# domain account (S-1-5-21-...) or a Microsoft Entra account (S-1-12-1-...).
+$sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+if ($sid -notmatch '@PERSON_SID_PATTERN@') { exit 0 }
+# Nor for the accounts of the first setup and of Windows Sandbox: throwaway profiles.
+$account = [Environment]::UserName
+if ($account -like 'defaultuser*' -or $account -eq 'WDAGUtilityAccount') { exit 0 }
+"""
+
+
+def _snippets(template):
+    """Put the shared pieces into a template (before _fill fills the values)."""
+    for name, text in (("COMMON_HEAD", _COMMON_HEAD), ("FOLDER_ACCESS", _FOLDER_ACCESS), ("PERSON_GUARDS", _PERSON_GUARDS)):
+        template = template.replace("@%s@" % name, text.strip("\n"))
+    return template
+
 
 MACHINE_TEMPLATE = r"""# Stages the Grammarly for Windows installer so that each person who signs in gets Grammarly
 # in their own profile. Run by setup.bat as SYSTEM (or an administrator), from the folder that
-# the self-extracting EXE unpacked into. Exit 0 only when everything is in place. The two
+# the self-extracting EXE unpacked into. Exit 0 only when everything is in place. The four
 # scripts that it stages are carried in this file; from the extraction folder only the
 # installer is taken, and only when it has the SHA-256 below.
 $ErrorActionPreference = 'Stop'
@@ -243,6 +368,8 @@ $Version = '@VERSION@'
 $Sha256 = '@SHA256@'
 $FolderName = '@FOLDER_NAME@'
 $TaskName = '@TASK_NAME@'
+$RemovalTaskName = '@REMOVAL_TASK_NAME@'
+$CleanupTaskName = '@CLEANUP_TASK_NAME@'
 $MarkerKeyName = '@MARKER_KEY_NAME@'
 $DisplayName = '@DISPLAY_NAME@'
 $UsersSid = '@USERS_SID@'
@@ -263,23 +390,32 @@ try {
     if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -ne $Sha256) { Fail 43 'the unpacked installer is not the one that was packed' }
 } catch { Fail 43 ('the unpacked installer could not be read: ' + $_.Exception.Message) }
 
-# 1. The folder: SYSTEM and Administrators full control, Users read and run, nothing inherited.
-$writeRights = [Security.AccessControl.FileSystemRights]'WriteData, AppendData, WriteExtendedAttributes, WriteAttributes, Delete, DeleteSubdirectoriesAndFiles, ChangePermissions, TakeOwnership'
-function Test-FolderAccess([string]$Path, [bool]$Owner) {
-    $acl = Get-Acl -LiteralPath $Path
-    $ownerSid = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
-    if ($Owner -and @('@SYSTEM_SID@', '@ADMINISTRATORS_SID@') -notcontains $ownerSid) { return "the owner of $Path is $ownerSid" }
-    $usersRead = $false
-    foreach ($rule in $acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])) {
-        if ($rule.AccessControlType -ne 'Allow') { continue }
-        $sid = $rule.IdentityReference.Value
-        if (@('@SYSTEM_SID@', '@ADMINISTRATORS_SID@') -contains $sid) { continue }
-        if (($rule.FileSystemRights -band $writeRights) -ne 0) { return "$sid may change $Path" }
-        if ($sid -eq $UsersSid -and ($rule.FileSystemRights -band [Security.AccessControl.FileSystemRights]::ReadAndExecute) -eq [Security.AccessControl.FileSystemRights]::ReadAndExecute) { $usersRead = $true }
-    }
-    if (-not $usersRead) { return "Users may not read $Path" }
-    return ''
+# 0a. The lock shared with cleanup.ps1, held from here until the entry is written: a cleanup run
+# that started before this install would otherwise delete the folder staged below (unregistering
+# its task does not stop a run that is going). A lock left by a run that died counts as taken.
+$owned = $false
+try {
+    $mutex = New-Object Threading.Mutex($false, '@MUTEX_NAME@')
+    $owned = $mutex.WaitOne(@MUTEX_WAIT_SECONDS@ * 1000)
+} catch {
+    if ($_.Exception.GetBaseException() -is [Threading.AbandonedMutexException]) { $owned = $true } else { Fail 49 ('the lock shared with the cleanup could not be taken: ' + $_.Exception.Message) }
 }
+if (-not $owned) { Fail 49 'a cleanup run holds the lock shared with it' }
+
+# 0b. A removal that is still pending (its two tasks and the key of its date) is taken away
+# first, so that an install after a removal works and a later removal starts afresh. The
+# folder itself is staged again below.
+try {
+    foreach ($name in @($RemovalTaskName, $CleanupTaskName)) {
+        if (Get-ScheduledTask -TaskName $name -TaskPath '\' -ErrorAction SilentlyContinue) {
+            Unregister-ScheduledTask -TaskName $name -TaskPath '\' -Confirm:$false
+        }
+    }
+    if (Test-Path -LiteralPath $RemovalKey) { Remove-Item -LiteralPath $RemovalKey -Recurse -Force }
+} catch { Fail 49 ('a pending removal could not be taken away: ' + $_.Exception.Message) }
+
+# 1. The folder: SYSTEM and Administrators full control, Users read and run, nothing inherited.
+@FOLDER_ACCESS@
 try {
     if (-not (Test-Path -LiteralPath $Folder -PathType Container)) { New-Item -ItemType Directory -Path $Folder | Out-Null }
     $security = New-Object Security.AccessControl.DirectorySecurity
@@ -298,9 +434,10 @@ $problem = Test-FolderAccess $Folder $true
 if ($problem) { Fail 42 $problem }
 
 # 2. The files: each is written beside its place, compared with the SHA-256 that the packer
-# wrote into this script, and swapped in. The two scripts come from this file, not from the
-# extraction folder. A person's run copies the installer away before it runs it, so the
-# staged file is held only briefly.
+# wrote into this script, and swapped in. The four scripts come from this file, not from the
+# extraction folder; uninstall-user.ps1 and cleanup.ps1 lie unused until a removal, which
+# compares them again before it registers its tasks. A person's run copies the installer away
+# before it runs it, so the staged file is held only briefly.
 function Install-Staged([string]$To, [string]$Hash, [byte[]]$Bytes, [string]$From) {
     $new = $To + '.new'
     if ($From) { [IO.File]::Copy($From, $new, $true) } else { [IO.File]::WriteAllBytes($new, $Bytes) }
@@ -322,11 +459,15 @@ $staged = @{
     '@INSTALLER_NAME@' = $Sha256
     '@USER_SCRIPT_NAME@' = '@USER_SCRIPT_SHA256@'
     '@REMOVE_SCRIPT_NAME@' = '@REMOVE_SCRIPT_SHA256@'
+    '@UNINSTALL_SCRIPT_NAME@' = '@UNINSTALL_SCRIPT_SHA256@'
+    '@CLEANUP_SCRIPT_NAME@' = '@CLEANUP_SCRIPT_SHA256@'
 }
 try {
     Install-Staged (Join-Path $Folder '@INSTALLER_NAME@') $Sha256 $null $source
     Install-Staged (Join-Path $Folder '@USER_SCRIPT_NAME@') '@USER_SCRIPT_SHA256@' ([Convert]::FromBase64String('@USER_SCRIPT_BASE64@')) ''
     Install-Staged (Join-Path $Folder '@REMOVE_SCRIPT_NAME@') '@REMOVE_SCRIPT_SHA256@' ([Convert]::FromBase64String('@REMOVE_SCRIPT_BASE64@')) ''
+    Install-Staged (Join-Path $Folder '@UNINSTALL_SCRIPT_NAME@') '@UNINSTALL_SCRIPT_SHA256@' ([Convert]::FromBase64String('@UNINSTALL_SCRIPT_BASE64@')) ''
+    Install-Staged (Join-Path $Folder '@CLEANUP_SCRIPT_NAME@') '@CLEANUP_SCRIPT_SHA256@' ([Convert]::FromBase64String('@CLEANUP_SCRIPT_BASE64@')) ''
     foreach ($name in $staged.Keys) {
         if ((Get-FileHash -LiteralPath (Join-Path $Folder $name) -Algorithm SHA256).Hash -ne $staged[$name]) { throw "the staged $name is not the one that was packed" }
     }
@@ -367,6 +508,8 @@ try {
     Set-ItemProperty -LiteralPath $MarkerKey -Name 'NoRepair' -Value 1 -Type DWord
     Set-ItemProperty -LiteralPath $MarkerKey -Name 'DisplayVersion' -Value $Version
 } catch { Fail 45 ('the entry could not be written: ' + $_.Exception.Message) }
+# The entry is there: a cleanup run now sees the install and does nothing, so the lock may go.
+try { $mutex.ReleaseMutex() } catch { }
 
 # 5. Start the task once now, so that a person who is signed in gets Grammarly without signing
 # out. Seen on 2026-11-16: an on-demand start ran in the signed-in person's session. A failure
@@ -390,13 +533,7 @@ $InstallerArguments = @(@ARGUMENTS@)
 $MaxAttempts = @MAX_ATTEMPTS@
 $WaitSeconds = @INSTALLER_WAIT_SECONDS@
 
-# Nothing for SYSTEM, the service accounts and other built-in accounts: only a local or
-# domain account (S-1-5-21-...) or a Microsoft Entra account (S-1-12-1-...).
-$sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-if ($sid -notmatch '^S-1-(5-21|12-1)-') { exit 0 }
-# Nor for the accounts of the first setup and of Windows Sandbox: throwaway profiles.
-$account = [Environment]::UserName
-if ($account -like 'defaultuser*' -or $account -eq 'WDAGUtilityAccount') { exit 0 }
+@PERSON_GUARDS@
 
 $staged = Join-Path $PSScriptRoot '@INSTALLER_NAME@'
 $vendorKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\@VENDOR_UNINSTALL_KEY@'
@@ -471,33 +608,275 @@ try {
 }
 """
 
-REMOVE_TEMPLATE = r"""# Removes what the Grammarly per-user item put on the PC: the scheduled task, the staged
-# folder and the entry of the uninstall list. Grammarly stays in every profile that has it
-# (each person removes it, or an administrator does per profile). Run as SYSTEM or an
-# administrator. Exit 0 only when all three are gone.
+REMOVE_TEMPLATE = r"""# Removes the Grammarly per-user item from the PC and, through each person's own sign-in,
+# Grammarly from each profile. Run as SYSTEM or an administrator. Nothing here runs a file from,
+# or writes into, a person's profile. In this order: the two removal scripts that the install
+# staged are compared with their SHA-256 (nothing is changed when they differ); the install task
+# goes, then the staged installer and install-user.ps1 (no new installs); the removal task (at the
+# sign-in of any user, as that person) and the cleanup task (as SYSTEM) are registered; the
+# removal's date is recorded; last, the entry of the uninstall list goes. Exit 0 only when all of
+# that holds.
 $ErrorActionPreference = 'Stop'
 $FolderName = '@FOLDER_NAME@'
 $TaskName = '@TASK_NAME@'
+$RemovalTaskName = '@REMOVAL_TASK_NAME@'
+$CleanupTaskName = '@CLEANUP_TASK_NAME@'
 $MarkerKeyName = '@MARKER_KEY_NAME@'
+$UsersSid = '@USERS_SID@'
 @COMMON_HEAD@
-$failed = @()
+@FOLDER_ACCESS@
+$powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+
+# 1. The two scripts that the removal runs were staged by the install from its own text; they must
+# still have the SHA-256 that the packer wrote here, and only SYSTEM and Administrators may
+# change them or the folder (which keeps its access list).
+$removal = @{
+    '@UNINSTALL_SCRIPT_NAME@' = '@UNINSTALL_SCRIPT_SHA256@'
+    '@CLEANUP_SCRIPT_NAME@' = '@CLEANUP_SCRIPT_SHA256@'
+}
+try {
+    foreach ($name in $removal.Keys) {
+        if ((Get-FileHash -LiteralPath (Join-Path $Folder $name) -Algorithm SHA256).Hash -ne $removal[$name]) { Fail 50 ('the staged ' + $name + ' is not the one that was packed') }
+    }
+    $problem = Test-FolderAccess $Folder $true
+    foreach ($name in $removal.Keys) {
+        if (-not $problem) { $problem = Test-FolderAccess (Join-Path $Folder $name) $false }
+    }
+} catch { Fail 50 ('the removal scripts could not be checked: ' + $_.Exception.Message) }
+if ($problem) { Fail 50 $problem }
+
+# 2. No new installs: the install task goes, then the staged installer and install-user.ps1.
 try {
     if (Get-ScheduledTask -TaskName $TaskName -TaskPath '\' -ErrorAction SilentlyContinue) {
         Unregister-ScheduledTask -TaskName $TaskName -TaskPath '\' -Confirm:$false
     }
-} catch { $failed += ('the task: ' + $_.Exception.Message) }
+} catch { Fail 47 ('the install task could not be removed: ' + $_.Exception.Message) }
+foreach ($name in @('@INSTALLER_NAME@', '@USER_SCRIPT_NAME@')) {
+    $path = Join-Path $Folder $name
+    # A person's run may be copying the installer just now: a few tries.
+    for ($try = 1; $try -le 5 -and (Test-Path -LiteralPath $path); $try++) {
+        try { Remove-Item -LiteralPath $path -Force } catch { Start-Sleep -Seconds 3 }
+    }
+    if (Test-Path -LiteralPath $path) { Fail 47 ('could not delete ' + $path) }
+}
+
+# 3. The removal task: at the sign-in of any user, as the group Users, least privilege, hidden,
+# so that uninstall-user.ps1 runs as the person who signed in, with that person's own rights.
+try {
+    $action = New-ScheduledTaskAction -Execute $powershell -Argument ('-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + (Join-Path $Folder '@UNINSTALL_SCRIPT_NAME@') + '"')
+    $trigger = New-ScheduledTaskTrigger -AtLogOn
+    $trigger.Delay = '@LOGON_DELAY@'
+    $taskPrincipal = New-ScheduledTaskPrincipal -GroupId $UsersSid -RunLevel Limited
+    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances Parallel -ExecutionTimeLimit (New-TimeSpan -Minutes @TASK_TIME_LIMIT_MINUTES@)
+    Register-ScheduledTask -TaskName $RemovalTaskName -TaskPath '\' -Action $action -Trigger $trigger -Principal $taskPrincipal -Settings $settings -Description 'Removes Grammarly for Windows from the profile of the person who signs in, with that profile''s own uninstaller.' -Force | Out-Null
+    $task = Get-ScheduledTask -TaskName $RemovalTaskName -TaskPath '\'
+    $group = [string]$task.Principal.GroupId
+    if ($group -notmatch '^S-1-') { $group = (New-Object Security.Principal.NTAccount($group)).Translate([Security.Principal.SecurityIdentifier]).Value }
+} catch { Fail 51 ('the removal task could not be registered: ' + $_.Exception.Message) }
+if ($group -ne $UsersSid) { Fail 51 ('the removal task runs as ' + $group + ', not as the group Users') }
+if ([string]$task.Principal.RunLevel -ne 'Limited') { Fail 51 ('the removal task runs with ' + $task.Principal.RunLevel + ', not with least privilege') }
+# Started once now for the people signed in, as the install starts its task; a failure is only
+# reported: the task runs at the next sign-in anyway.
+try {
+    Start-ScheduledTask -TaskName $RemovalTaskName -TaskPath '\'
+    $started = 'started it once for the people signed in'
+} catch { $started = 'could not start it now (' + $_.Exception.Message + '); it runs at the next sign-in' }
+
+# 4. The cleanup task: as SYSTEM, at each start and once a day. cleanup.ps1 only looks whether a
+# profile still has Grammarly, and ends the removal when none has or the removal is old.
+try {
+    $cleanupAction = New-ScheduledTaskAction -Execute $powershell -Argument ('-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + (Join-Path $Folder '@CLEANUP_SCRIPT_NAME@') + '"')
+    $cleanupTriggers = @((New-ScheduledTaskTrigger -AtStartup), (New-ScheduledTaskTrigger -Daily -At '@CLEANUP_DAILY_AT@'))
+    $cleanupPrincipal = New-ScheduledTaskPrincipal -UserId '@SYSTEM_SID@' -LogonType ServiceAccount -RunLevel Highest
+    $cleanupSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes @TASK_TIME_LIMIT_MINUTES@)
+    Register-ScheduledTask -TaskName $CleanupTaskName -TaskPath '\' -Action $cleanupAction -Trigger $cleanupTriggers -Principal $cleanupPrincipal -Settings $cleanupSettings -Description 'Ends the removal of the Grammarly per-user deployment when no profile has Grammarly any more, or after @REMOVAL_KEEP_DAYS@ days.' -Force | Out-Null
+    $cleanupTask = Get-ScheduledTask -TaskName $CleanupTaskName -TaskPath '\'
+    $runAs = [string]$cleanupTask.Principal.UserId
+    if ($runAs -notmatch '^S-1-') { $runAs = (New-Object Security.Principal.NTAccount($runAs)).Translate([Security.Principal.SecurityIdentifier]).Value }
+} catch { Fail 52 ('the cleanup task could not be registered: ' + $_.Exception.Message) }
+if ($runAs -ne '@SYSTEM_SID@') { Fail 52 ('the cleanup task runs as ' + $runAs + ', not as SYSTEM') }
+
+# 5. The removal's date (UTC) in this deployment's key. A date that is there already is kept, so
+# that a second removal does not put off the end.
+try {
+    if (-not (Test-Path -LiteralPath $RemovalKey)) { New-Item -Path $RemovalKey | Out-Null }
+    if (-not (Get-ItemProperty -LiteralPath $RemovalKey).'@REMOVAL_DATE_VALUE@') {
+        Set-ItemProperty -LiteralPath $RemovalKey -Name '@REMOVAL_DATE_VALUE@' -Value ([DateTime]::UtcNow.ToString('@REMOVAL_DATE_FORMAT@', [Globalization.CultureInfo]::InvariantCulture))
+    }
+} catch { Fail 53 ('the date of the removal could not be recorded: ' + $_.Exception.Message) }
+
+# 6. Last, the entry of the uninstall list: the item counts as removed only now.
+try {
+    if (Test-Path -LiteralPath $MarkerKey) { Remove-Item -LiteralPath $MarkerKey -Recurse -Force }
+} catch { Fail 47 ('the entry could not be removed: ' + $_.Exception.Message) }
+Write-Output ('Removed the install task, the staged installer and the entry; registered the task ' + $RemovalTaskName + ' (' + $started + ') and the task ' + $CleanupTaskName + '.')
+exit 0
+"""
+
+UNINSTALL_TEMPLATE = r"""# Removes Grammarly for Windows from the profile of the person who signed in, with that profile's
+# own uninstaller, after the Grammarly per-user item was removed from the PC. Run by the scheduled
+# task '@REMOVAL_TASK_NAME@' as that person, with that person's own rights. It never elevates. Only
+# the command that the vendor writes for this very profile is run. One line per run goes to the
+# person's log.
+$ErrorActionPreference = 'Stop'
+$WaitSeconds = @UNINSTALL_WAIT_SECONDS@
+$PollSeconds = @UNINSTALL_POLL_SECONDS@
+
+@PERSON_GUARDS@
+
+$vendorKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\@VENDOR_UNINSTALL_KEY@'
+$stateKey = 'HKCU:\Software\@MARKER_KEY_NAME@'
+$logFolder = Join-Path $env:LOCALAPPDATA '@MARKER_KEY_NAME@'
+$log = Join-Path $logFolder 'uninstall.log'
+$uninstaller = Join-Path $env:LOCALAPPDATA '@VENDOR_UNINSTALLER@'
+$expected = '"' + $uninstaller + '" @VENDOR_UNINSTALL_ARGUMENT@'
+$lock = $null
+
+function Finish([string]$Text, [int]$Code) {
+    try {
+        if ((Test-Path -LiteralPath $log) -and (Get-Item -LiteralPath $log).Length -gt 262144) { Move-Item -LiteralPath $log -Destination ($log + '.old') -Force }
+        Add-Content -LiteralPath $log -Value ((Get-Date).ToString('yyyy-MM-ddTHH:mm:sszzz') + ' ' + $Text) -Encoding Ascii
+    } catch { }
+    if ($lock) { $lock.Close() }
+    exit $Code
+}
+
+try {
+    if (-not (Test-Path -LiteralPath $logFolder)) { New-Item -ItemType Directory -Path $logFolder | Out-Null }
+    # One run per person at a time, the install's run included (the same lock file).
+    try { $lock = [IO.File]::Open((Join-Path $logFolder 'install.lock'), 'OpenOrCreate', 'ReadWrite', 'None') } catch { exit 0 }
+
+    if (-not (Test-Path -LiteralPath $vendorKey)) {
+        Remove-Item -LiteralPath $stateKey -Recurse -Force -ErrorAction SilentlyContinue
+        Finish 'no Grammarly in this profile: nothing to do' 0
+    }
+    $command = $null
+    try { $command = [string](Get-ItemProperty -LiteralPath $vendorKey -Name 'QuietUninstallString' -ErrorAction Stop).QuietUninstallString } catch { }
+    # Only this profile's own uninstaller, with /S, exactly as the vendor writes it.
+    if ($command -cne $expected) { Finish ('not removed: the uninstall command of this profile is not ' + $expected + ' but ' + $command) 1 }
+    if (-not (Test-Path -LiteralPath $uninstaller -PathType Leaf)) { Finish ('not removed: ' + $uninstaller + ' is missing') 1 }
+
+    $deadline = (Get-Date).AddSeconds($WaitSeconds)
+    $info = New-Object Diagnostics.ProcessStartInfo
+    $info.FileName = $uninstaller
+    $info.Arguments = '@VENDOR_UNINSTALL_ARGUMENT@'
+    $info.UseShellExecute = $false
+    $info.WorkingDirectory = [IO.Path]::GetTempPath()
+    $process = [Diagnostics.Process]::Start($info)
+    if ($process.WaitForExit($WaitSeconds * 1000)) {
+        $code = 'exit code ' + $process.ExitCode
+    } else {
+        $code = 'still running after ' + $WaitSeconds + ' seconds'
+    }
+    # The uninstaller may hand over to a copy of itself and return at once: wait for the entry.
+    while ((Test-Path -LiteralPath $vendorKey) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds $PollSeconds }
+    # The person's uninstall entry decides, not the exit code.
+    if (Test-Path -LiteralPath $vendorKey) { Finish ('not removed: the entry is still there after ' + $WaitSeconds + ' seconds (uninstaller: ' + $code + ')') 1 }
+    Remove-Item -LiteralPath $stateKey -Recurse -Force -ErrorAction SilentlyContinue
+    Finish ('removed Grammarly from this profile (uninstaller: ' + $code + ')') 0
+} catch {
+    Finish ('error: ' + $_.Exception.Message) 1
+}
+"""
+
+CLEANUP_TEMPLATE = r"""# Ends a removal of the Grammarly per-user item. Run as SYSTEM by the task '@CLEANUP_TASK_NAME@' at
+# each start and once a day. Toward the profiles it only LOOKS (Test-Path, nothing else): nothing
+# is run from, read from or written into a profile. When no person's profile has Grammarly's own
+# uninstaller any more, or the removal was recorded more than @REMOVAL_KEEP_DAYS@ days ago, it
+# unregisters both removal tasks and then deletes the folder (this script last) and the key of the
+# removal's date. Otherwise it does nothing. Run as SYSTEM or an administrator.
+$ErrorActionPreference = 'Stop'
+$FolderName = '@FOLDER_NAME@'
+$RemovalTaskName = '@REMOVAL_TASK_NAME@'
+$CleanupTaskName = '@CLEANUP_TASK_NAME@'
+$MarkerKeyName = '@MARKER_KEY_NAME@'
+$KeepDays = @REMOVAL_KEEP_DAYS@
+@COMMON_HEAD@
+$profileList = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList'
+
+# The lock shared with install-machine.ps1: an install that starts while this run goes on would
+# otherwise have its freshly staged folder deleted below (unregistering this task does not stop
+# this run). Not waited for: when an install holds it, this run does nothing and the next start
+# or day runs again. A lock left by a run that died counts as taken. Held until this run ends.
+$owned = $false
+try {
+    $mutex = New-Object Threading.Mutex($false, '@MUTEX_NAME@')
+    $owned = $mutex.WaitOne(0)
+} catch {
+    if ($_.Exception.GetBaseException() -is [Threading.AbandonedMutexException]) { $owned = $true }
+}
+if (-not $owned) {
+    Write-Output 'An install holds the lock shared with it: nothing to do now.'
+    exit 0
+}
+
+# An install is there again: it takes the pending removal away itself.
+if (Test-Path -LiteralPath $MarkerKey) {
+    Write-Output 'The item is installed again: nothing to do.'
+    exit 0
+}
+
+# A date that is missing or cannot be read counts as an old one: the removal must end some day.
+$removedOn = $null
+try {
+    $text = [string](Get-ItemProperty -LiteralPath $RemovalKey -Name '@REMOVAL_DATE_VALUE@' -ErrorAction Stop).'@REMOVAL_DATE_VALUE@'
+    $removedOn = [DateTime]::ParseExact($text, '@REMOVAL_DATE_FORMAT@', [Globalization.CultureInfo]::InvariantCulture)
+} catch { }
+$expired = (-not $removedOn) -or ($removedOn.AddDays($KeepDays) -lt [DateTime]::UtcNow.Date)
+
+# The profiles of people: does Grammarly's own uninstaller still lie in one of them? Test-Path only.
+$left = 0
+try {
+    foreach ($entry in @(Get-ChildItem -LiteralPath $profileList)) {
+        if ($entry.PSChildName -notmatch '@PERSON_SID_PATTERN@') { continue }
+        $profilePath = [string]$entry.GetValue('ProfileImagePath')
+        if (-not $profilePath) { continue }
+        if (Test-Path -LiteralPath ($profilePath.TrimEnd('\') + '\@PROFILE_UNINSTALLER@') -PathType Leaf) { $left++ }
+    }
+} catch {
+    # The list could not be read: as if a profile still had it, so only the days end the removal.
+    $left = 1
+}
+if ($left -gt 0 -and -not $expired) {
+    Write-Output ('Grammarly is still in ' + $left + ' profiles: the removal goes on.')
+    exit 0
+}
+
+# The end. The entry once more, just before anything is changed.
+if (Test-Path -LiteralPath $MarkerKey) {
+    Write-Output 'The item is installed again: nothing to do.'
+    exit 0
+}
+# Both tasks go first, so that no path leaves a task that runs a script that is gone: when one
+# cannot be unregistered, nothing is deleted and the next run tries again.
+foreach ($name in @($RemovalTaskName, $CleanupTaskName)) {
+    try {
+        if (Get-ScheduledTask -TaskName $name -TaskPath '\' -ErrorAction SilentlyContinue) {
+            Unregister-ScheduledTask -TaskName $name -TaskPath '\' -Confirm:$false
+        }
+    } catch {
+        Write-Output ('ERROR 54: the task ' + $name + ' could not be unregistered; nothing was deleted: ' + $_.Exception.Message)
+        exit 54
+    }
+}
+# Then the files, this script last among them, then the folder and the key. With both tasks gone,
+# whatever cannot be deleted stays inert.
+$self = Join-Path $Folder '@CLEANUP_SCRIPT_NAME@'
 for ($try = 1; $try -le 5 -and (Test-Path -LiteralPath $Folder); $try++) {
-    try { Remove-Item -LiteralPath $Folder -Recurse -Force } catch { Start-Sleep -Seconds 3 }
+    try {
+        Get-ChildItem -LiteralPath $Folder -Force | Where-Object { $_.FullName -ne $self } | ForEach-Object { Remove-Item -LiteralPath $_.FullName -Recurse -Force }
+        if (Test-Path -LiteralPath $self) { Remove-Item -LiteralPath $self -Force }
+        Remove-Item -LiteralPath $Folder -Recurse -Force
+    } catch { Start-Sleep -Seconds 3 }
 }
+$failed = @()
 if (Test-Path -LiteralPath $Folder) { $failed += ('the folder ' + $Folder) }
-if ($failed.Count -eq 0) {
-    try { if (Test-Path -LiteralPath $MarkerKey) { Remove-Item -LiteralPath $MarkerKey -Recurse -Force } } catch { $failed += ('the entry: ' + $_.Exception.Message) }
-}
+try { if (Test-Path -LiteralPath $RemovalKey) { Remove-Item -LiteralPath $RemovalKey -Recurse -Force } } catch { $failed += ('the key: ' + $_.Exception.Message) }
 if ($failed.Count -gt 0) {
-    Write-Output ('ERROR 47: not removed: ' + ($failed -join '; '))
-    exit 47
+    Write-Output ('ERROR 54: both tasks are unregistered, but not deleted: ' + ($failed -join '; '))
+    exit 54
 }
-Write-Output 'Removed the task, the folder and the entry. Grammarly stays in every profile that has it.'
+Write-Output ('The removal is finished (' + $left + ' profiles with Grammarly left).')
 exit 0
 """
 
@@ -507,26 +886,37 @@ def _common_values():
         "FOLDER_NAME": FOLDER_NAME, "TASK_NAME": TASK_NAME, "MARKER_KEY_NAME": MARKER_KEY_NAME,
         "DISPLAY_NAME": DISPLAY_NAME, "INSTALLER_NAME": INSTALLER_NAME, "USER_SCRIPT_NAME": USER_SCRIPT_NAME,
         "REMOVE_SCRIPT_NAME": REMOVE_SCRIPT_NAME, "USERS_SID": USERS_SID, "SYSTEM_SID": SYSTEM_SID,
-        "ADMINISTRATORS_SID": ADMINISTRATORS_SID,
+        "ADMINISTRATORS_SID": ADMINISTRATORS_SID, "UNINSTALL_SCRIPT_NAME": UNINSTALL_SCRIPT_NAME,
+        "CLEANUP_SCRIPT_NAME": CLEANUP_SCRIPT_NAME, "REMOVAL_TASK_NAME": REMOVAL_TASK_NAME,
+        "CLEANUP_TASK_NAME": CLEANUP_TASK_NAME, "PERSON_SID_PATTERN": PERSON_SID_PATTERN,
+        "LOGON_DELAY": LOGON_DELAY, "TASK_TIME_LIMIT_MINUTES": str(TASK_TIME_LIMIT_MINUTES),
+        "REMOVAL_DATE_VALUE": REMOVAL_DATE_VALUE, "REMOVAL_DATE_FORMAT": REMOVAL_DATE_FORMAT,
+        "REMOVAL_KEEP_DAYS": str(REMOVAL_KEEP_DAYS), "VENDOR_UNINSTALL_KEY": VENDOR_UNINSTALL_KEY,
+        "MUTEX_NAME": MUTEX_NAME, "MUTEX_WAIT_SECONDS": str(MUTEX_WAIT_SECONDS),
     }
+
+
+def _embedded(prefix, text):
+    """The SHA-256 (upper case) and base64 of a script, as values for a template."""
+    body = text.encode("ascii")
+    return {prefix + "_SHA256": hashlib.sha256(body).hexdigest().upper(),
+            prefix + "_BASE64": base64.b64encode(body).decode("ascii")}
 
 
 def machine_script(version, sha256, arguments=()):
     """install-machine.ps1 (CRLF lines, ASCII). It carries install-user.ps1 (made with the
-    same version, hash and arguments) and remove.ps1, each as base64 with its SHA-256."""
-    user = user_script(version, sha256, arguments).encode("ascii")
-    remove = remove_script().encode("ascii")
+    same version, hash and arguments), remove.ps1, uninstall-user.ps1 and cleanup.ps1, each as
+    base64 with its SHA-256."""
     values = _common_values()
     values.update({
         "VERSION": check_version(version), "SHA256": check_sha256(sha256).upper(),
-        "LOGON_DELAY": LOGON_DELAY, "TASK_TIME_LIMIT_MINUTES": str(TASK_TIME_LIMIT_MINUTES),
         "EXTRACTED_NAMES": ", ".join("'%s'" % name for name in EXTRACTED_NAMES),
-        "USER_SCRIPT_SHA256": hashlib.sha256(user).hexdigest().upper(),
-        "USER_SCRIPT_BASE64": base64.b64encode(user).decode("ascii"),
-        "REMOVE_SCRIPT_SHA256": hashlib.sha256(remove).hexdigest().upper(),
-        "REMOVE_SCRIPT_BASE64": base64.b64encode(remove).decode("ascii"),
     })
-    return _crlf(_fill(MACHINE_TEMPLATE.replace("@COMMON_HEAD@", _COMMON_HEAD.strip("\n")), values))
+    values.update(_embedded("USER_SCRIPT", user_script(version, sha256, arguments)))
+    values.update(_embedded("REMOVE_SCRIPT", remove_script()))
+    values.update(_embedded("UNINSTALL_SCRIPT", uninstall_script()))
+    values.update(_embedded("CLEANUP_SCRIPT", cleanup_script()))
+    return _crlf(_fill(_snippets(MACHINE_TEMPLATE), values))
 
 
 def user_script(version, sha256, arguments=()):
@@ -537,14 +927,36 @@ def user_script(version, sha256, arguments=()):
         "VERSION": check_version(version), "SHA256": check_sha256(sha256).upper(),
         "ARGUMENTS": ", ".join("'%s'" % name for name in checked),
         "MAX_ATTEMPTS": str(MAX_ATTEMPTS), "INSTALLER_WAIT_SECONDS": str(INSTALLER_WAIT_SECONDS),
-        "VENDOR_UNINSTALL_KEY": VENDOR_UNINSTALL_KEY,
     })
-    return _crlf(_fill(USER_TEMPLATE, values))
+    return _crlf(_fill(_snippets(USER_TEMPLATE), values))
 
 
 def remove_script():
-    """remove.ps1 (CRLF lines, ASCII): the same text for every version."""
-    return _crlf(_fill(REMOVE_TEMPLATE.replace("@COMMON_HEAD@", _COMMON_HEAD.strip("\n")), _common_values()))
+    """remove.ps1 (CRLF lines, ASCII): the same text for every version. It carries the SHA-256 of
+    uninstall-user.ps1 and cleanup.ps1, which the install stages, and compares them before use."""
+    values = _common_values()
+    values["CLEANUP_DAILY_AT"] = CLEANUP_DAILY_AT
+    for prefix, text in (("UNINSTALL_SCRIPT", uninstall_script()), ("CLEANUP_SCRIPT", cleanup_script())):
+        values[prefix + "_SHA256"] = _embedded(prefix, text)[prefix + "_SHA256"]
+    return _crlf(_fill(_snippets(REMOVE_TEMPLATE), values))
+
+
+def uninstall_script():
+    """uninstall-user.ps1 (CRLF lines, ASCII): the same text for every version. Run as the person."""
+    values = _common_values()
+    values.update({
+        "UNINSTALL_WAIT_SECONDS": str(UNINSTALL_WAIT_SECONDS), "UNINSTALL_POLL_SECONDS": str(UNINSTALL_POLL_SECONDS),
+        "VENDOR_UNINSTALLER": VENDOR_UNINSTALLER, "VENDOR_UNINSTALL_ARGUMENT": VENDOR_UNINSTALL_ARGUMENT,
+    })
+    return _crlf(_fill(_snippets(UNINSTALL_TEMPLATE), values))
+
+
+def cleanup_script():
+    """cleanup.ps1 (CRLF lines, ASCII): the same text for every version. Run as SYSTEM; only
+    Test-Path toward the profiles."""
+    values = _common_values()
+    values["PROFILE_UNINSTALLER"] = PROFILE_LOCAL_APPDATA + "\\" + VENDOR_UNINSTALLER
+    return _crlf(_fill(_snippets(CLEANUP_TEMPLATE), values))
 
 
 def settings_digest(settings):
@@ -682,6 +1094,8 @@ class GrammarlyPerUserPackager(Processor):
             MACHINE_SCRIPT_NAME: machine_script(version, installer_sha256, arguments),
             USER_SCRIPT_NAME: user_script(version, installer_sha256, arguments),
             REMOVE_SCRIPT_NAME: remove_script(),
+            UNINSTALL_SCRIPT_NAME: uninstall_script(),
+            CLEANUP_SCRIPT_NAME: cleanup_script(),
         }
 
         cache = env.get("RECIPE_CACHE_DIR")
@@ -711,7 +1125,7 @@ class GrammarlyPerUserPackager(Processor):
             stage = os.path.join(work, "stage")
             os.makedirs(stage)
             shutil.copyfile(installer, os.path.join(stage, INSTALLER_NAME))
-            for name in ("setup.bat", MACHINE_SCRIPT_NAME):  # the other two are inside install-machine.ps1
+            for name in ("setup.bat", MACHINE_SCRIPT_NAME):  # the other four are inside install-machine.ps1
                 text = scripts[name]
                 with open(os.path.join(stage, name), "w", encoding="ascii", newline="") as handle:
                     handle.write(text)

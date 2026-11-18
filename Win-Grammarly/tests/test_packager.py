@@ -44,6 +44,8 @@ def all_scripts(arguments=()):
         "install-machine.ps1": packager.machine_script(VERSION, SHA),
         "install-user.ps1": packager.user_script(VERSION, SHA, arguments),
         "remove.ps1": packager.remove_script(),
+        "uninstall-user.ps1": packager.uninstall_script(),
+        "cleanup.ps1": packager.cleanup_script(),
     }
 
 
@@ -125,9 +127,32 @@ class AllScriptsTests(unittest.TestCase):
             used |= {int(code) for code in re.findall(r"exit (4[0-9])", text)}
             used |= {int(code) for code in re.findall(r"Fail (4[0-9])", text)}
         self.assertEqual(used, set(packager.SETUP_CODES))
-        text = packager.remove_script()
-        used = {int(code) for code in re.findall(r"(?:exit|Fail) (4[0-9])", text)}
-        self.assertEqual(used, set(packager.REMOVE_CODES))
+        for text, codes in ((packager.remove_script(), packager.REMOVE_CODES),
+                            (packager.cleanup_script(), packager.CLEANUP_CODES),
+                            (packager.uninstall_script(), packager.UNINSTALL_USER_CODES)):
+            with self.subTest(codes=sorted(codes)):
+                code = "\r\n".join(code_lines(text))
+                used = {int(found) for found in re.findall(r"(?:\bexit|Fail) ([0-9]+)", code)}
+                used |= {int(found) for found in re.findall(r"Finish (?:'[^']*'|\([^\r]*\)) ([0-9]+)", code)}
+                self.assertIn(0, used)  # success
+                self.assertEqual(used - {0}, set(codes) - {0})
+        # the codes of the machine install and of the removal do not mean two things
+        self.assertEqual(set(packager.SETUP_CODES) & (set(packager.REMOVE_CODES) - {41, 46}), set())
+
+    def test_no_script_calls_a_program_by_a_bare_name(self):
+        for name, text in all_scripts().items():
+            if not name.endswith(".ps1"):
+                continue
+            code = "\r\n".join(code_lines(text))
+            with self.subTest(name=name):
+                for word in ("schtasks", "icacls", "reg.exe", "reg ", "cmd.exe", "cmd /", "& '", "& $", "& \"",
+                             "Invoke-Expression", "iex ", "Start-Process", "msiexec", "rundll32", "takeown"):
+                    self.assertNotIn(word, code)
+                for line in code.split("\r\n"):
+                    if "-Execute " in line:
+                        self.assertIn("-Execute $powershell", line)
+                    if "FileName = " in line:
+                        self.assertRegex(line.strip(), r"^\$info\.FileName = \$(copy|uninstaller)$")
 
     @unittest.skipUnless(shutil.which("pwsh"), "pwsh is not installed: the scripts were not parsed")
     def test_powershell_parses_the_scripts(self):  # pragma: no cover - only where pwsh exists
@@ -235,9 +260,11 @@ class MachineScriptTests(unittest.TestCase):
         self.assertTrue(match, name)
         return match.group(1), base64.b64decode(match.group(2))
 
-    def test_the_two_scripts_are_carried_inside_with_their_hashes(self):
+    def test_the_four_scripts_are_carried_inside_with_their_hashes(self):
         for name, expected in (("install-user.ps1", packager.user_script(VERSION, SHA)),
-                               ("remove.ps1", packager.remove_script())):
+                               ("remove.ps1", packager.remove_script()),
+                               ("uninstall-user.ps1", packager.uninstall_script()),
+                               ("cleanup.ps1", packager.cleanup_script())):
             with self.subTest(name=name):
                 digest, body = self.embedded(name)
                 self.assertEqual(body, expected.encode("ascii"))
@@ -349,27 +376,304 @@ class RemoveScriptTests(unittest.TestCase):
         self.text = packager.remove_script()
         self.code = "\r\n".join(code_lines(self.text))
 
-    def test_it_removes_the_task_the_folder_and_last_the_entry(self):
-        task = self.code.index("Unregister-ScheduledTask -TaskName $TaskName -TaskPath '\\' -Confirm:$false")
-        folder = self.code.index("Remove-Item -LiteralPath $Folder -Recurse -Force")
-        entry = self.code.index("Remove-Item -LiteralPath $MarkerKey -Recurse -Force")
-        self.assertLess(task, folder)
-        self.assertLess(folder, entry)
-        self.assertIn("if ($failed.Count -eq 0) {", self.code[folder:entry])
+    def test_the_order_of_the_removal(self):
+        steps = [
+            "Get-FileHash -LiteralPath (Join-Path $Folder $name) -Algorithm SHA256).Hash -ne $removal[$name]) { Fail 50",
+            "Unregister-ScheduledTask -TaskName $TaskName -TaskPath '\\' -Confirm:$false",
+            "foreach ($name in @('GrammarlyInstaller.exe', 'install-user.ps1')) {",
+            "Register-ScheduledTask -TaskName $RemovalTaskName",
+            "Start-ScheduledTask -TaskName $RemovalTaskName -TaskPath '\\'",
+            "Register-ScheduledTask -TaskName $CleanupTaskName",
+            "Set-ItemProperty -LiteralPath $RemovalKey -Name 'RemovedUtc'",
+            "Remove-Item -LiteralPath $MarkerKey -Recurse -Force",
+            "exit 0",
+        ]
+        places = [self.code.index(step) for step in steps]
+        self.assertEqual(places, sorted(places))
+        for step in steps:
+            self.assertEqual(self.code.count(step), 1, step)
 
-    def test_it_says_that_grammarly_stays_and_returns_0_only_when_all_is_gone(self):
-        self.assertIn("Grammarly stays in every profile that has it", self.text)
+    def test_the_removal_scripts_are_compared_with_their_packed_hashes_and_their_access_before_anything_changes(self):
+        for name, text in (("uninstall-user.ps1", packager.uninstall_script()), ("cleanup.ps1", packager.cleanup_script())):
+            self.assertIn("'%s' = '%s'" % (name, hashlib.sha256(text.encode("ascii")).hexdigest().upper()), self.text)
+        self.assertIn("$problem = Test-FolderAccess $Folder $true", self.text)
+        self.assertIn("if (-not $problem) { $problem = Test-FolderAccess (Join-Path $Folder $name) $false }", self.text)
+        first_change = self.code.index("Unregister-ScheduledTask")
+        self.assertLess(self.code.index("if ($problem) { Fail 50 $problem }"), first_change)
+        # nothing is written by remove.ps1 into the folder: the install wrote the texts
+        self.assertNotIn("FromBase64String", self.text)
+        for word in ("WriteAllBytes", "Set-Content", "Out-File", "Copy-Item", "SetAccessControl"):
+            self.assertNotIn(word, self.code)
+
+    def test_a_staged_file_that_cannot_be_deleted_stops_the_removal(self):
+        # reader's guard 632: with the installer or install-user.ps1 still staged nothing goes on
+        loop = self.code.index("foreach ($name in @('GrammarlyInstaller.exe', 'install-user.ps1')) {")
+        check = self.code.index("    if (Test-Path -LiteralPath $path) { Fail 47 ('could not delete ' + $path) }\r\n}")
+        self.assertLess(loop, check)
+        self.assertLess(self.code.index("try { Remove-Item -LiteralPath $path -Force }"), check)
+        self.assertLess(check, self.code.index("Register-ScheduledTask"))
+
+    def test_the_hashes_are_the_ones_the_install_stages(self):
+        machine = packager.machine_script(VERSION, SHA)
+        for name in ("uninstall-user.ps1", "cleanup.ps1"):
+            digest = re.search(r"'%s' = '([0-9A-F]{64})'" % re.escape(name), self.text).group(1)
+            self.assertIn("'%s' = '%s'" % (name, digest), machine)
+
+    def test_the_removal_task_runs_at_any_sign_in_as_the_users_group_with_least_privilege_hidden(self):
+        part =self.text[self.text.index("# 3. The removal task"):self.text.index("# 4. The cleanup task")]
+        self.assertIn("$trigger = New-ScheduledTaskTrigger -AtLogOn\r\n", part)
+        self.assertIn("$taskPrincipal = New-ScheduledTaskPrincipal -GroupId $UsersSid -RunLevel Limited", part)
+        self.assertIn(r"$powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'", self.text)
+        self.assertIn("New-ScheduledTaskAction -Execute $powershell -Argument ('-NoProfile -NonInteractive -WindowStyle Hidden "
+                      "-ExecutionPolicy Bypass -File \"' + (Join-Path $Folder 'uninstall-user.ps1') + '\"')", part)
+        self.assertIn("if ($group -ne $UsersSid) { Fail 51", part)
+        self.assertIn("if ([string]$task.Principal.RunLevel -ne 'Limited') { Fail 51", part)
+        self.assertIn("} catch { $started = 'could not start it now (", part)
+        self.assertIn("$UsersSid = 'S-1-5-32-545'", self.text)
+
+    def test_the_cleanup_task_runs_as_system_at_start_and_daily(self):
+        part = self.text[self.text.index("# 4. The cleanup task"):self.text.index("# 5. The removal's date")]
+        self.assertIn("@((New-ScheduledTaskTrigger -AtStartup), (New-ScheduledTaskTrigger -Daily -At '%s'))"
+                      % packager.CLEANUP_DAILY_AT, part)
+        self.assertIn("New-ScheduledTaskPrincipal -UserId 'S-1-5-18' -LogonType ServiceAccount -RunLevel Highest", part)
+        self.assertIn("(Join-Path $Folder 'cleanup.ps1')", part)
+        self.assertIn("if ($runAs -ne 'S-1-5-18') { Fail 52", part)
+        self.assertIn("-StartWhenAvailable", part)
+
+    def test_the_date_is_utc_in_one_hklm_key_and_a_recorded_date_is_kept(self):
+        self.assertIn("[DateTime]::UtcNow.ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)", self.text)
+        self.assertIn("if (-not (Get-ItemProperty -LiteralPath $RemovalKey).'RemovedUtc') {", self.text)
+        self.assertIn(r"$RemovalKey = 'HKLM:\SOFTWARE\' + $MarkerKeyName", self.text)
+        self.assertEqual(len(re.findall(r"Set-ItemProperty", self.code)), 1)
+
+    def test_nothing_runs_from_or_writes_into_a_profile(self):
+        for word in ("HKCU", "LOCALAPPDATA", "APPDATA", "USERPROFILE", "ProfileList", "Registry::HKEY_USERS", r"C:\Users",
+                     "/uninstall", "Uninstall.exe"):
+            self.assertNotIn(word, self.code)
+
+    def test_success_is_the_only_exit_0_and_it_is_last(self):
         self.assertEqual(self.code.count("exit 0"), 1)
-        self.assertIn("exit 47", self.code)
-        self.assertNotIn("HKCU", self.code)
-        self.assertNotIn("/uninstall", self.code)
+        self.assertTrue(self.text.rstrip("\r\n").endswith("exit 0"))
+        self.assertIn("each person's own sign-in", self.text)
 
     def test_the_same_names_as_the_install(self):
         machine = packager.machine_script(VERSION, SHA)
         for line in ("$FolderName = 'Grammarly Deployment'", "$TaskName = 'Grammarly per-user install'",
-                     "$MarkerKeyName = 'GrammarlyPerUserDeployment'"):
+                     "$MarkerKeyName = 'GrammarlyPerUserDeployment'", "$RemovalTaskName = 'Grammarly per-user removal'",
+                     "$CleanupTaskName = 'Grammarly removal cleanup'"):
             self.assertIn(line, self.text)
             self.assertIn(line, machine)
+            if not line.startswith("$TaskName"):
+                self.assertIn(line, packager.cleanup_script())
+
+
+class UninstallScriptTests(unittest.TestCase):
+    def setUp(self):
+        self.text = packager.uninstall_script()
+        self.code = "\r\n".join(code_lines(self.text))
+        self.user = "\r\n".join(code_lines(packager.user_script(VERSION, SHA)))
+
+    def test_the_same_account_guards_as_the_install_and_before_anything_else(self):
+        for guard in ("if ($sid -notmatch '^S-1-(5-21|12-1)-') { exit 0 }",
+                      "if ($account -like 'defaultuser*' -or $account -eq 'WDAGUtilityAccount') { exit 0 }"):
+            self.assertIn(guard, self.code)
+            self.assertIn(guard, self.user)
+            self.assertLess(self.code.index(guard), self.code.index("HKCU:"))
+            self.assertLess(self.code.index(guard), self.code.index("$env:LOCALAPPDATA"))
+
+    def test_one_run_per_person_at_a_time_shared_with_the_install(self):
+        lock = "[IO.File]::Open((Join-Path $logFolder 'install.lock'), 'OpenOrCreate', 'ReadWrite', 'None')"
+        self.assertIn(lock, self.code)
+        self.assertIn(lock, self.user)
+        self.assertLess(self.code.index(lock), self.code.index("Get-ItemProperty"))
+
+    def test_one_log_line_per_run_in_the_persons_own_folder(self):
+        self.assertIn("$logFolder = Join-Path $env:LOCALAPPDATA 'GrammarlyPerUserDeployment'", self.text)
+        self.assertIn("$log = Join-Path $logFolder 'uninstall.log'", self.text)
+        self.assertEqual(self.code.count("Add-Content"), 1)
+        self.assertEqual(len(re.findall(r"\bexit (?:\$Code|[0-9])", self.code)), 4)  # two account guards, the lock, Finish
+
+    def test_only_the_exact_command_of_this_profile_is_accepted(self):
+        self.assertIn(r"$uninstaller = Join-Path $env:LOCALAPPDATA 'Grammarly\DesktopIntegrations\Uninstall.exe'", self.text)
+        self.assertIn("$expected = '\"' + $uninstaller + '\" /S'", self.text)
+        self.assertIn("(Get-ItemProperty -LiteralPath $vendorKey -Name 'QuietUninstallString' -ErrorAction Stop)", self.text)
+        self.assertIn("if ($command -cne $expected) { Finish ('not removed:", self.code)
+        check = self.code.index("if ($command -cne $expected)")
+        self.assertLess(check, self.code.index("[Diagnostics.Process]::Start($info)"))
+        # it runs the path that it built and compared, never the text that it read
+        self.assertIn("$info.FileName = $uninstaller", self.code)
+        self.assertIn("$info.Arguments = '/S'", self.code)
+        self.assertNotIn("$info.FileName = $command", self.code)
+        for word in ("Invoke-Expression", "iex ", "cmd.exe", "& $command", "Start-Process", "RunAs", "-Verb", "runas"):
+            self.assertNotIn(word, self.code)
+        self.assertIn("$info.UseShellExecute = $false", self.code)
+
+    def test_a_missing_uninstaller_is_not_run(self):
+        # reader's guard 729
+        check = self.code.index("if (-not (Test-Path -LiteralPath $uninstaller -PathType Leaf)) { Finish ('not removed: ' + $uninstaller + ' is missing') 1 }")
+        self.assertLess(self.code.index("if ($command -cne $expected)"), check)
+        self.assertLess(check, self.code.index("[Diagnostics.Process]::Start($info)"))
+
+    def test_no_grammarly_is_one_line_and_exit_0(self):
+        self.assertIn("Finish 'no Grammarly in this profile: nothing to do' 0", self.code)
+        self.assertLess(self.code.index("if (-not (Test-Path -LiteralPath $vendorKey)) {"),
+                        self.code.index("QuietUninstallString"))
+
+    def test_the_entry_decides_success_within_a_bounded_wait(self):
+        self.assertIn("$WaitSeconds = %d" % packager.UNINSTALL_WAIT_SECONDS, self.text)
+        self.assertIn("$PollSeconds = %d" % packager.UNINSTALL_POLL_SECONDS, self.text)
+        self.assertIn("$deadline = (Get-Date).AddSeconds($WaitSeconds)", self.code)
+        self.assertIn("$process.WaitForExit($WaitSeconds * 1000)", self.code)
+        self.assertIn("while ((Test-Path -LiteralPath $vendorKey) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds $PollSeconds }",
+                      self.code)
+        self.assertEqual(len(re.findall(r"\b(while|for|foreach|do)\s*[({]", self.code)), 1)
+        decision = self.code.index("if (Test-Path -LiteralPath $vendorKey) { Finish ('not removed: the entry is still there")
+        self.assertLess(self.code.index("$code = 'exit code ' + $process.ExitCode"), decision)
+        self.assertNotIn("ExitCode -eq", self.code)
+        self.assertIn("Finish ('removed Grammarly from this profile", self.code[decision:])
+
+    def test_it_reads_only_the_persons_own_hive(self):
+        self.assertNotIn("HKLM:", self.code)
+        self.assertNotIn("Registry::HKEY_USERS", self.code)
+        self.assertIn(r"$vendorKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Grammarly Desktop Integrations'",
+                      self.text)
+
+
+class CleanupScriptTests(unittest.TestCase):
+    def setUp(self):
+        self.text = packager.cleanup_script()
+        self.code = "\r\n".join(code_lines(self.text))
+
+    def test_the_profiles_are_only_tested_with_test_path(self):
+        uses = [line.strip() for line in self.code.split("\r\n") if "$profilePath" in line or "$entry" in line]
+        self.assertEqual(uses, [
+            "foreach ($entry in @(Get-ChildItem -LiteralPath $profileList)) {",
+            "if ($entry.PSChildName -notmatch '^S-1-(5-21|12-1)-') { continue }",
+            "$profilePath = [string]$entry.GetValue('ProfileImagePath')",
+            "if (-not $profilePath) { continue }",
+            r"if (Test-Path -LiteralPath ($profilePath.TrimEnd('\') + '\AppData\Local\Grammarly\DesktopIntegrations\Uninstall.exe') "
+            "-PathType Leaf) { $left++ }",
+        ])
+        self.assertIn(r"$profileList = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList'", self.text)
+        for word in ("HKCU", "LOCALAPPDATA", "USERPROFILE", "Registry::HKEY_USERS", "Get-Content", "Get-ChildItem -LiteralPath $profilePath",
+                     "Start-Process", "Diagnostics.Process", "Invoke-Expression", "Set-Content", "Copy-Item", "New-Item",
+                     "Set-ItemProperty", "Get-Acl", "Get-FileHash"):
+            self.assertNotIn(word, self.code)
+        # what it removes is only its own: the folder under Program Files and the HKLM key
+        self.assertEqual(sorted(set(re.findall(r"Remove-Item -LiteralPath (\$\w+)", self.code))), ["$Folder", "$RemovalKey", "$_", "$self"])
+
+    def test_the_end_comes_when_no_profile_has_it_or_after_90_days(self):
+        self.assertEqual(packager.REMOVAL_KEEP_DAYS, 90)
+        self.assertIn("$KeepDays = 90", self.text)
+        self.assertIn("$expired = (-not $removedOn) -or ($removedOn.AddDays($KeepDays) -lt [DateTime]::UtcNow.Date)", self.code)
+        self.assertIn("[DateTime]::ParseExact($text, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)", self.code)
+        self.assertIn("if ($left -gt 0 -and -not $expired) {", self.code)
+        stop = self.code.index("if ($left -gt 0 -and -not $expired) {")
+        self.assertLess(stop, self.code.index("Unregister-ScheduledTask"))
+        self.assertLess(stop, self.code.index("Remove-Item"))
+
+    def test_it_does_nothing_while_the_item_is_installed_again(self):
+        guard = self.code.index("if (Test-Path -LiteralPath $MarkerKey) {")
+        self.assertLess(guard, self.code.index("Get-ChildItem"))
+        self.assertLess(guard, self.code.index("Remove-Item"))
+
+    def test_the_end_unregisters_both_tasks_before_it_deletes_and_this_script_last(self):
+        loop = self.code.index("foreach ($name in @($RemovalTaskName, $CleanupTaskName)) {")
+        unregister = self.code.index("Unregister-ScheduledTask -TaskName $name -TaskPath '\\' -Confirm:$false")
+        stop = self.code.index("Write-Output ('ERROR 54: the task ' + $name + ' could not be unregistered; nothing was deleted: '")
+        others = self.code.index("Where-Object { $_.FullName -ne $self } | ForEach-Object { Remove-Item -LiteralPath $_.FullName -Recurse -Force }")
+        self_delete = self.code.index("if (Test-Path -LiteralPath $self) { Remove-Item -LiteralPath $self -Force }")
+        folder = self.code.index("Remove-Item -LiteralPath $Folder -Recurse -Force")
+        key = self.code.index("Remove-Item -LiteralPath $RemovalKey -Recurse -Force")
+        self.assertEqual([loop, unregister, stop, others, self_delete, folder, key],
+                         sorted([loop, unregister, stop, others, self_delete, folder, key]))
+        self.assertEqual(self.code.count("Unregister-ScheduledTask"), 1)
+        self.assertIn(r"$self = Join-Path $Folder 'cleanup.ps1'", self.text)
+        self.assertTrue(self.text.rstrip("\r\n").endswith("exit 0"))
+
+    def test_a_task_that_cannot_be_unregistered_stops_the_run_before_anything_is_deleted(self):
+        # reader's guard 808: nothing is deleted while a task is left that would run a missing script
+        catch = self.code.index("could not be unregistered; nothing was deleted: ' + $_.Exception.Message)\r\n        exit 54")
+        self.assertLess(catch, self.code.index("Remove-Item"))
+        self.assertIn("nothing was deleted; the next run tries again", packager.CLEANUP_CODES[54])
+        self.assertIn("inert: no task runs them", packager.CLEANUP_CODES[54])
+
+    def test_an_unreadable_profile_list_counts_as_a_profile_with_grammarly(self):
+        # reader's guard 794: an unreadable ProfileList must not end the removal at once
+        self.assertIn("} catch {\r\n    # The list could not be read: as if a profile still had it, so only the days end the "
+                      "removal.\r\n    $left = 1\r\n}", self.text)
+
+    def test_the_lock_is_taken_without_waiting_before_anything_else(self):
+        self.assertIn("$mutex = New-Object Threading.Mutex($false, '%s')" % packager.MUTEX_NAME, self.code)
+        self.assertIn("$owned = $mutex.WaitOne(0)", self.code)
+        self.assertIn("if ($_.Exception.GetBaseException() -is [Threading.AbandonedMutexException]) { $owned = $true }", self.code)
+        gate = self.code.index("if (-not $owned) {")
+        self.assertIn("exit 0", self.code[gate:gate + 120])
+        for later in ("if (Test-Path -LiteralPath $MarkerKey)", "Get-ChildItem", "Unregister-ScheduledTask", "Remove-Item"):
+            self.assertLess(gate, self.code.index(later), later)
+        self.assertNotIn("ReleaseMutex", self.code)  # held until the run ends
+
+    def test_the_entry_is_read_again_just_before_the_end(self):
+        guard = "if (Test-Path -LiteralPath $MarkerKey) {"
+        self.assertEqual(self.code.count(guard), 2)
+        second = self.code.rindex(guard)
+        self.assertGreater(second, self.code.index("if ($left -gt 0 -and -not $expired) {"))
+        self.assertLess(second, self.code.index("Unregister-ScheduledTask"))
+        self.assertIn("exit 0", self.code[second:second + 120])
+
+
+class LockTests(unittest.TestCase):
+    """install-machine.ps1 and cleanup.ps1 share one named mutex."""
+
+    def test_one_global_name_in_both(self):
+        self.assertTrue(packager.MUTEX_NAME.startswith("Global\\"))
+        line = "New-Object Threading.Mutex($false, '%s')" % packager.MUTEX_NAME
+        self.assertIn(line, packager.machine_script(VERSION, SHA))
+        self.assertIn(line, packager.cleanup_script())
+
+    def test_the_install_holds_it_from_before_0b_until_after_the_entry(self):
+        code = "\r\n".join(code_lines(packager.machine_script(VERSION, SHA)))
+        take = code.index("$owned = $mutex.WaitOne(%d * 1000)" % packager.MUTEX_WAIT_SECONDS)
+        gate = code.index("if (-not $owned) { Fail 49")
+        pending = code.index("foreach ($name in @($RemovalTaskName, $CleanupTaskName)) {")
+        entry = code.index("Set-ItemProperty -LiteralPath $MarkerKey -Name 'DisplayVersion' -Value $Version")
+        release = code.index("try { $mutex.ReleaseMutex() } catch { }")
+        start = code.index("Start-ScheduledTask -TaskName $TaskName")
+        self.assertEqual([take, gate, pending, entry, release, start], sorted([take, gate, pending, entry, release, start]))
+        self.assertGreater(take, code.index("if ($extra.Count -gt 0) { Fail 48"))
+        self.assertEqual(code.count("ReleaseMutex"), 1)
+
+    def test_the_install_takes_an_abandoned_lock(self):
+        # cleanup.ps1 never releases the lock, so an install that waited on a cleanup always gets it abandoned:
+        # that must count as taken, not as a failure
+        code = "\r\n".join(code_lines(packager.machine_script(VERSION, SHA)))
+        self.assertIn("if ($_.Exception.GetBaseException() -is [Threading.AbandonedMutexException]) { $owned = $true } else { Fail 49",
+                      code)
+        self.assertEqual(code.count("[Threading.AbandonedMutexException]) { $owned = $true }"), 1)
+
+
+class InstallAfterRemoveTests(unittest.TestCase):
+    def setUp(self):
+        self.machine = "\r\n".join(code_lines(packager.machine_script(VERSION, SHA)))
+
+    def test_an_install_takes_a_pending_removal_away_before_it_stages(self):
+        step = self.machine.index("foreach ($name in @($RemovalTaskName, $CleanupTaskName)) {")
+        self.assertIn("Unregister-ScheduledTask -TaskName $name -TaskPath '\\' -Confirm:$false", self.machine[step:step + 300])
+        key = self.machine.index("if (Test-Path -LiteralPath $RemovalKey) { Remove-Item -LiteralPath $RemovalKey -Recurse -Force }")
+        self.assertIn("} catch { Fail 49", self.machine[key:key + 200])
+        # after the checks of what was unpacked, before the folder and the files
+        self.assertLess(self.machine.index("if ($extra.Count -gt 0) { Fail 48"), step)
+        self.assertLess(self.machine.index("Get-FileHash -LiteralPath $source"), step)
+        self.assertLess(key, self.machine.index("New-Item -ItemType Directory -Path $Folder"))
+        self.assertLess(key, self.machine.index("Install-Staged (Join-Path $Folder 'GrammarlyInstaller.exe')"))
+
+    def test_the_install_stages_what_a_later_removal_needs(self):
+        # a removal deletes the installer and install-user.ps1 and keeps the rest; an install stages all again
+        for name in ("GrammarlyInstaller.exe", "install-user.ps1", "remove.ps1", "uninstall-user.ps1", "cleanup.ps1"):
+            self.assertIn("Install-Staged (Join-Path $Folder '%s')" % name, self.machine)
+        # the key that a removal writes and that cleanup reads is the one that the install takes away
+        for text in (packager.remove_script(), packager.cleanup_script(), packager.machine_script(VERSION, SHA)):
+            self.assertIn(r"$RemovalKey = 'HKLM:\SOFTWARE\' + $MarkerKeyName", text)
 
 
 class BuildTests(unittest.TestCase):
@@ -438,6 +742,8 @@ class BuildTests(unittest.TestCase):
         self.assertIn(base64.b64encode(packager.user_script(VERSION, sha).encode("ascii")).decode(),
                       self.staged["install-machine.ps1"].decode("ascii"))
         self.assertEqual(self.staged["setup.bat"].decode("ascii"), packager.setup_bat())
+        for script in (packager.remove_script(), packager.uninstall_script(), packager.cleanup_script()):
+            self.assertIn(base64.b64encode(script.encode("ascii")).decode(), self.staged["install-machine.ps1"].decode("ascii"))
         self.assertEqual([name for name in os.listdir(self.folder.name) if name.startswith("grammarly-build-")], [])
 
         again = self.Fake(env=self.env())
@@ -490,6 +796,20 @@ class BuildTests(unittest.TestCase):
         user = packager.user_script(VERSION, packager.sha256_of_file(self.installer), ["/disable-launch-at-startup"])
         self.assertIn(b"$InstallerArguments = @('/disable-launch-at-startup')", user.encode("ascii"))
         self.assertIn(base64.b64encode(user.encode("ascii")), self.staged["install-machine.ps1"])
+
+    def test_a_changed_removal_text_builds_a_new_exe(self):
+        self.Fake(env=self.env()).main()
+        for name, value in (("UNINSTALL_WAIT_SECONDS", 601), ("REMOVAL_KEEP_DAYS", 91)):
+            saved = getattr(packager, name)
+            setattr(packager, name, value)
+            self.addCleanup(setattr, packager, name, saved)
+            before = self.packs
+            self.Fake(env=self.env()).main()
+            self.assertEqual(self.packs, before + 1, name)
+        self.assertIn(base64.b64encode(packager.cleanup_script().encode("ascii")), self.staged["install-machine.ps1"])
+        self.assertIn(b"$KeepDays = 91", base64.b64decode(re.search(
+            rb"'cleanup\.ps1'\) '[0-9A-F]{64}' \(\[Convert\]::FromBase64String\('([A-Za-z0-9+/=]+)'",
+            self.staged["install-machine.ps1"]).group(1)))
 
     def test_a_cached_exe_that_changed_is_built_again_and_no_partial_is_left(self):
         processor = self.Fake(env=self.env())

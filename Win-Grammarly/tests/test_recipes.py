@@ -344,8 +344,8 @@ class NotVerifiedTests(unittest.TestCase):
         text = re.sub(r"\s+", " ", status)
         for needle in (
                 "That was the first build", "also ran the same day:",
-                "**With the current form the per-user INSTALL path (a person without Grammarly) and the removal have not "
-                "run**; they ran with the first build only",
+                "**With the current form the per-user INSTALL path (a person without Grammarly) has not run**; it ran "
+                "with the first build only",
                 "NOT established: a real sign-in starting the task; a standard user; a second user; a first sign-in with "
                 "a new profile; an upgrade to a newer staged version; the failure counter; a non-zero exit code coming "
                 "back through the stub; the item through the Cimian client (install, check, removal); Windows 10; a PC "
@@ -681,7 +681,11 @@ class ReadmeTests(unittest.TestCase):
         self.assertIn("**The extraction folder, and what remains.**", self.raw)
         for needle in ("`(CI)(S,WD,AD,X)`", "it is NOT a proof", "they may not list `C:\\Windows\\TEMP`"):
             self.assertIn(needle, self.text)
-        self.assertIn("`remove.ps1` and the install path of `install-user.ps1` have not run in the current form", self.text)
+        self.assertIn("the install path of `install-user.ps1` has not run in the current form", self.text)
+        self.assertIn("The first form of the removal of 2026-11-18 (`remove.ps1`, `uninstall-user.ps1`, `cleanup.ps1`) was run "
+                      "once on one Windows 11 test PC on 2026-11-18; the current form of it ran on the same PC the same day", self.text)
+        self.assertNotIn("and the removal have not run", self.text)
+        self.assertIn("On a Mac, the five generated scripts were parsed", self.text)
         for history in ("ran on 2026", "Chocolatey item", "106 items"):
             self.assertNotIn(history, self.text)
         self.assertNotIn("was REFUSED on", self.text)
@@ -690,7 +694,15 @@ class ReadmeTests(unittest.TestCase):
         import GrammarlyPerUserPackager as packager
         for code in packager.SETUP_CODES:
             self.assertRegex(self.raw, r"\n\| %d \| " % code)
-        self.assertIn("`remove.ps1` returns 0, 41, 46 or 47", self.raw)
+        self.assertIn("| 49 | A pending removal", self.raw)
+        self.assertIn("`remove.ps1` returns 0, 41, 46, 47, 50, 51, 52 or 53, `uninstall-user.ps1` 0 or 1, and `cleanup.ps1`\n0, 41, 46 or 54",
+                      self.raw)
+        self.assertEqual(set(packager.REMOVE_CODES), {41, 46, 47, 50, 51, 52, 53})
+        self.assertEqual(set(packager.CLEANUP_CODES), {0, 41, 46, 54})
+        self.assertIn("### The removal (2026-11-18)", self.raw)
+        self.assertIn("**Seen on one Windows 11 test PC on 2026-11-18, with the build of the first form of this removal**", self.raw)
+        self.assertIn("NOT run on a PC: this form (the lock, the re-read entry, the new order of the end)", self.text)
+        self.assertNotIn("`remove.ps1` is unchanged since", self.raw)
 
     def test_the_readme_says_what_to_do_when_the_server_does_not_answer_the_changed_file_question(self):
         self.assertIn("whether this server answers that question is NOT established", self.text)

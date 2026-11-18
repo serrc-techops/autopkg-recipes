@@ -2,13 +2,13 @@
 
 A Windows recipe pair: Grammarly for Windows, the vendor's `.exe` installer packed into one self-extracting EXE that installs Grammarly for each person at sign-in, with the version label read from the installer itself.
 
-**Status. Main caveat: Grammarly for Windows installs PER USER, into the profile of the account that runs its installer, and a Cimian client runs installers as SYSTEM, so the plain installer as an item gives the program to nobody. This folder therefore publishes a PACKED EXE (made by `GrammarlyPerUserPackager.py`, in this folder): run by the client as SYSTEM with no arguments, it stages the installer under `Program Files`, registers a scheduled task that runs at the sign-in of any user, as that user, and installs Grammarly into that person's profile when the person has none, writes an entry of the Windows uninstall list that the item's install check reads, and starts the task once for whoever is signed in. What ran: on 2026-11-16 a build of this folder ran under AutoPkg into a scratch repository, the packed EXE ran as SYSTEM on one Windows 11 test PC, the task started on demand gave Grammarly to that PC's one signed-in user (an administrator), and the removal worked (see "Results of 2026-11-16" below). That was the first build. The current form (it carries `install-user.ps1` and `remove.ps1` inside `install-machine.ps1`, checks the extraction folder and starts the task itself) also ran the same day: under AutoPkg into the scratch repository, and as SYSTEM on the same PC, where its own start of the task found Grammarly present for the same administrator (see "Results of 2026-11-16, for the current form"). **With the current form the per-user INSTALL path (a person without Grammarly) and the removal have not run**; they ran with the first build only. NOT established: a real sign-in starting the task; a standard user; a second user; a first sign-in with a new profile; an upgrade to a newer staged version; the failure counter; a non-zero exit code coming back through the stub; the item through the Cimian client (install, check, removal); Windows 10; a PC whose policy sets an execution policy, or with AppLocker or WDAC. What it means for the PCs: every person who signs in on a PC with this item gets Grammarly in their profile (about 85 MB each), so it suits PCs of one person and not shared ones, and not roaming profiles (the check key roams, the program does not); Grammarly updates itself in each profile, so the item's version is only the version of the staged installer, and the install check is the entry (and the task), not any person's Grammarly; the vendor's file changes about every two weeks, so each real run then publishes about 87 MB more, and a person decides how often to run it. The item must NOT go into a manifest until the steps of "What must be proven on a PC" below have been done. Read on 2026-11-13: `https://download-windows.grammarly.com/GrammarlyInstaller.exe` answered a HEAD request with 200, no redirect, `Content-Type` `application/octet-stream`, `Content-Length` 87044640 and a `Last-Modified` of the same day (the file changes often); the address holds no version. The vendor's support article "How to deploy Grammarly for Windows" (`support.grammarly.com/hc/en-us/articles/4422076438029`) was read in full on that day and links that same address as its installer; it gives the install command `GrammarlyInstaller.exe /S`, the uninstall command `GrammarlyInstaller.exe /S /uninstall`, the parameters `/ignore-os-version` (needed on Windows Server 2016 and 2019), `/do-not-create-desktop-shortcut` and `/disable-launch-at-startup` (the names are case-sensitive), the minimum of Windows 10 version 1903 with .NET Framework 4.7.2 and WebView2, per-user MSI packages beside the EXE, an Intune setting `Install behavior: User`, and a detection rule on the registry value `DisplayVersion` of the key `Grammarly Desktop Integrations` under `HKEY_CURRENT_USER` (an uninstall key of the user's own hive); a per-machine install is unavailable by default (the vendor's Customer Success Manager enables it for a subscription bought through the vendor's Sales team). No hash for the file was found. READ on 2026-11-16: Microsoft's Store catalog (`storeedgefd.dsx.mp.microsoft.com/v9.0/packageManifests/XPDDXX9QW8N9D7`) lists Grammarly as installer type `exe`, scope `user`, at `https://download-windows.grammarly.com/versions/<version>/net10/x64/w/GrammarlyInstaller.exe` (version `1.2.305(.1980)` that day) with the silent switch `/windows-store`: the Store product is the same per-user EXE, not an app package, so nothing can be provisioned for all users. When a run fails, STOP: nothing was written (a run that fails before the import writes nothing). Read the error, correct the recipe or the processor, and only then look at the trust information. Never accept new trust information first to make a failure go away.**
+**Status. Main caveat: Grammarly for Windows installs PER USER, into the profile of the account that runs its installer, and a Cimian client runs installers as SYSTEM, so the plain installer as an item gives the program to nobody. This folder therefore publishes a PACKED EXE (made by `GrammarlyPerUserPackager.py`, in this folder): run by the client as SYSTEM with no arguments, it stages the installer under `Program Files`, registers a scheduled task that runs at the sign-in of any user, as that user, and installs Grammarly into that person's profile when the person has none, writes an entry of the Windows uninstall list that the item's install check reads, and starts the task once for whoever is signed in. What ran: on 2026-11-16 a build of this folder ran under AutoPkg into a scratch repository, the packed EXE ran as SYSTEM on one Windows 11 test PC, the task started on demand gave Grammarly to that PC's one signed-in user (an administrator), and the removal worked (see "Results of 2026-11-16" below). That was the first build. The current form (it carries `install-user.ps1` and `remove.ps1` inside `install-machine.ps1`, checks the extraction folder and starts the task itself) also ran the same day: under AutoPkg into the scratch repository, and as SYSTEM on the same PC, where its own start of the task found Grammarly present for the same administrator (see "Results of 2026-11-16, for the current form"). **With the current form the per-user INSTALL path (a person without Grammarly) has not run**; it ran with the first build only. The removal was redesigned on 2026-11-18 (it now also removes each person's Grammarly through that person's own sign-in; see "The removal (2026-11-18)"): its first form ran once on one Windows 11 test PC on 2026-11-18 and removed the signed-in administrator's Grammarly; the current form (a lock shared by the install and the cleanup, and another order of the cleanup's end) has not been on a PC. NOT established: a real sign-in starting the task; a standard user; a second user; a first sign-in with a new profile; an upgrade to a newer staged version; the failure counter; a non-zero exit code coming back through the stub; the item through the Cimian client (install, check, removal); Windows 10; a PC whose policy sets an execution policy, or with AppLocker or WDAC. What it means for the PCs: every person who signs in on a PC with this item gets Grammarly in their profile (about 85 MB each), so it suits PCs of one person and not shared ones, and not roaming profiles (the check key roams, the program does not); Grammarly updates itself in each profile, so the item's version is only the version of the staged installer, and the install check is the entry (and the task), not any person's Grammarly; the vendor's file changes about every two weeks, so each real run then publishes about 87 MB more, and a person decides how often to run it. The item must NOT go into a manifest until the steps of "What must be proven on a PC" below have been done. Read on 2026-11-13: `https://download-windows.grammarly.com/GrammarlyInstaller.exe` answered a HEAD request with 200, no redirect, `Content-Type` `application/octet-stream`, `Content-Length` 87044640 and a `Last-Modified` of the same day (the file changes often); the address holds no version. The vendor's support article "How to deploy Grammarly for Windows" (`support.grammarly.com/hc/en-us/articles/4422076438029`) was read in full on that day and links that same address as its installer; it gives the install command `GrammarlyInstaller.exe /S`, the uninstall command `GrammarlyInstaller.exe /S /uninstall`, the parameters `/ignore-os-version` (needed on Windows Server 2016 and 2019), `/do-not-create-desktop-shortcut` and `/disable-launch-at-startup` (the names are case-sensitive), the minimum of Windows 10 version 1903 with .NET Framework 4.7.2 and WebView2, per-user MSI packages beside the EXE, an Intune setting `Install behavior: User`, and a detection rule on the registry value `DisplayVersion` of the key `Grammarly Desktop Integrations` under `HKEY_CURRENT_USER` (an uninstall key of the user's own hive); a per-machine install is unavailable by default (the vendor's Customer Success Manager enables it for a subscription bought through the vendor's Sales team). No hash for the file was found. READ on 2026-11-16: Microsoft's Store catalog (`storeedgefd.dsx.mp.microsoft.com/v9.0/packageManifests/XPDDXX9QW8N9D7`) lists Grammarly as installer type `exe`, scope `user`, at `https://download-windows.grammarly.com/versions/<version>/net10/x64/w/GrammarlyInstaller.exe` (version `1.2.305(.1980)` that day) with the silent switch `/windows-store`: the Store product is the same per-user EXE, not an app package, so nothing can be provisioned for all users. When a run fails, STOP: nothing was written (a run that fails before the import writes nothing). Read the error, correct the recipe or the processor, and only then look at the trust information. Never accept new trust information first to make a failure go away.**
 
 **Not verified. The download is NOT verified: the vendor publishes no hash that was found, and a check of the signature is not built; the packed EXE carries that unverified file, so it is NOT verified either. Because of this the shared importer REFUSES a real run of this recipe (nothing is published) unless the override sets `cimian_allow_unverified` (or `pcman_allow_unverified` for the package tool's recipe) to true. Do not set it before the signature check exists, or before a person has decided to accept an unverified download. Until then run the dry run only, and import by hand after a person has checked the file: `pcman import <file> --template grammarly --version <label>` (the file is the packed EXE; the label of an EXE: see "The label" below). The packed EXE in its current form has run once on one test PC, as SYSTEM; no person has received Grammarly through it. Do not put the item into a manifest before the steps of "What must be proven on a PC" have been done. The Windows overrides folder is not one of AutoPkg's override folders, so every override command here carries `--override-dir`: see the paragraph below.**
 
 **Results of 2026-11-13, for the plain installer (before this folder packed it).** Under AutoPkg 2.9.0, into a scratch Cimian repository with a hand-made first pkginfo of the item (`make-override` with `--override-dir`, `verify-trust-info` OK, a dry run, a real run, a second real run): the real run published `grammarly-1.2.312(.2004).exe`, and the second run said that nothing is new. On one Windows 11 test PC, as SYSTEM from a scheduled task, `<file> /S` ended with exit code 0 after 48 seconds; the file's signature was valid (Grammarly, Inc.), and it has a version resource (`1.2.312(.2004)`). **It installed into the profile of the account that ran it** (the PC listed `Grammarly for Windows` `1.2.312(.2004)` under SYSTEM's own `AppData\Local\Grammarly\DesktopIntegrations`, nothing under `Program Files`), and a process that it started was still running fifteen minutes later, when the test ended it. That is why this folder packs the installer. None of those runs used the packer.
 
-**Results of 2026-11-16, for the packed EXE, first build (then `install-user.ps1` and `remove.ps1` were files in the archive, there was no check of the extraction folder, and the task was not started by the install; its `install-user.ps1` differed from the current one only by lacking the two lines that skip the first-setup and Windows Sandbox accounts; `remove.ps1` is unchanged since).** Under AutoPkg 2.9.0, into a scratch Cimian repository: `make-override` with `--override-dir`, `verify-trust-info` OK, a dry run, a real run (with `cimian_allow_unverified` true in the scratch override) and a second real run. The download was `GrammarlyInstaller.exe` `1.2.313(.2008)`, 87169096 bytes; the packer built `GrammarlyPerUser-<version>.exe` of 87220102 bytes (the 87 MB installer is not cut into parts, and the stub unpacked it); `CimianImporter` published `grammarly` `1.2.313(.2008)`, warned that the download was not verified and that the pkginfo has no install check, and said at the second run that nothing is new. On one Windows 11 test PC the packed EXE, run as SYSTEM by a scheduled task with no arguments, ended with exit code 0 after 20 seconds, with no window and no child process left. The stub unpacked into a folder `7z<8 hex digits>` under `C:\Windows\TEMP` and ran `setup.bat`, which ran the 64-bit PowerShell through `Sysnative`. Afterwards: `C:\Program Files\Grammarly Deployment` held the installer (87169096 bytes), `install-user.ps1` and `remove.ps1`; `icacls` on the folder showed exactly SYSTEM full, Administrators full, Users read and execute, all `(OI)(CI)`, none inherited; the task `Grammarly per-user install` was Ready, with the group Users as principal, run level Limited and a logon trigger for any user (so `Register-ScheduledTask` accepted the group's SID); the uninstall entry `GrammarlyPerUserDeployment` was in the 64-bit view with DisplayName `Grammarly per-user deployment`, DisplayVersion `1.2.313(.2008)` and the PowerShell `remove.ps1` command as UninstallString. The task was then started ON DEMAND (`schtasks /run`), not by a sign-in: it ran in the session of the PC's one signed-in local user, a member of Administrators (NOT a standard user), in a disconnected session; about one minute later that user's hive had `Grammarly Desktop Integrations` with DisplayVersion `1.2.313(.2008)`, the user's `install.log` said `installed ... from the staged ... (installer: exit code 0)`, a process `Grammarly.Desktop` ran in that user's session, the task's last result was 0, and nothing was written into SYSTEM's profile. A second on-demand start logged `present (...): nothing to do`. What window flashed was not seen (nobody watched the screen). `remove.ps1`, run as SYSTEM through the same command as the UninstallString, ended with exit code 0 after 5 seconds; the folder, the task and the entry were gone; the user's Grammarly and log stayed.
+**Results of 2026-11-16, for the packed EXE, first build (then `install-user.ps1` and `remove.ps1` were files in the archive, there was no check of the extraction folder, and the task was not started by the install; its `install-user.ps1` differed from the current one only by lacking the two lines that skip the first-setup and Windows Sandbox accounts; `remove.ps1` was unchanged until 2026-11-18).** Under AutoPkg 2.9.0, into a scratch Cimian repository: `make-override` with `--override-dir`, `verify-trust-info` OK, a dry run, a real run (with `cimian_allow_unverified` true in the scratch override) and a second real run. The download was `GrammarlyInstaller.exe` `1.2.313(.2008)`, 87169096 bytes; the packer built `GrammarlyPerUser-<version>.exe` of 87220102 bytes (the 87 MB installer is not cut into parts, and the stub unpacked it); `CimianImporter` published `grammarly` `1.2.313(.2008)`, warned that the download was not verified and that the pkginfo has no install check, and said at the second run that nothing is new. On one Windows 11 test PC the packed EXE, run as SYSTEM by a scheduled task with no arguments, ended with exit code 0 after 20 seconds, with no window and no child process left. The stub unpacked into a folder `7z<8 hex digits>` under `C:\Windows\TEMP` and ran `setup.bat`, which ran the 64-bit PowerShell through `Sysnative`. Afterwards: `C:\Program Files\Grammarly Deployment` held the installer (87169096 bytes), `install-user.ps1` and `remove.ps1`; `icacls` on the folder showed exactly SYSTEM full, Administrators full, Users read and execute, all `(OI)(CI)`, none inherited; the task `Grammarly per-user install` was Ready, with the group Users as principal, run level Limited and a logon trigger for any user (so `Register-ScheduledTask` accepted the group's SID); the uninstall entry `GrammarlyPerUserDeployment` was in the 64-bit view with DisplayName `Grammarly per-user deployment`, DisplayVersion `1.2.313(.2008)` and the PowerShell `remove.ps1` command as UninstallString. The task was then started ON DEMAND (`schtasks /run`), not by a sign-in: it ran in the session of the PC's one signed-in local user, a member of Administrators (NOT a standard user), in a disconnected session; about one minute later that user's hive had `Grammarly Desktop Integrations` with DisplayVersion `1.2.313(.2008)`, the user's `install.log` said `installed ... from the staged ... (installer: exit code 0)`, a process `Grammarly.Desktop` ran in that user's session, the task's last result was 0, and nothing was written into SYSTEM's profile. A second on-demand start logged `present (...): nothing to do`. What window flashed was not seen (nobody watched the screen). `remove.ps1`, run as SYSTEM through the same command as the UninstallString, ended with exit code 0 after 5 seconds; the folder, the task and the entry were gone; the user's Grammarly and log stayed.
 
 **Results of 2026-11-16, for the packed EXE, current form.** Under AutoPkg 2.9.0 into the scratch repository again: the override, `verify-trust-info` OK, a dry run, a real run, a second run; the packer built `GrammarlyPerUser-<version>.exe` of 87224890 bytes (version `1.2.313(.2008)`); it was published, and the second run said that nothing is new. On the same Windows 11 test PC, as SYSTEM, no arguments: exit code 0 after 69 seconds. The extraction folder was `C:\Windows\TEMP\7z<8 hex digits>` and held only the three expected files, so check 48 passed. The folder held the installer (87169096 bytes), `install-user.ps1` (5114 bytes) and `remove.ps1` (2135 bytes), written from the embedded text; the same access list as before (SYSTEM full, Administrators full, Users read and execute, nothing inherited); the task Ready, group Users, Limited, logon trigger; the uninstall entry with `1.2.313(.2008)`. The EXE's own start of the task ran in the signed-in user's session (the same administrator account, which already had Grammarly from the first build's test): the log gained `present (...): nothing to do`, and the task's last result was 0. So with this form the per-user INSTALL path (a person without Grammarly) has not run, and neither has the removal. Everything in the NOT-established list of the status line stays.
 
@@ -41,8 +41,8 @@ way `../Win-Microsoft365Apps/` builds Office's. That stub ends with the exit cod
 by the Office folder's reading of the SDK's `C/Util/SfxSetup/SfxSetup.c`; only exit code 0 has
 been seen through it (the Office folder's runs and the run of 2026-11-16), never a failure.
 The archive holds three files: the vendor's `GrammarlyInstaller.exe`, `setup.bat` and
-`install-machine.ps1`. `install-machine.ps1` carries `install-user.ps1` and `remove.ps1` inside
-it (base64, each with its SHA-256). All four scripts are made by pure functions of
+`install-machine.ps1`. `install-machine.ps1` carries `install-user.ps1`, `remove.ps1`,
+`uninstall-user.ps1` and `cleanup.ps1` inside it (base64, each with its SHA-256). All six scripts are made by pure functions of
 `GrammarlyPerUserPackager.py`, so the tests pin their text. ASCII only, for Windows PowerShell
 5.1, with nothing beyond what Windows 10 version 1903 ships (the `ScheduledTasks` cmdlets).
 
@@ -53,12 +53,12 @@ it (base64, each with its SHA-256). All four scripts are made by pure functions 
    with `install-machine.ps1`, also by its full path, and ends with its exit code.
 2. `install-machine.ps1` first lists the extraction folder: anything but the three files stops
    the run (48). Then it checks that the unpacked installer has the SHA-256 that the packer
-   wrote into it, makes `C:\Program Files\Grammarly Deployment` (from `$env:ProgramFiles` of
+   wrote into it, takes a pending removal away (49; see "The removal"), makes `C:\Program Files\Grammarly Deployment` (from `$env:ProgramFiles` of
    the 64-bit PowerShell), sets its access list (owner Administrators; SYSTEM and Administrators
    full control, Users read and run, nothing inherited) and reads it back: any other account
    that may change the folder or a staged file stops the run.
-3. It writes the installer (copied from the extraction folder) and `install-user.ps1` and
-   `remove.ps1` (from its own text) into that folder, each beside its place, compares each with
+3. It writes the installer (copied from the extraction folder) and `install-user.ps1`,
+   `remove.ps1`, `uninstall-user.ps1` and `cleanup.ps1` (from its own text) into that folder, each beside its place, compares each with
    its SHA-256 and swaps it in (ten tries three seconds apart while a file is held), and
    compares the staged files once more.
 4. It registers the task `Grammarly per-user install` (in the root of the Task Scheduler
@@ -111,10 +111,135 @@ removes Grammarly gets it again at the next sign-in. With a roaming profile the 
 the program (under `%LOCALAPPDATA%`) does not, so on a second PC the person would never get it:
 not for roaming profiles.
 
-`remove.ps1`, as SYSTEM or an administrator: it removes the task, the folder and the entry
-(the entry last, only when the other two are gone) and ends with 0 only then. **Grammarly
-stays in every profile that has it**; the vendor's `GrammarlyInstaller.exe /S /uninstall`, run
-by each person, removes it there.
+`remove.ps1`, as SYSTEM or an administrator (the item's `UninstallString`), removes the item and,
+through each person's own sign-in, each person's Grammarly: see the next section. Nothing that
+runs as SYSTEM runs a file from, or writes into, a person's profile.
+
+### The removal (2026-11-18)
+
+Decided on 2026-11-18: removing the item also removes each person's copy of Grammarly, and
+nothing that runs as SYSTEM may run a file from, or write into, a person's profile (a person may
+swap files or plant links there). The install writes two more scripts into the folder, from its
+own text and compared with their SHA-256 like the others: `uninstall-user.ps1` and `cleanup.ps1`.
+They lie unused until a removal.
+
+`remove.ps1`, in this order:
+
+1. compares `uninstall-user.ps1` and `cleanup.ps1` with the SHA-256 that the packer wrote into
+   `remove.ps1`, and reads back that only SYSTEM and Administrators may change them or the folder
+   (which keeps its access list: SYSTEM full, Administrators full, Users read and execute); on any
+   difference it stops with 50 and has changed nothing;
+2. unregisters the task `Grammarly per-user install` and deletes the staged installer and
+   `install-user.ps1`: no new installs;
+3. registers the task `Grammarly per-user removal`: at the sign-in of any user, 30 seconds late,
+   principal the group Users by its SID with least privilege, hidden, action the 64-bit Windows
+   PowerShell by its full path with `-File "<the folder>\uninstall-user.ps1"`; reads it back; and
+   starts it once, as the install starts its task (a failure there is only reported);
+4. registers the task `Grammarly removal cleanup`: as SYSTEM (`S-1-5-18`), at each start and once
+   a day at 12:00 (and as soon as possible after a missed time), action `cleanup.ps1`; reads back
+   that it runs as SYSTEM;
+5. records the removal's UTC date (`yyyy-MM-dd`) as the value `RemovedUtc` of the key
+   `HKLM\SOFTWARE\GrammarlyPerUserDeployment` (a date that is there already is kept);
+6. last, deletes the uninstall-list entry `GrammarlyPerUserDeployment`, so the item counts as
+   removed only when all of the above holds.
+
+`uninstall-user.ps1`, as the person, with the guards of `install-user.ps1` (nothing for SYSTEM,
+service, first-setup or Windows Sandbox accounts; one run per person at a time, through the same
+lock file as the install's run; one line per run in
+`%LOCALAPPDATA%\GrammarlyPerUserDeployment\uninstall.log`; it never elevates): when the person's
+own hive has no key `Grammarly Desktop Integrations`, it logs `no Grammarly in this profile` and
+ends with 0. Otherwise it reads that key's `QuietUninstallString` and accepts it only when it is
+exactly (letter case included) `"<this person's LOCALAPPDATA>\Grammarly\DesktopIntegrations\Uninstall.exe" /S`
+(the form read on a PC on 2026-11-18); it then runs that path, which it built itself, with `/S`,
+and waits up to 600 seconds, looking every 5 seconds, until the key is gone. The key decides,
+not the exit code (which it logs). It also deletes the install's failure counter under
+`HKCU\Software\GrammarlyPerUserDeployment`. It ends with 0 (nothing to do, or removed) or 1
+(the command is not the expected one, the uninstaller is missing, the key is still there after
+the wait, or an error).
+
+`cleanup.ps1`, as SYSTEM, is read-only toward the profiles: for each profile of
+`HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList` whose SID is a person's
+(`S-1-5-21-...`, or `S-1-12-1-...` for Microsoft Entra, as in the install's guard) it only tests
+with `Test-Path` whether `<ProfileImagePath>\AppData\Local\Grammarly\DesktopIntegrations\Uninstall.exe`
+exists. When no profile has it, or the recorded date is more than 90 days old (a missing or
+unreadable date counts as old; an unreadable profile list counts as a profile that still has it),
+it reads the item's entry once more, unregisters both removal tasks (when one cannot be
+unregistered it stops with 54 and deletes nothing), and only then deletes the files, itself last,
+the folder and the key of the date; otherwise it does nothing and ends with 0. While the item's
+uninstall entry is there (a new install), it does nothing.
+
+**One lock for the install and the cleanup.** Unregistering the cleanup task does not stop a
+cleanup that is already running, so a cleanup that started at boot could delete the folder that a
+new install is staging. Both scripts therefore take one named mutex,
+`Global\GrammarlyPerUserDeployment`: `install-machine.ps1` waits for it up to 120 seconds (else 49)
+and holds it from before it takes a pending removal away until it has written the entry;
+`cleanup.ps1` takes it without waiting and does nothing (exit 0) when an install holds it. A lock
+left by a run that died counts as free.
+
+A new install first takes a pending removal away (both removal tasks and the key of the date) and
+stages every file again, so an install after a removal works, and a removal after that starts
+afresh with a new date.
+
+| Script | Codes |
+| --- | --- |
+| `remove.ps1` | 0 all done; 41 not an administrator or SYSTEM; 46 a 32-bit PowerShell; 47 the install task, the staged installer, `install-user.ps1` or (last) the entry could not be removed; 50 a removal script missing or not the packed one, or the folder or one of them changeable by another account (nothing changed); 51 the removal task could not be registered or is not the one asked for; 52 the cleanup task likewise; 53 the date could not be recorded |
+| `uninstall-user.ps1` | 0 nothing to do, or removed; 1 not removed (see above) |
+| `cleanup.ps1` | 0 nothing to do yet (or an install holds the lock), or the removal ended; 41; 46; 54 a removal task could not be unregistered (nothing deleted; the next run tries again), or, with both tasks already unregistered, a file, the folder or the key could not be deleted (they stay, inert: no task runs them; an administrator deletes them, or the next install takes them over) |
+
+**Seen on one Windows 11 test PC on 2026-11-18, with the build of the first form of this removal**
+(before the lock and the order of the end described above; those two changes have NOT been on a
+PC). On a Mac, the five generated scripts were parsed with PowerShell 7's parser (no errors;
+Windows PowerShell 5.1 did not parse them separately). The PC had one signed-in person, an administrator
+in a disconnected session, with Grammarly `1.2.313(.2008)` from an earlier test. The packed EXE as
+SYSTEM: exit 0, the folder with the installer and the four scripts, the install task Ready, the
+person's log `present (...): nothing to do`. `remove.ps1` as SYSTEM: exit 0 with its one line of
+output; afterwards the folder held the three scripts, the install task, the installer and the
+entry were gone, `RemovedUtc` held the UTC date, the task `Grammarly per-user removal` was running
+as the group Users, and the task `Grammarly removal cleanup` was Ready, as SYSTEM, with two
+triggers (so the SYSTEM principal given by its SID and the two triggers register). 43 seconds
+after the start the person's `uninstall.log` said `removed Grammarly from this profile
+(uninstaller: exit code 0)`, and the person's uninstall entry, the `Run` value `Grammarly`,
+`Uninstall.exe`, the whole `AppData\Local\Grammarly` folder, the shortcuts and the running process
+were gone: the exact comparison matched the vendor's text, `/S` worked while Grammarly was running,
+and the vendor's uninstaller deletes its own `Uninstall.exe`. The cleanup task, started by hand,
+removed the folder, both tasks and the key within 25 seconds. Left: the person's
+`GrammarlyPerUserDeployment` folder (`install.lock`, `install.log`, `uninstall.log`).
+
+**Seen on the same Windows 11 test PC on 2026-11-18, with the current form (the shared lock, the cleanup's new order):** the packed EXE (91568811 bytes) and the scripts ran as SYSTEM from a scheduled task, one after the other. (1) The EXE: exit 0; 55 seconds later the signed-in person (an administrator) had Grammarly, installed by the task from the staged installer (`installed 1.2.314.2009 from the staged 1.2.314.2009 (installer: exit code 0)`). (2) `remove.ps1`: exit 0; 15 seconds later the person's Grammarly was gone; the folder held the three scripts, both removal tasks were there, the entry was gone and the date was recorded. (3) The EXE again, over the pending removal: exit 0; both removal tasks and the date were gone, the install task and the entry were back, and the person had Grammarly again after 50 seconds. (4) `remove.ps1` again: as (2). (5) `remove.ps1` a second time in a row: exit 0, the same state, and the person's log said `no Grammarly in this profile: nothing to do`. (6) The cleanup task, started by hand: 30 seconds later the folder, both tasks and the key were gone, so a run that unregisters its own task first still finishes. So the lock works from SYSTEM under Windows PowerShell 5.1. NOT run, still: a standard user, a second person, a person who is not signed in, a restart, the 90 days, the race with an install that the lock is for, and the removal through the Cimian client.
+
+NOT run on a PC: this form (the lock, the re-read entry, the new order of the end); install after
+remove; remove twice; a second person; a standard user (whether the vendor's uninstaller needs no
+elevation for one); a person who is not signed in; a profile that never signs in again (its
+Grammarly stays, and the removal ends only after 90 days); a profile whose local application data
+is redirected (cleanup looks under `AppData\Local` of the profile folder only); a restart (the
+at-start trigger); the 90 days; whether a running task that unregisters itself finishes its run
+(the end now unregisters the cleanup task before it deletes); the removal through the Cimian
+client; whether `QuietUninstallString` matches letter for letter on every PC (a different letter
+case of the profile path is refused and logged).
+
+What the removal also does, by design: it removes a Grammarly that a person installed themself in
+the same place (same key, same command), and removes it again at each sign-in until the cleanup
+ends if the person installs it again. A per-user Grammarly of another form (the vendor's per-user
+MSI, another path) is refused: `uninstall-user.ps1` ends with 1 and logs it at each sign-in until
+the cleanup ends, and the cleanup does not see it. Each person who signs in during the removal
+keeps a small `%LOCALAPPDATA%\GrammarlyPerUserDeployment` folder (the logs and `install.lock`);
+nothing removes it.
+
+Known limits (no code for them):
+
+- A signed-in person can hold a staged file open without sharing (Users may read every staged
+  file): while the handle is held, `remove.ps1` stops with 47 or 50 and `cleanup.ps1` with 54.
+- `cleanup.ps1` follows links that a person made under their own profile when it tests the path; a
+  symbolic link to a network path (a standard user can make one only with Developer Mode) would
+  make that test reach out as the computer account. It only tests; nothing is read or run.
+- When an upgrade stages the new `remove.ps1` but fails on `uninstall-user.ps1` or `cleanup.ps1`
+  (43), the new `remove.ps1` stops with 50 until an install succeeds; the old version stays in the
+  entry, so the client tries the install again.
+- A PC with an older build runs that build's `remove.ps1` (the client runs the file on disk), which
+  leaves each person's Grammarly; install the new build first.
+- Any local account may create or hold the lock's name (`Global\GrammarlyPerUserDeployment`) first:
+  the install then stops with 49, at once (when the name's access list refuses SYSTEM) or after
+  two minutes, and the cleanup does nothing while the name exists under another account.
 
 ### What the EXE returns
 
@@ -130,8 +255,10 @@ by each person, removes it there.
 | 45 | The entry of the uninstall list could not be written |
 | 46 | A 32-bit PowerShell on a 64-bit Windows |
 | 48 | The extraction folder holds a file or folder that the EXE did not put there |
+| 49 | A pending removal (its two tasks or the key of its date) could not be taken away, or the lock shared with the cleanup could not be taken (at once, when another account holds its name with an access list that refuses SYSTEM) or was held for two minutes |
 
-`remove.ps1` returns 0, 41, 46 or 47 (the task, the folder or the entry could not be removed).
+`remove.ps1` returns 0, 41, 46, 47, 50, 51, 52 or 53, `uninstall-user.ps1` 0 or 1, and `cleanup.ps1`
+0, 41, 46 or 54: see "The removal (2026-11-18)" above.
 
 ### Races, as designed (NOT proven)
 
@@ -162,8 +289,13 @@ per-user install path ran with the first build only, for an administrator, start
 6. The EXE again (the same version): exit 0, the task and the entry unchanged; then an EXE of
    a newer version: the staged installer replaced, the task kept, the entry's version new.
 7. The task's run history shows no run as SYSTEM, and nothing was installed into SYSTEM's profile.
-8. `remove.ps1` from the `UninstallString`: exit 0; task, folder and entry gone; the users'
-   Grammarly still there.
+8. `remove.ps1` from the `UninstallString` (the removal of 2026-11-18): exit 0; the install task,
+   the installer and `install-user.ps1` gone; the removal task (group Users, Limited) and the
+   cleanup task (SYSTEM) there; `RemovedUtc` recorded; the entry gone. The signed-in person's
+   Grammarly gone within minutes (`uninstall.log`: `removed ...`); a second person's at that
+   person's next sign-in; when no profile has it, the next start or the daily run of the cleanup
+   removes both tasks, the folder and the key. Then the EXE again (install after remove): both
+   removal tasks and the key gone, the item installed; then a removal again.
 9. The same through the Cimian client with the item's pkginfo: install, the next check says
    installed, uninstall through the pkginfo's `uninstaller`.
 10. A failure comes back: an EXE whose installer does not match its hash (built by hand) must
@@ -619,8 +751,12 @@ against a temporary Cimian repository (needs PyYAML; skipped without it).
 `tests/test_packager.py` pins the scripts that the packer writes (the task's principal, the
 per-user checks, the allowed parameters, the exit codes, ASCII only) and runs a build with the
 network and 7z replaced, and tests the stub's checks (the SDK's SHA-256, the `MZ` member, the size
-cap). The tests parse no PowerShell (a parse test runs only where `pwsh` is installed). On
+cap). They also pin the removal of 2026-11-18: the order of `remove.ps1`, the hashes it compares,
+the guards and the exact accepted command of `uninstall-user.ps1`, that `cleanup.ps1` only uses
+`Test-Path` toward a profile and its 90 days, and install after remove. The tests parse no PowerShell (a parse test runs only where `pwsh` is installed). On
 2026-11-16 Windows PowerShell 5.1 ran `install-machine.ps1`, `install-user.ps1` and `remove.ps1`
 of the first build, and `install-machine.ps1` and `install-user.ps1` (its "present" path only)
-of the current form (see the top); `remove.ps1` and the install path of `install-user.ps1` have
-not run in the current form.
+of the current form (see the top); the install path of `install-user.ps1` has not run in the
+current form. The first form of the removal of 2026-11-18 (`remove.ps1`, `uninstall-user.ps1`,
+`cleanup.ps1`) was run once on one Windows 11 test PC on 2026-11-18; the current form of it ran on the same
+PC the same day (see "The removal (2026-11-18)").
