@@ -125,6 +125,10 @@ MAX_SDK_BYTES = 16 * 1024 * 1024
 # installer was about 87 MB on 2026-11-13; a much larger file is not this program.
 MAX_INSTALLER_BYTES = 256 * 1024 * 1024
 STUB_MEMBER = "bin/7zS2con.sfx"
+# Every packed file gets this time and mode, so that the same installer and scripts
+# pack to the same bytes on any day and in any cache folder (2020-01-01 00:00 UTC).
+PACKED_FILE_TIME = 1577836800
+PACKED_FILE_MODE = 0o644
 USER_AGENT = "autopkg-GrammarlyPerUserPackager"
 SEVENZIP_NAMES = ("7zz", "7z", "7za")
 SEVENZIP_FOLDERS = ("/opt/homebrew/bin", "/usr/local/bin", "/usr/bin")
@@ -711,9 +715,15 @@ class GrammarlyPerUserPackager(Processor):
                 text = scripts[name]
                 with open(os.path.join(stage, name), "w", encoding="ascii", newline="") as handle:
                     handle.write(text)
+            names = sorted(os.listdir(stage))
+            for name in names:
+                os.chmod(os.path.join(stage, name), PACKED_FILE_MODE)
+                os.utime(os.path.join(stage, name), (PACKED_FILE_TIME, PACKED_FILE_TIME))
             archive = os.path.join(work, "stage.7z")
-            # stored, one file per block: the stub unpacks a block in memory
-            self.run_sevenzip(["a", "-t7z", "-mx=0", "-ms=off", "-bd", "-y", archive, "."], "packing", cwd=stage)
+            # stored, one file per block: the stub unpacks a block in memory. The files are named one by one in a
+            # fixed order, with a fixed time and no creation or access time: the archive is the same bytes each time
+            self.run_sevenzip(["a", "-t7z", "-mx=0", "-ms=off", "-mtc=off", "-mta=off", "-bd", "-y", archive] + names,
+                              "packing", cwd=stage)
             shutil.rmtree(stage)
             partial = exe_path + ".partial"
             with open(partial, "wb") as out:

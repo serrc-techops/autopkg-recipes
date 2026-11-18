@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import base64
 import hashlib
@@ -409,6 +410,7 @@ class BuildTests(unittest.TestCase):
                     handle.write(b"ARCHIVE")
             return real_run(["/usr/bin/true"], capture_output=True, text=True)
         packager.subprocess.run = run
+        self.real_run = real_run
         self.addCleanup(lambda: setattr(packager.subprocess, "run", real_run))
 
     def env(self, **more):
@@ -442,6 +444,44 @@ class BuildTests(unittest.TestCase):
         again.main()
         self.assertEqual(again.env["pathname"], exe)
         self.assertEqual(self.packs, 1)
+
+    def test_the_packed_files_are_named_in_order_with_a_fixed_time_and_mode(self):
+        seen = {}
+        real_run = packager.subprocess.run
+
+        def run(command, **kwargs):
+            if command[1] == "a":
+                stage = kwargs["cwd"]
+                seen["names"] = command[command.index("-y") + 2:]
+                seen["switches"] = command[2:command.index("-y")]
+                seen["stat"] = {name: (int(os.stat(os.path.join(stage, name)).st_mtime),
+                                       os.stat(os.path.join(stage, name)).st_mode & 0o777) for name in os.listdir(stage)}
+            return real_run(command, **kwargs)
+        packager.subprocess.run = run
+        self.addCleanup(lambda: setattr(packager.subprocess, "run", real_run))
+        self.Fake(env=self.env()).main()
+        self.assertEqual(seen["names"], sorted(seen["stat"]))
+        self.assertNotIn(".", seen["names"])
+        self.assertIn("-mtc=off", seen["switches"])
+        self.assertIn("-mta=off", seen["switches"])
+        self.assertEqual(set(seen["stat"].values()), {(packager.PACKED_FILE_TIME, packager.PACKED_FILE_MODE)})
+
+    @unittest.skipUnless(any(shutil.which(name) for name in packager.SEVENZIP_NAMES), "no 7z program is installed")
+    def test_two_builds_in_two_cache_folders_are_the_same_bytes(self):  # pragma: no cover - only where 7z exists
+        packager.subprocess.run = self.real_run
+        sevenzip = next(shutil.which(name) for name in packager.SEVENZIP_NAMES if shutil.which(name))
+
+        class Real(self.Fake):
+            def sevenzip(self):
+                return sevenzip
+        digests = []
+        for number in (1, 2):
+            cache = os.path.join(self.folder.name, "cache%d" % number)
+            processor = Real(env=self.env(RECIPE_CACHE_DIR=cache))
+            processor.main()
+            digests.append(packager.sha256_of_file(processor.env["pathname"]))
+            time.sleep(1.1)  # the staged copies of the second build are written in another second
+        self.assertEqual(digests[0], digests[1])
 
     def test_other_parameters_build_again_into_the_user_script(self):
         self.Fake(env=self.env()).main()
