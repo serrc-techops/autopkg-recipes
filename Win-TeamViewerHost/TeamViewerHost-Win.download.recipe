@@ -3,7 +3,7 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>This download is NOT verified yet: TeamViewer publishes no hash for the file, and a check of the signature is not built, so nothing proves that the file is what TeamViewer published. The shared importer therefore refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true (pcman_allow_unverified for the package tool's recipe). Downloads the zip of TeamViewer's 64-bit MSI installers from https://download.teamviewer.com/download/version_15x/TeamViewer_MSI64.zip, which redirects to dl.teamviewer.com and needs no login. No page of TeamViewer names this address: it is known from third-party packaging scripts, not documented by the vendor, and may change or stop without notice. The zip holds a Full and a Host folder; the core processor Unarchiver unpacks it with Python's own zip code (USE_PYTHON_NATIVE_EXTRACTOR; in AutoPkg 2.9.0 and later it refuses a member that would land outside the folder, and older versions drop such parts of a name silently) into a folder of the recipe's cache that it empties first (purge_destination), so a file of an earlier run is never imported. The core processor FileFinder then names the one member TEAMVIEWER_MSI_MEMBER (default Host/TeamViewer_Host.msi) in that folder as found_filename, the file that the child recipes import; a zip without that member stops the run there, and nothing else in the zip is taken instead. The recipe never stops on an unchanged download, so a failed import is tried again at the next run.</string>
+        <string>This download is verified by the Authenticode signature of the Host MSI, not by a hash: TeamViewer publishes no hash for the zip or the MSI. After FileFinder the shared processor AuthenticodeVerifier checks with osslsigncode that the content of the found MSI's streams is what was signed (with the stream MsiDigitalSignatureEx, which is required; the compound file around the streams is not checked, see the README), that the certificate that signed it is TeamViewer's (CN and O TeamViewer Germany GmbH, L Göppingen, C DE, and no ST and no OU), that its chain and the chain of its timestamp end in the pinned root digicert-trusted-root-g4, that the signature has a verified timestamp, and that the CRLs of the signing and the timestamp certificate could be read and do not list them; it then sets signature_verified and signature_sha256, which the importers accept only for the file they import, the MSI. It does not prove that a release that TeamViewer itself signed is harmless, it does not make the address documented, only the signing certificate's CRL is read (over HTTP), not the intermediate's, and a new place in TeamViewer's next certificate stops the run until a person updates the recipe. The step needs osslsigncode and HTTP access to the CRL addresses; without them every run stops. The step was NOT run with AutoPkg; the processor passed the Host MSI of 2026-11-19 that day. Downloads the zip of TeamViewer's 64-bit MSI installers from https://download.teamviewer.com/download/version_15x/TeamViewer_MSI64.zip, which redirects to dl.teamviewer.com and needs no login. No page of TeamViewer names this address: it is known from third-party packaging scripts, not documented by the vendor, and may change or stop without notice. The zip holds a Full and a Host folder; the core processor Unarchiver unpacks it with Python's own zip code (USE_PYTHON_NATIVE_EXTRACTOR; in AutoPkg 2.9.0 and later it refuses a member that would land outside the folder, and older versions drop such parts of a name silently) into a folder of the recipe's cache that it empties first (purge_destination), so a file of an earlier run is never imported. The core processor FileFinder then names the one member TEAMVIEWER_MSI_MEMBER (default Host/TeamViewer_Host.msi) in that folder as found_filename, the file that the child recipes import and that the signature step checks; a zip without that member stops the run there, and nothing else in the zip is taken instead. The recipe never stops on an unchanged download, so a failed import is tried again at the next run.</string>
         <key>Identifier</key>
         <string>com.github.serrc-techops.download.TeamViewerHost-Win</string>
         <key>Input</key>
@@ -60,6 +60,34 @@
                 <dict>
                     <key>pattern</key>
                     <string>%RECIPE_CACHE_DIR%/unpacked/%TEAMVIEWER_MSI_MEMBER%</string>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/AuthenticodeVerifier</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%found_filename%</string>
+                    <key>expected_signer</key>
+                    <dict>
+                        <key>CN</key>
+                        <string>TeamViewer Germany GmbH</string>
+                        <key>O</key>
+                        <string>TeamViewer Germany GmbH</string>
+                        <key>L</key>
+                        <string>Göppingen</string>
+                        <key>C</key>
+                        <string>DE</string>
+                    </dict>
+                    <key>code_signing_roots</key>
+                    <array>
+                        <string>digicert-trusted-root-g4</string>
+                    </array>
+                    <key>timestamp_roots</key>
+                    <array>
+                        <string>digicert-trusted-root-g4</string>
+                    </array>
                 </dict>
             </dict>
         </array>

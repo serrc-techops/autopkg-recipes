@@ -889,18 +889,63 @@ class SizeLimitTests(ExeTestCase):
         self.assertEqual(exe_version.RT_VERSION, 16)
 
 
+class ExpectedValueTests(ExeTestCase):
+    """The product, the company and a version from elsewhere, compared with the file's own strings."""
+
+    def built(self):
+        strings = default_strings("4.33", "4.33", "BGInfo")
+        strings["CompanyName"] = "Example Company"
+        return build_pe(version_info(strings=strings))
+
+    def test_the_company_name_is_an_output(self):
+        self.assertEqual(self.read(self.built()).env["exe_company_name"], "Example Company")
+
+    def test_equal_values_pass(self):
+        env = self.read(self.built(), expected_product_name="BGInfo", expected_company_name="Example Company",
+                        expected_version="4.33").env
+        self.assertEqual(env["version"], "4.33")
+
+    def test_empty_values_check_nothing(self):
+        self.read(self.built(), expected_product_name="", expected_company_name="", expected_version="")
+
+    def test_another_product_company_or_version_stops_the_run_and_sets_nothing(self):
+        for name, value, fragment in (("expected_product_name", "bginfo", "its ProductName is 'BGInfo'"),
+                                      ("expected_company_name", "Example Company Ltd", "its CompanyName is"),
+                                      ("expected_version", "4.34", "its version label (from the ProductVersion string) is '4.33'"),
+                                      ("expected_version", "4.33.0", "but expected_version is '4.33.0'")):
+            with self.subTest(name=name, value=value):
+                self.assertRejected(self.built(), fragment, **{name: value})
+
+    def test_a_missing_string_is_not_the_expected_one(self):
+        strings = default_strings("4.33", "4.33", "BGInfo")
+        del strings["CompanyName"]
+        self.assertRejected(build_pe(version_info(strings=strings)), "its CompanyName is ''",
+                            expected_company_name="Example Company")
+
+    def test_expected_version_needs_a_label(self):
+        self.assertRejected(self.built(), "expected_version needs set_version true", expected_version="4.33",
+                            set_version=False)
+
+    def test_a_value_that_is_not_text_is_refused(self):
+        self.assertRejected(self.built(), "expected_product_name must be text", expected_product_name=5)
+
+
 class DeclarationTests(unittest.TestCase):
     def test_inputs(self):
         inputs = PROCESSOR.input_variables
         self.assertTrue(inputs["pathname"]["required"])
         self.assertFalse(inputs["set_version"]["required"])
-        self.assertEqual(set(inputs), {"pathname", "set_version"})
+        self.assertEqual(set(inputs), {"pathname", "set_version", "expected_product_name",
+                                       "expected_company_name", "expected_version"})
+        for name in ("expected_product_name", "expected_company_name", "expected_version"):
+            self.assertFalse(inputs[name]["required"])
+            self.assertEqual(inputs[name]["default"], "")
 
     def test_outputs(self):
         self.assertEqual(
             set(PROCESSOR.output_variables),
             {"exe_product_version", "exe_file_version", "exe_product_version_numbers",
-             "exe_file_version_numbers", "exe_product_name", "version"},
+             "exe_file_version_numbers", "exe_product_name", "exe_company_name", "version"},
         )
 
     def test_choose_version(self):

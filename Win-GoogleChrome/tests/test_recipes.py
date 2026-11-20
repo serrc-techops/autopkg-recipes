@@ -257,7 +257,7 @@ class NotVerifiedTests(unittest.TestCase):
         self.assertTrue(status.startswith("**Status."), status[:60])
         self.assertTrue(status.endswith("**"))
         for needle in ("NOT verified", "signature check", "REFUSES a real run", "pcman_allow_unverified",
-                       "Do not set it before the signature check exists",
+                       "Do not set it before a signature check is part of this recipe",
                        "pcman import <file> --template googlechrome", "no `--version` for an MSI",
                        "the importer REFUSED the run with"):
             self.assertIn(needle, status)

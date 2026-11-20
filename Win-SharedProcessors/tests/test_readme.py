@@ -4,7 +4,7 @@ import os
 import re
 import unittest
 
-from _win_support import PROCESSOR_DIR, cimian, newest_release
+from _win_support import PROCESSOR_DIR, authenticode, cimian, newest_release
 
 README = os.path.join(PROCESSOR_DIR, "README.md")
 
@@ -66,17 +66,75 @@ class ReadmeTests(unittest.TestCase):
                        "also in a dry run, and `cimian_allow_unverified` does not override it",
                        "That is a pinned hash, chosen by whoever wrote the override, and the override's "
                        "trust information does not cover its `Input`",
-                       "`signature_verified` does not count: no step sets it",
-                       "A later signature step must output the hash of the file it checked under a named key",
+                       "`signature_verified` is a boolean `true` (`AuthenticodeVerifier` sets it)",
+                       "Both pairs are checked: a good checksum does not hide a signature of another file",
                        "The download was not verified: no step of the recipe set checksum_verified together "
-                       "with the checksum_sha256 of this file"):
+                       "with the checksum_sha256 of this file, or signature_verified together with the "
+                       "signature_sha256 of this file"):
             self.assertIn(needle, text)
 
-    def test_the_readme_does_not_say_that_a_signature_flag_counts(self):
+    def test_the_signature_pair_is_the_one_that_the_signature_step_sets(self):
         text = normalized_text()
-        self.assertNotIn("or `signature_verified`", text)
-        self.assertNotIn("checksum_verified or signature_verified", text)
-        self.assertEqual(text.count("signature_verified"), 1)
+        for name in (cimian.SIGNATURE_FLAG_VARIABLE, cimian.SIGNATURE_HASH_VARIABLE):
+            self.assertIn("`%s`" % name, text)
+            self.assertIn(name, authenticode.AuthenticodeVerifier.output_variables)
+        self.assertNotIn("does not count: no step sets it", text)
+
+    def test_every_input_and_output_of_the_signature_step_is_documented(self):
+        raw = raw_text()
+        section = raw[raw.index("## AuthenticodeVerifier"):raw.index("## GitHubAssetDigest")]
+        for name, flags in authenticode.AuthenticodeVerifier.input_variables.items():
+            with self.subTest(input=name):
+                rows = [line for line in section.splitlines() if line.startswith("| `%s` |" % name)]
+                self.assertEqual(len(rows), 1)
+                self.assertEqual(rows[0].split("|")[2].strip(), "yes" if flags["required"] else "no")
+        for name in authenticode.AuthenticodeVerifier.output_variables:
+            with self.subTest(output=name):
+                self.assertEqual(len([line for line in section.splitlines() if line.startswith("| `%s` |" % name)]), 1)
+
+    def test_the_signature_section_says_what_the_code_does(self):
+        raw = raw_text()
+        section = re.sub(r"\s+", " ", raw[raw.index("## AuthenticodeVerifier"):raw.index("## GitHubAssetDigest")])
+        for name in authenticode.PINNED_ROOTS:
+            self.assertIn("| `%s` |" % name, section)
+        for line in authenticode.REQUIRED_BLOCK_LINES:
+            self.assertIn(line, section)
+        for field in authenticode.SIGNER_FIELDS:
+            self.assertIn("`%s`" % field, section)
+        for needle in ("osslsigncode extract-signature -in <copy> -out <folder>/signature.p7",
+                       "osslsigncode verify -in <copy> -CAfile <folder>/code-roots.pem -TSA-CAfile "
+                       "<folder>/timestamp-roots.pem",
+                       "must be 2.16 or later" if authenticode.MIN_TOOL_VERSION == (2, 16) else "-",
+                       "a time limit of %d seconds" % authenticode.VERIFY_TIMEOUT_SECONDS,
+                       "`PATH=%s`" % authenticode.TOOL_ENV_PATH,
+                       "up to %d lines" % authenticode.MAX_TOOL_LINES_SHOWN,
+                       "a bad release that the real publisher signed passes",
+                       "Anything about the revocation of an intermediate certificate",
+                       "an older CRL that is still within its validity",
+                       "an older release, or another program that the same publisher signed, passes this step",
+                       "must be **absent** from the subject", "MD5 is never accepted",
+                       "### An MSI's container is not checked", "bytes appended after the last sector",
+                       "the streams are the publisher's; not that every byte of the file is",
+                       "exactly one entry, of the PKCS#7 kind", "An MSI without `MsiDigitalSignatureEx` is refused",
+                       "Only its root is pinned", "The processor sets no size limit of its own",
+                       "GlobalSign's and Microsoft's pages give only SHA-1 thumbprints",
+                       "No input of a recipe, an override or `-k` can name another program",
+                       "and those that the timestamp token carries, are not covered by the signature",
+                       "Windows accepts such a file too", "`ALLOWED_UNSIGNED_ATTRIBUTES`", "a CRL field is refused",
+                       "An MSI with a nested signature", "The timestamp's own `SignerInfo`",
+                       "**The certificates are the only unsigned kind left.**",
+                       "`digestAlgorithms` must hold exactly the digest algorithm of the one `SignerInfo`",
+                       "must be absent or NULL", "`SIGNATURE_SIGNED_DATA_VERSIONS` 1, `TOKEN_SIGNED_DATA_VERSIONS` 3, "
+                       "`SIGNER_INFO_VERSIONS` 1"):
+            self.assertIn(needle, section)
+        for folder in authenticode.TOOL_FOLDERS:
+            self.assertIn("`%s`" % folder, section)
+        for name in authenticode.DIGEST_ALGORITHMS:
+            self.assertIn("`%s`" % name, section)
+        self.assertNotIn("osslsigncode_path", raw_text())
+        self.assertNotIn("unchanged since it was signed", raw_text())
+        self.assertNotIn("no byte of a PE file", raw_text())
+        self.assertNotIn("One kind stays open", raw_text())
 
     def test_the_importer_message_is_the_one_in_the_readme(self):
         """The text of the refusal in the README is the real text."""
@@ -180,7 +238,7 @@ class ReadmeTests(unittest.TestCase):
     def test_the_readme_describes_the_newest_release_guard(self):
         raw = raw_text()
         text = normalized_text()
-        self.assertIn("Seven AutoPkg processors", text)
+        self.assertIn("Eight AutoPkg processors", text)
         self.assertIn("| `GitHubNewestReleaseGuard.py` | Stops the recipe when the release that `GitHubReleasesInfoProvider` selected is not the newest one", text)
         section = text[text.index("## GitHubNewestReleaseGuard"):text.index("## WindowsExeVersion")]
         for needle in ("`GitHubReleasesInfoProvider.py:173-201`", "(`:204-205`)", "(`:235-255`)", "(`:244-248`)",

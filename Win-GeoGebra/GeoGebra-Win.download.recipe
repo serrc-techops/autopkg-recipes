@@ -3,7 +3,7 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>This download is NOT verified yet: GeoGebra publishes no hash for the file (none was seen in the index of its download folder on 2026-11-13), and a check of the signature is not built, so nothing proves that the file is what GeoGebra published. The shared importer therefore refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true (pcman_allow_unverified for the package tool's recipe). Downloads the current GeoGebra 6 MSI for Windows, the installer that GeoGebra's page on mass installation names for many computers (it holds GeoGebra Classic 6 and the Calculator Suite apps). The address is found by GeoGebraInfoProvider (in this folder), which reads the Location header of the one answer of GeoGebra's fixed address and follows no redirect; the Location may be relative and is resolved against that address. The file is stored under a name made of the four numbers of the address. The recipe gives no version label: the importers read the MSI's own ProductVersion. Whether that version has the same four numbers as the address (6-0-936-0 on 2026-11-13) is NOT established, because the MSI was not read. The answer was read from GeoGebra's server on 2026-11-13 and the recipe was NOT run with AutoPkg. The recipe never stops on an unchanged download, so a failed import is tried again at the next run.</string>
+        <string>This download is verified by its Authenticode signature, not by a hash: GeoGebra publishes no hash for the file (none was seen in the index of its download folder on 2026-11-13). After EndOfCheckPhase the shared processor AuthenticodeVerifier checks with osslsigncode that the content of the MSI's streams is what was signed (with the stream MsiDigitalSignatureEx, which is required; the compound file around the streams is not checked, see the README), that the certificate that signed it is GeoGebra's (CN and O GeoGebra GmbH, L Linz, ST Oberösterreich, C AT, and no OU), that its chain ends in the pinned root globalsign-code-signing-root-r45 and the chain of its timestamp in globalsign-root-r6, that the signature uses SHA-1 (GeoGebra signs this MSI with SHA-1 only; the recipe allows sha1 by name and should move to SHA-256 when GeoGebra does; it also allows sha384, which the timestamp's own signature uses), that the signature has a verified timestamp, and that the CRLs of the signing and the timestamp certificate could be read and do not list them; it then sets signature_verified and signature_sha256, which the importers accept only for the file they import. It does not prove that a release that GeoGebra itself signed is harmless, only the signing certificate's CRL is read (over HTTP), not the intermediate's, and a new place in GeoGebra's next certificate stops the run until a person updates the recipe. The step needs osslsigncode and HTTP access to the CRL addresses; without them every run stops. The step was NOT run with AutoPkg; the processor passed the MSI of 2026-11-13 on 2026-11-19. Downloads the current GeoGebra 6 MSI for Windows, the installer that GeoGebra's page on mass installation names for many computers (it holds GeoGebra Classic 6 and the Calculator Suite apps). The address is found by GeoGebraInfoProvider (in this folder), which reads the Location header of the one answer of GeoGebra's fixed address and follows no redirect; the Location may be relative and is resolved against that address. The file is stored under a name made of the four numbers of the address. The recipe gives no version label: the importers read the MSI's own ProductVersion. On 2026-11-13 the MSI's own version was 6.0.936.0 and the address said 6-0-936-0; whether later MSIs keep the four numbers of their address is NOT established. The answer was read from GeoGebra's server on 2026-11-13, and that day the recipe ran under AutoPkg into a scratch repository (see the README). The recipe never stops on an unchanged download, so a failed import is tried again at the next run.</string>
         <key>Identifier</key>
         <string>com.github.serrc-techops.download.GeoGebra-Win</string>
         <key>Input</key>
@@ -31,6 +31,41 @@
             <dict>
                 <key>Processor</key>
                 <string>EndOfCheckPhase</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/AuthenticodeVerifier</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>expected_signer</key>
+                    <dict>
+                        <key>CN</key>
+                        <string>GeoGebra GmbH</string>
+                        <key>O</key>
+                        <string>GeoGebra GmbH</string>
+                        <key>L</key>
+                        <string>Linz</string>
+                        <key>ST</key>
+                        <string>Oberösterreich</string>
+                        <key>C</key>
+                        <string>AT</string>
+                    </dict>
+                    <key>code_signing_roots</key>
+                    <array>
+                        <string>globalsign-code-signing-root-r45</string>
+                    </array>
+                    <key>timestamp_roots</key>
+                    <array>
+                        <string>globalsign-root-r6</string>
+                    </array>
+                    <key>digest_algorithms</key>
+                    <array>
+                        <string>sha1</string>
+                        <string>sha384</string>
+                    </array>
+                </dict>
             </dict>
         </array>
     </dict>

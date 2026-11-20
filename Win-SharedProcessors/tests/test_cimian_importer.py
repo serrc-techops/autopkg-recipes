@@ -18,6 +18,7 @@ from _win_support import (
     UPGRADE_CODE,
     ProcessorError,
     RepoTestCase,
+    authenticode,
     checksum,
     cimian,
     needs_yaml,
@@ -816,7 +817,8 @@ class VerifiedDownloadTests(PyYamlCase):
                 with self.assertRaises(ProcessorError) as caught:
                     run(self.env(checksum_verified=flag))
                 self.assertIn("The download was not verified: no step of the recipe set checksum_verified "
-                              "together with the checksum_sha256 of this file. Nothing was published.",
+                              "together with the checksum_sha256 of this file, or signature_verified together "
+                              "with the signature_sha256 of this file. Nothing was published.",
                               str(caught.exception))
                 self.assertEqual(self.repo_tree(), before)
 
@@ -881,6 +883,54 @@ class VerifiedDownloadTests(PyYamlCase):
                 processor, _ = run(self.env(self.another_exe(20 + number), checksum_verified=None,
                                             cimian_allow_unverified=value, version="2.%d.0" % (6 + number)))
                 self.assertEqual(processor.env["cimian_result"], "published")
+
+    def test_a_verified_signature_of_this_file_counts_like_a_checksum(self):
+        processor, messages = run(self.env(checksum_verified=None, checksum_sha256=None, signature_verified=True,
+                                           signature_sha256=sha256_hex(self.exe)))
+        self.assertEqual(lines(messages, "WARNING"), [])
+        self.assertEqual(processor.env["cimian_importer_summary_result"]["data"]["result"], "published")
+
+    def test_a_signature_flag_without_a_usable_hash_does_not_count(self):
+        for flag, value in ((True, None), (True, "not a hash"), (True, "a" * 63), ("true", None), (1, None)):
+            with self.subTest(flag=flag, value=value):
+                env = self.env(checksum_verified=None, checksum_sha256=None, signature_verified=flag)
+                env["signature_sha256"] = sha256_hex(self.exe) if value is None else value
+                if flag is True and value is None:
+                    continue  # that is the verified case above
+                with self.assertRaises(ProcessorError) as caught:
+                    run(env)
+                self.assertIn("The download was not verified", str(caught.exception))
+        with self.assertRaises(ProcessorError):
+            run(self.env(checksum_verified=None, checksum_sha256=None, signature_verified=True))
+
+    def test_a_signature_of_another_file_stops_every_run_and_the_override_does_not_change_that(self):
+        other = "d" * 64
+        for dry in (True, False):
+            for allow in (False, True):
+                with self.subTest(dry_run=dry, allow=allow):
+                    before = self.repo_tree()
+                    with self.assertRaises(ProcessorError) as caught:
+                        run(self.env(checksum_verified=None, checksum_sha256=None, signature_verified=True,
+                                     signature_sha256=other, cimian_dry_run=dry, cimian_allow_unverified=allow))
+                    message = str(caught.exception)
+                    self.assertIn("The file to import is not the file whose signature was verified", message)
+                    self.assertIn("signature_sha256 is %s" % cimian.shorten(other), message)
+                    self.assertEqual(self.repo_tree(), before)
+
+    def test_a_good_checksum_does_not_hide_a_signature_of_another_file_and_the_other_way_round(self):
+        digest = sha256_hex(self.exe)
+        for env in (self.env(signature_verified=True, signature_sha256="e" * 64),
+                    self.env(checksum_sha256="e" * 64, signature_verified=True, signature_sha256=digest)):
+            with self.subTest(env={key: env.get(key) for key in ("checksum_sha256", "signature_sha256")}):
+                with self.assertRaises(ProcessorError) as caught:
+                    run(env)
+                self.assertIn("The file to import is not the file whose", str(caught.exception))
+
+    def test_the_signature_names_are_those_that_the_signature_step_sets(self):
+        self.assertEqual(cimian.SIGNATURE_FLAG_VARIABLE, "signature_verified")
+        self.assertEqual(cimian.SIGNATURE_HASH_VARIABLE, "signature_sha256")
+        self.assertIn(cimian.SIGNATURE_FLAG_VARIABLE, authenticode.AuthenticodeVerifier.output_variables)
+        self.assertIn(cimian.SIGNATURE_HASH_VARIABLE, authenticode.AuthenticodeVerifier.output_variables)
 
     def test_the_names_are_those_that_the_checksum_step_sets(self):
         self.assertEqual(cimian.VERIFIED_FLAG_VARIABLE, "checksum_verified")

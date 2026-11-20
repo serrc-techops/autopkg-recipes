@@ -311,7 +311,7 @@ class NotVerifiedTests(unittest.TestCase):
         self.assertTrue(not_verified.startswith("**Not verified. The download is NOT verified:"), not_verified[:60])
         self.assertTrue(not_verified.endswith("**"))
         for needle in ("signature check", "REFUSES a real run", "pcman_allow_unverified",
-                       "Do not set it before the signature check exists",
+                       "Do not set it before a signature check is part of this recipe",
                        "pcman import <file> --template googledrive --version <label>", "the label of an EXE",
                        "A real run of this recipe was REFUSED on 2026-10-04 (see the status line above), and nothing has been installed on a PC"):
             self.assertIn(needle, not_verified)

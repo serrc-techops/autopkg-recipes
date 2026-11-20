@@ -3,7 +3,7 @@
 <plist version="1.0">
     <dict>
         <key>Description</key>
-        <string>This download is NOT verified yet: the Scratch Foundation publishes no hash for the file that was found, and a check of the signature is not built, so nothing proves that the file is what the Scratch Foundation published. The shared importer therefore refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true (pcman_allow_unverified for the package tool's recipe). Downloads the current Scratch 3 desktop app for Windows (the EXE installer). The address is found by ScratchInfoProvider (in this folder), which reads the Location header of the one answer of the fixed download address and follows no redirect. The version label is the version in the file name that the redirect names (Scratch 3.32.1 Setup.exe on 2026-11-13); the file itself is not read for a version, and whether it carries the same one is NOT established. The file is stored under a name without spaces. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. The answers were read from the Scratch Foundation's server on 2026-11-13 and the recipe was NOT run with AutoPkg.</string>
+        <string>This download is verified by its Authenticode signature, not by a hash: the Scratch Foundation publishes no hash for the file that was found. After EndOfCheckPhase the shared processor AuthenticodeVerifier checks with osslsigncode that the EXE is the bytes that were signed (Authenticode leaves out the checksum field and the certificate table; the processor checks that the table holds one entry with the signature and its zero padding and ends the file; the certificates inside the signature are not covered by it and can hold other bytes), that the certificate that signed it is the Scratch Foundation's (CN and O Scratch Foundation, L and ST New York, C US, and no OU), that its chain and the chain of its timestamp end in the pinned root microsoft-identity-verification-root-2020, that the signature has a verified timestamp (the Scratch Foundation signs through Microsoft's signing service with a certificate that lives a few days, so the signature is valid only through its timestamp), and that the CRLs of the signing and the timestamp certificate could be read and do not list them; it then sets signature_verified and signature_sha256, which the importers accept only for the file they import. It does not prove that a release that the Scratch Foundation itself signed is harmless, the root issues for many publishers so the name fields alone tell them apart, only the signing certificate's CRL is read (over HTTP), not the intermediates', and a new place in the next certificate stops the run until a person updates the recipe. Then the shared processor WindowsExeVersion reads the signed file's own version resource: its ProductName must be Scratch 3 and its CompanyName Scratch Foundation, and its version (the label that the child recipes pass on) must equal the version in the redirect's file name, or the run stops. The step needs osslsigncode and HTTP access to the CRL addresses; without them every run stops. The step was NOT run with AutoPkg; the processor passed the EXE of 2026-11-13 on 2026-11-19. Downloads the current Scratch 3 desktop app for Windows (the EXE installer). The address is found by ScratchInfoProvider (in this folder), which reads the Location header of the one answer of the fixed download address and follows no redirect. The version in the file name that the redirect names (Scratch 3.32.1 Setup.exe on 2026-11-13) is only a cross-check: the label is the signed file's own version (3.32.1 on 2026-11-13, the same). Whether later files keep the same version in their name and in their version resource is NOT established; when they do not, the run stops. The file is stored under a name without spaces. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. The answers were read from the Scratch Foundation's server on 2026-11-13 and the recipe was NOT run with AutoPkg.</string>
         <key>Identifier</key>
         <string>com.github.serrc-techops.download.Scratch-Win</string>
         <key>Input</key>
@@ -31,6 +31,51 @@
             <dict>
                 <key>Processor</key>
                 <string>EndOfCheckPhase</string>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/AuthenticodeVerifier</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>expected_signer</key>
+                    <dict>
+                        <key>CN</key>
+                        <string>Scratch Foundation</string>
+                        <key>O</key>
+                        <string>Scratch Foundation</string>
+                        <key>L</key>
+                        <string>New York</string>
+                        <key>ST</key>
+                        <string>New York</string>
+                        <key>C</key>
+                        <string>US</string>
+                    </dict>
+                    <key>code_signing_roots</key>
+                    <array>
+                        <string>microsoft-identity-verification-root-2020</string>
+                    </array>
+                    <key>timestamp_roots</key>
+                    <array>
+                        <string>microsoft-identity-verification-root-2020</string>
+                    </array>
+                </dict>
+            </dict>
+            <dict>
+                <key>Processor</key>
+                <string>com.github.serrc-techops.SharedProcessors/WindowsExeVersion</string>
+                <key>Arguments</key>
+                <dict>
+                    <key>pathname</key>
+                    <string>%pathname%</string>
+                    <key>expected_product_name</key>
+                    <string>Scratch 3</string>
+                    <key>expected_company_name</key>
+                    <string>Scratch Foundation</string>
+                    <key>expected_version</key>
+                    <string>%version%</string>
+                </dict>
             </dict>
         </array>
     </dict>

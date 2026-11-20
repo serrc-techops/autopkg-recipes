@@ -751,6 +751,59 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(again.env["pathname"], exe)
         self.assertEqual(self.packs, 1)
 
+    def verified(self, **more):
+        return self.env(signature_verified=True, signature_sha256=packager.sha256_of_file(self.installer), **more)
+
+    def test_a_verified_installer_hands_its_signature_over_to_the_exe_built_in_this_run(self):
+        processor = self.Fake(env=self.verified())
+        processor.main()
+        exe = processor.env["pathname"]
+        self.assertIs(processor.env["signature_verified"], True)
+        self.assertEqual(processor.env["signature_sha256"], packager.sha256_of_file(exe))
+        self.assertNotEqual(processor.env["signature_sha256"], packager.sha256_of_file(self.installer))
+        self.assertEqual(self.staged["GrammarlyInstaller.exe"], b"MZ" + b"g" * 100)
+        self.assertIn("whose signature was verified", processor.env["grammarly_packager_summary_result"]["summary_text"])
+
+    def test_a_verified_installer_never_takes_a_cached_exe(self):
+        self.Fake(env=self.env()).main()
+        processor = self.Fake(env=self.verified())
+        processor.main()
+        self.assertEqual(self.packs, 2)
+        self.assertEqual(processor.env["signature_sha256"], packager.sha256_of_file(processor.env["pathname"]))
+
+    def test_a_signature_of_another_file_stops_the_build(self):
+        with self.assertRaises(ProcessorError) as caught:
+            self.Fake(env=self.env(signature_verified=True, signature_sha256=OTHER_SHA)).main()
+        self.assertIn("signature_sha256 is the hash of another file than the installer", str(caught.exception))
+        self.assertEqual(self.packs, 0)
+
+    def test_an_unverified_installer_hands_nothing_over(self):
+        for more in ({}, {"signature_verified": "true"}, {"signature_verified": False},
+                     {"signature_verified": True, "signature_sha256": "not a hash"}):
+            with self.subTest(more=more):
+                env = self.env(**more)
+                if "signature_verified" in more and "signature_sha256" not in more:
+                    env["signature_sha256"] = packager.sha256_of_file(self.installer)
+                processor = self.Fake(env=env)
+                processor.main()
+                self.assertEqual(processor.env.get("signature_sha256"), env.get("signature_sha256"))
+                self.assertIn("NOT verified", processor.env.get("grammarly_packager_summary_result", {}).get(
+                    "summary_text", "NOT verified"))
+
+    def test_an_installer_that_changes_while_it_is_staged_stops_the_build(self):
+        real = packager.shutil.copyfile
+
+        def changed(source, target):
+            real(source, target)
+            with open(target, "ab") as handle:
+                handle.write(b"!")
+        packager.shutil.copyfile = changed
+        self.addCleanup(lambda: setattr(packager.shutil, "copyfile", real))
+        with self.assertRaises(ProcessorError) as caught:
+            self.Fake(env=self.verified()).main()
+        self.assertIn("The installer changed while it was copied into the stage", str(caught.exception))
+        self.assertEqual(self.packs, 0)
+
     def test_the_packed_files_are_named_in_order_with_a_fixed_time_and_mode(self):
         seen = {}
         real_run = packager.subprocess.run

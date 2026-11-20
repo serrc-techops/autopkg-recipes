@@ -6,7 +6,7 @@ processors is compared with what that processor declares: the shared ones
 (tested in test_info_provider.py). The shared folder's tests are run separately.
 
 The download of this program has NO hard check (Foxit publishes no hash, and a
-check of the signature is not built). The tests make sure that nobody can
+signature check in this recipe). The tests make sure that nobody can
 overlook that: the Description of both recipes and the top of the README say
 it, and no recipe invents a check. The label of the EXE is read from the file
 itself by the shared WindowsExeVersion step; the tests check its place in the
@@ -375,7 +375,7 @@ class NotVerifiedTests(unittest.TestCase):
         self.assertTrue(status.startswith("**Status."), status[:60])
         self.assertTrue(status.endswith("**"))
         for needle in ("NOT verified", "signature", "REFUSES a real run", "pcman_allow_unverified",
-                       "Do not set it before the signature check exists",
+                       "Do not set it before a signature check is part of this recipe",
                        "pcman import <file> --template foxitreader --version <the label>",
                        "an EXE needs `--version`"):
             self.assertIn(needle, status)

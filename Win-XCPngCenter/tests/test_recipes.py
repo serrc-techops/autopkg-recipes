@@ -331,8 +331,8 @@ class NotVerifiedTests(unittest.TestCase):
         status = lines[2] if lines[1].startswith("A Windows recipe pair") else lines[1]
         self.assertTrue(status.startswith("**Status."), status[:60])
         self.assertTrue(status.endswith("**"))
-        for needle in ("NOT verified", "a check of the signature is not built", "REFUSES a real run", "pcman_allow_unverified",
-                       "Do not set it before the signature check exists",
+        for needle in ("NOT verified", "the shared signature check (`AuthenticodeVerifier`) is not part of this recipe", "REFUSES a real run", "pcman_allow_unverified",
+                       "Do not set it before a signature check is part of this recipe",
                        "pcman import <file> --template xcp-ng-center", "no `--version` for an MSI",
                        "the real run of the override of `XCPngCenter.pcman`", "was REFUSED"):
             self.assertIn(needle, status)
@@ -760,9 +760,9 @@ class ReadmeTests(unittest.TestCase):
         self.assertTrue(paragraph.startswith(opening))
         self.assertTrue(paragraph.endswith("**"))
         for needle in ("GitHub records no digest for the asset that the recipe takes",
-                       "the release's text names no hash and no signature", "a check of the signature is not built",
+                       "the release's text names no hash and no signature", "the shared signature check (`AuthenticodeVerifier`) is not part of this recipe",
                        "REFUSES a real run of this recipe (nothing is published) unless the override sets `pcman_allow_unverified` to true",
-                       "Do not set it before the signature check exists",
+                       "Do not set it before a signature check is part of this recipe",
                        "`pcman import <file> --template xcp-ng-center` (no `--version` for an MSI)",
                        "A digest step (`GitHubAssetDigest`, then `ChecksumVerifier`) can come back into the download recipe when a release has a digest",
                        "and run again after the change (2026-10-04)",

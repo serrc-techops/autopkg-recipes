@@ -24,12 +24,14 @@ existing file and refuses a folder that leaves the repository.
 A download that no step verified is not published silently. A download counts as
 verified when checksum_verified is true (ChecksumVerifier sets it) AND
 checksum_sha256 (ChecksumVerifier outputs it: the hash of the file it checked) is a
-SHA-256 that equals the hash of the file about to be imported. This processor hashes
-that file itself, once. A real run of a download that does not count is refused,
-unless cimian_allow_unverified is true in the override. Then it goes on, prints a
-WARNING at every verbosity, and the summary says "published, NOT verified". A
-checksum_sha256 that is a SHA-256 of another file stops the run, in a dry run too,
-and cimian_allow_unverified does not override it.
+SHA-256 that equals the hash of the file about to be imported; or, in the same way,
+when signature_verified is true (AuthenticodeVerifier sets it) AND signature_sha256
+(the hash of the file whose signature it checked) equals that hash. This processor
+hashes that file itself, once. A real run of a download that does not count is
+refused, unless cimian_allow_unverified is true in the override. Then it goes on,
+prints a WARNING at every verbosity, and the summary says "published, NOT verified".
+A checksum_sha256 or signature_sha256 that is a SHA-256 of another file stops the
+run, in a dry run too, and cimian_allow_unverified does not override it.
 
 For an MSI the product version, product code and upgrade code are read with msiinfo
 (msitools) when it is on cimian_path; an MSI whose upgrade code is not the template's
@@ -135,9 +137,18 @@ RESULT_NOTHING_NEW = "nothing-new"
 # SHA-256 of the file that is imported. ChecksumVerifier sets both.
 VERIFIED_FLAG_VARIABLE = "checksum_verified"
 VERIFIED_HASH_VARIABLE = "checksum_sha256"
+# The same pair from AuthenticodeVerifier, which checks a signature.
+SIGNATURE_FLAG_VARIABLE = "signature_verified"
+SIGNATURE_HASH_VARIABLE = "signature_sha256"
+# Each pair, with the word that a message uses for it.
+VERIFICATIONS = (
+    (VERIFIED_FLAG_VARIABLE, VERIFIED_HASH_VARIABLE, "checksum"),
+    (SIGNATURE_FLAG_VARIABLE, SIGNATURE_HASH_VARIABLE, "signature"),
+)
 UNVERIFIED_REASON = (
     "no step of the recipe set checksum_verified together with the "
-    "checksum_sha256 of this file"
+    "checksum_sha256 of this file, or signature_verified together with the "
+    "signature_sha256 of this file"
 )
 
 # The same rules as ChecksumVerifier. A processor does not depend on a sibling
@@ -849,8 +860,8 @@ class CimianImporter(Processor):
                 "False (the default): a real run of a download that no step "
                 "verified is refused. True: it goes on, with a WARNING, and the "
                 "summary says 'published, NOT verified'. It does not override a "
-                "checksum_sha256 that is not the hash of the file. Set in an "
-                "override, never in a recipe."
+                "checksum_sha256 or signature_sha256 that is not the hash of the "
+                "file. Set in an override, never in a recipe."
             ),
         },
         "cimian_path": {
@@ -1089,24 +1100,28 @@ class CimianImporter(Processor):
         return [item.strip() for item in value]
 
     def check_verification(self, installer, actual):
-        """True when the download counts as verified: checksum_verified is
-        exactly true (a boolean; text does not count) and checksum_sha256 is the
-        SHA-256 of the installer, which `actual` is. False when checksum_verified
-        is not true, or when checksum_sha256 is missing or is not a SHA-256. A
-        checksum_sha256 that is a SHA-256 of another file is an error: the file
-        that was verified is not the file that is imported."""
-        if self.env.get(VERIFIED_FLAG_VARIABLE) is not True:
-            return False
-        claimed = normalize_sha256(self.env.get(VERIFIED_HASH_VARIABLE))
-        if claimed is None:
-            return False
-        if claimed != actual:
-            raise ProcessorError(
-                "The file to import is not the file whose checksum was verified: "
-                "%s is %s, but %s has the SHA-256 %s. Nothing was published."
-                % (VERIFIED_HASH_VARIABLE, shorten(claimed), os.path.basename(installer), shorten(actual))
-            )
-        return True
+        """True when the download counts as verified by one of VERIFICATIONS: its
+        flag is exactly true (a boolean; text does not count) and its hash is the
+        SHA-256 of the installer, which `actual` is. A pair whose flag is not true,
+        or whose hash is missing or is not a SHA-256, does not count. A pair whose
+        flag is true and whose hash is a SHA-256 of another file is an error: the
+        file that was verified is not the file that is imported. Each pair is
+        checked, so that one of them cannot hide the other's error."""
+        verified = False
+        for flag, hash_variable, kind in VERIFICATIONS:
+            if self.env.get(flag) is not True:
+                continue
+            claimed = normalize_sha256(self.env.get(hash_variable))
+            if claimed is None:
+                continue
+            if claimed != actual:
+                raise ProcessorError(
+                    "The file to import is not the file whose %s was verified: "
+                    "%s is %s, but %s has the SHA-256 %s. Nothing was published."
+                    % (kind, hash_variable, shorten(claimed), os.path.basename(installer), shorten(actual))
+                )
+            verified = True
+        return verified
 
     # ---- the repository ----
 

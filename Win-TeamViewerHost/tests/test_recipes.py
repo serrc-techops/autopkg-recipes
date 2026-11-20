@@ -188,7 +188,8 @@ class RecipeFileTests(unittest.TestCase):
 
     def test_the_download_steps_in_order(self):
         steps = [s["Processor"] for s in load(DOWNLOAD)["Process"]]
-        self.assertEqual(steps, ["URLDownloader", "EndOfCheckPhase", "Unarchiver", "FileFinder"])
+        self.assertEqual(steps, ["URLDownloader", "EndOfCheckPhase", "Unarchiver", "FileFinder",
+                                 SHARED_PREFIX + "AuthenticodeVerifier"])
 
     def test_the_downloader_arguments(self):
         recipe = load(DOWNLOAD)
@@ -287,18 +288,52 @@ class RecipeFileTests(unittest.TestCase):
                     self.assertNotIn("Testing", value)
 
 
-class NotVerifiedTests(unittest.TestCase):
-    def test_every_description_begins_by_saying_that_nothing_is_verified(self):
-        for path in RECIPES:
-            with self.subTest(path=os.path.basename(path)):
-                self.assertIn("NOT verified yet", first_sentence(load(path)["Description"]))
+SIGNER = {"CN": "TeamViewer Germany GmbH", "O": "TeamViewer Germany GmbH", "L": "G\u00f6ppingen", "C": "DE"}
+ROOT = "digicert-trusted-root-g4"
 
-    def test_the_download_description_names_the_missing_checks_and_both_flags(self):
+
+class SignatureTests(unittest.TestCase):
+    """The download is verified by the signature of the Host MSI that FileFinder names."""
+
+    def test_the_step_checks_the_found_msi_with_teamviewers_name_and_the_pinned_root(self):
+        import AuthenticodeVerifier
+        arguments = step(load(DOWNLOAD), SHARED_PREFIX + "AuthenticodeVerifier")
+        self.assertEqual(arguments["pathname"], "%found_filename%")
+        self.assertEqual(arguments["expected_signer"], SIGNER)
+        self.assertEqual(arguments["code_signing_roots"], [ROOT])
+        self.assertEqual(arguments["timestamp_roots"], [ROOT])
+        self.assertIn(ROOT, AuthenticodeVerifier.PINNED_ROOTS)
+        self.assertNotIn("osslsigncode_path", arguments)
+        declared = AuthenticodeVerifier.AuthenticodeVerifier.input_variables
+        for key in arguments:
+            self.assertIn(key, declared)
+        for key, flags in declared.items():
+            if flags.get("required"):
+                self.assertIn(key, arguments)
+
+    def test_the_step_is_last_and_checks_the_file_that_the_children_import(self):
+        names = [s["Processor"] for s in load(DOWNLOAD)["Process"]]
+        self.assertEqual(names[-1], SHARED_PREFIX + "AuthenticodeVerifier")
+        for path in (CIMIAN, PCMAN):
+            self.assertEqual(load(path)["Process"][0]["Arguments"]["pathname"], "%found_filename%")
+
+    def test_every_description_says_how_the_download_is_verified(self):
+        self.assertIn("verified by the Authenticode signature of the Host MSI, not by a hash",
+                      first_sentence(load(DOWNLOAD)["Description"]))
+        for path in (CIMIAN, PCMAN):
+            with self.subTest(path=os.path.basename(path)):
+                self.assertIn("verified by the signature step of the download recipe",
+                              first_sentence(load(path)["Description"]))
+
+    def test_the_download_description_says_what_is_checked_and_what_is_not(self):
         text = flat(load(DOWNLOAD)["Description"])
-        self.assertIn("no hash", first_sentence(text))
-        self.assertIn("signature", first_sentence(text))
-        self.assertIn("refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true "
-                      "(pcman_allow_unverified for the package tool's recipe)", text)
+        for needle in ("publishes no hash for the zip or the MSI", "After FileFinder", "AuthenticodeVerifier",
+                       "CN and O TeamViewer Germany GmbH, L G\u00f6ppingen, C DE, and no ST and no OU", "MsiDigitalSignatureEx",
+                       "the compound file around the streams is not checked", ROOT, "verified timestamp", "CRLs",
+                       "signature_verified and signature_sha256", "does not prove that a release that TeamViewer "
+                       "itself signed is harmless", "it does not make the address documented",
+                       "not the intermediate's", "needs osslsigncode", "NOT run with AutoPkg"):
+            self.assertIn(needle, text)
 
     def test_the_download_description_says_that_the_vendor_does_not_document_the_address(self):
         text = flat(load(DOWNLOAD)["Description"])
@@ -313,11 +348,11 @@ class NotVerifiedTests(unittest.TestCase):
         self.assertIn("in AutoPkg 2.9.0 and later it refuses a member that would land outside the folder",
                       flat(load(DOWNLOAD)["Description"]))
 
-    def test_the_child_descriptions_say_what_still_protects_and_what_is_refused(self):
+    def test_the_child_descriptions_say_what_still_protects_and_what_a_run_without_the_step_does(self):
         for path, flag in ((CIMIAN, "cimian_allow_unverified"), (PCMAN, "pcman_allow_unverified")):
             text = flat(load(path)["Description"])
             with self.subTest(path=os.path.basename(path)):
-                self.assertIn("A real run is refused", text)
+                self.assertIn("Without that step", text)
                 self.assertIn(flag, text)
                 self.assertIn("published, NOT verified", text)
                 self.assertIn("upgrade code differs from the template's", text)
@@ -332,10 +367,10 @@ class NotVerifiedTests(unittest.TestCase):
             text = read(path)
             with self.subTest(path=os.path.basename(path)):
                 for word in ("<key>pcman_allow_unverified</key>", "<key>cimian_allow_unverified</key>",
-                             "<key>cimian_allow_product_change</key>", "checksum_verified", "signature_verified",
+                             "<key>cimian_allow_product_change</key>", "<key>checksum_verified</key>",
+                             "<key>signature_verified</key>", "<key>signature_sha256</key>",
                              "ChecksumVerifier", "expected_sha256", "CodeSignatureVerifier"):
                     self.assertNotIn(word, text)
-                self.assertNotIn("sha256", text.lower())
                 self.assertIsNone(HEX_64.search(text))
 
 
@@ -462,6 +497,22 @@ class CimianChainTests(_win_support.RepoTestCase):
         self.assertEqual(self.repo_tree(), before)
 
     @_win_support.needs_yaml
+    def test_with_the_signature_steps_output_the_host_msi_is_published_as_verified(self):
+        run = self.found()
+        run.update(signature_verified=True, signature_sha256=_win_support.sha256_hex(run["found_filename"]))
+        processor, messages = self.run_chain(run)
+        self.assertEqual(processor.env["cimian_importer_summary_result"]["data"]["result"], "published")
+        self.assertFalse([m for m in messages if "NOT verified" in m or "WITHOUT a verified" in m])
+
+    @_win_support.needs_yaml
+    def test_a_signature_of_the_zip_is_not_taken_for_the_msi(self):
+        run = self.found()
+        run.update(signature_verified=True, signature_sha256=_win_support.sha256_hex(run["pathname"]))
+        with self.assertRaises(_win_support.ProcessorError) as caught:
+            self.run_chain(run, cimian_allow_unverified=True)
+        self.assertIn("is not the file whose signature was verified", str(caught.exception))
+
+    @_win_support.needs_yaml
     def test_with_the_allowance_the_host_msi_is_published_not_verified(self):
         run = self.found()
         processor, _ = self.run_chain(run, cimian_allow_unverified=True)
@@ -495,6 +546,13 @@ class PcmanChainTests(_pcman_support.ToolTestCase):
             self.run_chain(self.found())
         self.assertIn(_pcman_support.importer.UNVERIFIED_REASON, str(caught.exception))
         self.assertFalse(self.was_run())
+
+    def test_with_the_signature_steps_output_the_tool_gets_the_host_msi(self):
+        run = self.found()
+        run.update(signature_verified=True, signature_sha256=_win_support.sha256_hex(run["found_filename"]))
+        processor, _ = self.run_chain(run)
+        self.assertEqual(processor.env["pcman_importer_summary_result"]["data"]["result"], "published")
+        self.assertIn(run["found_filename"], self.record()["argv"])
 
     def test_with_the_allowance_the_tool_gets_the_host_msi_and_the_template(self):
         run = self.found()
@@ -543,8 +601,8 @@ class ReadmeTests(unittest.TestCase):
         lines = [line for line in self.raw.splitlines() if line.strip()]
         self.assertEqual(lines[0], "# Win-TeamViewerHost")
         self.assertTrue(lines[2].startswith("**Status.") and lines[2].endswith("**"))
-        for needle in ("The download is NOT verified", "signature", "REFUSES a real run", "cimian_allow_unverified",
-                       "pcman_allow_unverified", VENDOR_URL, "No page of TeamViewer names this address",
+        for needle in ("The download is verified by the signature of the Host MSI, not by a hash",
+                       "`AuthenticodeVerifier`", "That step was NOT run with AutoPkg", VENDOR_URL, "No page of TeamViewer names this address",
                        "It is not documented by the vendor", "known from third-party packaging scripts",
                        "(only this one version was read)", "NOT established", "through either importer",
                        "an install through a Cimian client", "the refusal (error 25001) on a PC",
@@ -569,7 +627,15 @@ class ReadmeTests(unittest.TestCase):
     def test_the_readme_says_what_still_protects_and_that_it_is_not_enough(self):
         for needle in ("The same product", "refuse an MSI whose upgrade code differs from the template's",
                        "refuse a label that is not the MSI's own version", "They do not replace a verification",
-                       "no processor of this repository checks an Authenticode signature",
+                       "**The download is verified by the MSI's signature.**", "`CN=TeamViewer Germany GmbH`",
+                       "`C=DE`", "and no `ST` and no `OU`", "`L=G\u00f6ppingen`", "`digicert-trusted-root-g4`",
+                       "not necessarily every byte of the file", "**An older release, signed for real.**",
+                       "It does not refuse an older version", "**Checked on 2026-11-19**",
+                       "the same file with one byte changed was refused",
+                       "a bad release that TeamViewer itself signed passes", "only the signing certificate's CRL is read",
+                       "It also does not make the address documented", "**The step needs `osslsigncode`**",
+                       "The zip and its other members (the Full MSI, the two `.url` files) are not checked",
+                       "Without the signature step, an MSI of the right product with other content",
                        "Once the item exists, the importers refuse",
                        "On the first import there is no template, and so no upgrade code to compare",
                        "a checksum of the zip stops the run",
@@ -620,7 +686,9 @@ class ReadmeTests(unittest.TestCase):
         for needle in ("Add :Input:cimian_dry_run bool false", "Add :Input:cimian_allow_unverified bool true",
                        "Add :Input:pcman_dry_run bool false", "Add :Input:pcman_allow_unverified bool true",
                        "Both lines are needed", "published WITHOUT a verified download", "published, NOT verified",
-                       "Failed local trust verification", "makecatalogs", "pcman catalogs"):
+                       "Failed local trust verification", "makecatalogs", "pcman catalogs",
+                       "**Only when the signature step cannot be used**", "**Without the signature step**",
+                       "The signature step verifies the download, so one line is enough"):
             self.assertIn(needle, self.text)
 
     def test_the_hand_import_uses_the_template_and_no_version(self):

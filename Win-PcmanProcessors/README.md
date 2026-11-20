@@ -41,6 +41,12 @@ The result file is made in a temporary folder that the processor creates and
 removes. The processor never passes `--force`, `--allow-duplicate`,
 `--allow-product-change` or `--allow-version-label`, and has no input that could.
 
+**What is new is the package tool's decision.** The package tool's own `--if-new` decides what happens with a
+version that is not new: the same version, the same file, or a version lower than the newest one of the item.
+The processor adds nothing to that rule: it passes `--if-new`, reads the tool's result (exit code 3 is "nothing
+new", 0 is a publish) and reports it. What `--if-new` does with a lower version is the package tool's, which is
+not in this repository.
+
 **A dry run is the default.** The tool is asked for its plan (`--dry-run`) and
 writes nothing. The plan itself is NOT printed: it contains the text of the
 pkginfo. What is printed, at any verbosity (also without `-v`), is one line that
@@ -51,40 +57,41 @@ A real run needs `pcman_dry_run` set to `false` (see "Switching on a real run").
 The line "Nothing new: ..." is also printed at any verbosity.
 
 **A download that no step verified is refused.** A download counts as verified
-only when two things hold: `checksum_verified` is a boolean `true` (`ChecksumVerifier`
-sets it), and `checksum_sha256` (`ChecksumVerifier` outputs it: the hash of the file it
-checked) is a SHA-256 that equals the hash of the file about to be imported.
-`PcmanImporter` hashes that file itself, once, in blocks. The hash is read like `ChecksumVerifier` reads an expected value: 64 hex
-digits, any letter case, with or without the prefix `sha256:`. A **real** run
-(`pcman_dry_run` false) of a download that does not count (the flag is not `true`, or
-`checksum_sha256` is missing or is not a SHA-256) is refused with a `ProcessorError`
-before the tool starts:
+only when one of two pairs of variables holds: `checksum_verified` is a boolean `true`
+(`ChecksumVerifier` sets it), and `checksum_sha256` (`ChecksumVerifier` outputs it: the hash of
+the file it checked) is a SHA-256 that equals the hash of the file about to be imported; or
+`signature_verified` is a boolean `true` (the shared `AuthenticodeVerifier` sets it), and
+`signature_sha256` (the hash of the file whose signature it checked) is a SHA-256 that equals the
+hash of the file about to be imported. `PcmanImporter` hashes that file itself, once, in blocks.
+Each hash is read like `ChecksumVerifier` reads an expected value: 64 hex digits, any letter case,
+with or without the prefix `sha256:`. A **real** run (`pcman_dry_run` false) of a download that
+does not count (no pair has a flag that is `true` together with a SHA-256) is refused with a
+`ProcessorError` before the tool starts:
 
     The download was not verified: no step of the recipe set checksum_verified together
-    with the checksum_sha256 of this file. Nothing was published. Publish by hand after
-    checking the file, or set pcman_allow_unverified to true in the override.
+    with the checksum_sha256 of this file, or signature_verified together with the
+    signature_sha256 of this file. Nothing was published. Publish by hand after checking
+    the file, or set pcman_allow_unverified to true in the override.
 
 With `pcman_allow_unverified` true in the override the run goes on. It prints one
 `WARNING: published WITHOUT a verified download ...` at any verbosity, and the summary
 row's result is `published, NOT verified`. A dry run of an unverified download prints
 a `WARNING: the download was NOT verified ...` and its summary row says
 `dry run, nothing written, NOT verified`. A recipe whose download goes through
-`ChecksumVerifier` is not changed by this.
+`ChecksumVerifier` or `AuthenticodeVerifier` is not changed by this.
 
-**A checksum for another file stops the run.** When `checksum_verified` is `true` and
-`checksum_sha256` is a SHA-256 that is NOT the hash of the file to import, the file that
-was verified is not the file that is imported. That is not "unverified": it is a
-`ProcessorError` that shows both hashes shortened, also in a dry run, and
-`pcman_allow_unverified` does not override it.
+**A checksum for another file stops the run.** When a flag is `true` and its hash is a
+SHA-256 that is NOT the hash of the file to import, the file that was verified is not the
+file that is imported. That is not "unverified": it is a `ProcessorError` that names the
+pair (`whose checksum was verified` or `whose signature was verified`) and shows both
+hashes shortened, also in a dry run, and `pcman_allow_unverified` does not override it.
+Both pairs are checked: a good checksum does not hide a signature of another file, nor the
+other way round.
 
-A boolean `checksum_verified` written into an override's `Input` (or an AutoPkg
-preference) therefore counts only together with the right hash. That is a pinned hash,
-chosen by whoever wrote the override, and the override's trust information does not
-cover its `Input`.
-
-`signature_verified` does not count: no step sets it. A later signature step must output
-the hash of the file it checked under a named key, and this guard must then accept that
-key in the same way, with the same comparison with the file that is imported.
+A boolean `checksum_verified` or `signature_verified` written into an override's `Input`
+(or an AutoPkg preference) therefore counts only together with the right hash. That is a
+pinned hash, chosen by whoever wrote the override, and the override's trust information does
+not cover its `Input`.
 
 **A print driver zip** (`.zip`) is passed with a version, always (`pcman_version`; the tool never
 takes one from the zip). It is for a template that is an item of the kind `printer_driver`: the zip
@@ -103,7 +110,7 @@ and not the application's. With a template, the tool refuses a package whose ide
 name is not the template's (another application), and the template must be an `msix`
 item. `--if-new` says "nothing new" for the same name and version, or for a package
 with the same SHA-256. The package is not run and its signature is not checked: the
-download's checksum is the verification, as for any other installer.
+download's checksum or signature step is the verification, as for any other installer.
 
 ### Inputs
 

@@ -1,8 +1,9 @@
 # Win-SharedProcessors
 
-Seven AutoPkg processors for Windows installers, and the stub recipe that lets
+Eight AutoPkg processors for Windows installers, and the stub recipe that lets
 other recipes use them. None of them needs the package tool or any other program
-that is not in this repository or in AutoPkg: they work with any Cimian repository.
+that is not in this repository or in AutoPkg, except `AuthenticodeVerifier`, which needs
+`osslsigncode`: they work with any Cimian repository.
 (The processor for the owner's own package tool, `pcman`, is in
 `../Win-PcmanProcessors/`.)
 
@@ -14,6 +15,7 @@ processor like this: `com.github.serrc-techops.SharedProcessors/<Processor>`.
 | --- | --- |
 | `CimianImporter.py` | Publishes a downloaded `.msi`, `.exe` or app package (`.msix`, `.appx`, `.msixbundle`, `.appxbundle`) as a new version into a Cimian repository. The last step of a recipe. It is to a Cimian repository what AutoPkg's `MunkiImporter` is to a Munki repository |
 | `ChecksumVerifier.py` | Stops the recipe when a file does not have the SHA-256 that its publisher gives |
+| `AuthenticodeVerifier.py` | Stops the recipe unless a downloaded `.exe` or `.msi` carries a valid, timestamped Authenticode signature of the expected publisher, under a root that the recipe names. The `.pem` files `digicert-trusted-root-g4.pem`, `globalsign-code-signing-root-r45.pem`, `globalsign-root-r6.pem` and `microsoft-identity-verification-root-2020.pem` beside it are those public roots. It needs `osslsigncode` |
 | `GitHubAssetDigest.py` | Reads the SHA-256 that GitHub records for a release asset |
 | `GitHubNewestReleaseGuard.py` | Stops the recipe when the release that `GitHubReleasesInfoProvider` selected is not the newest one, so that a vendor's new spelling of a file name cannot send the recipe back to an old release unseen |
 | `WindowsExeVersion.py` | Reads the version of a downloaded `.exe` from the file itself, for the version label that `CimianImporter` needs |
@@ -293,36 +295,40 @@ disk). The permissions of both files are `0644`.
 
 ### A download that no step verified is refused
 
-A download counts as verified only when two things hold: `checksum_verified` is a boolean
-`true` (`ChecksumVerifier` sets it), and `checksum_sha256` (`ChecksumVerifier` outputs it: the
-hash of the file it checked) is a SHA-256 that equals the hash of the file about to be imported.
-`CimianImporter` hashes that file itself, once, in blocks, and uses the same hash for the
-pkginfo and for the copy. The hash is read like `ChecksumVerifier` reads an expected value:
-64 hex digits, any letter case, with or without the prefix `sha256:`. A **real** run
-(`cimian_dry_run` false) of a download that does not count (the flag is not `true`, or
-`checksum_sha256` is missing or is not a SHA-256) is refused with a `ProcessorError` before
-anything is read from the repository:
+A download counts as verified only when one of two pairs of variables holds:
 
-    The download was not verified: no step of the recipe set checksum_verified together with the checksum_sha256 of this file. Nothing was published. Publish by hand after checking the file, or set cimian_allow_unverified to true in the override.
+- `checksum_verified` is a boolean `true` (`ChecksumVerifier` sets it), and `checksum_sha256`
+  (`ChecksumVerifier` outputs it: the hash of the file it checked) is a SHA-256 that equals the hash of
+  the file about to be imported; or
+- `signature_verified` is a boolean `true` (`AuthenticodeVerifier` sets it), and `signature_sha256`
+  (`AuthenticodeVerifier` outputs it: the hash of the file whose signature it checked) is a SHA-256 that
+  equals the hash of the file about to be imported.
+
+`CimianImporter` hashes that file itself, once, in blocks, and uses the same hash for the
+pkginfo and for the copy. Each hash is read like `ChecksumVerifier` reads an expected value:
+64 hex digits, any letter case, with or without the prefix `sha256:`. A **real** run
+(`cimian_dry_run` false) of a download that does not count (no pair has a flag that is `true`
+together with a SHA-256) is refused with a `ProcessorError` before anything is read from the
+repository:
+
+    The download was not verified: no step of the recipe set checksum_verified together with the checksum_sha256 of this file, or signature_verified together with the signature_sha256 of this file. Nothing was published. Publish by hand after checking the file, or set cimian_allow_unverified to true in the override.
 
 With `cimian_allow_unverified` true in the override the run goes on. It prints one
 `WARNING: published WITHOUT a verified download ...` at every verbosity, and the summary row's
 result is `published, NOT verified`. A dry run of an unverified download prints a `WARNING: the
 download was NOT verified ...` and its summary row says `dry run, nothing written, NOT verified`.
-A recipe whose download goes through `ChecksumVerifier` is not changed by this.
+A recipe whose download goes through `ChecksumVerifier` or `AuthenticodeVerifier` is not changed by this.
 
-**A checksum for another file stops the run.** When `checksum_verified` is `true` and
-`checksum_sha256` is a SHA-256 that is NOT the hash of the file to import, the file that was
-verified is not the file that is imported. That is not "unverified": it is a `ProcessorError` that
-shows both hashes shortened, also in a dry run, and `cimian_allow_unverified` does not override it.
+**A checksum for another file stops the run.** When a flag is `true` and its hash is a SHA-256 that
+is NOT the hash of the file to import, the file that was verified is not the file that is imported.
+That is not "unverified": it is a `ProcessorError` that names the pair (`whose checksum was verified`
+or `whose signature was verified`) and shows both hashes shortened, also in a dry run, and
+`cimian_allow_unverified` does not override it. Both pairs are checked: a good checksum does not hide
+a signature of another file, nor the other way round.
 
-A boolean `checksum_verified` written into an override's `Input` (or an AutoPkg preference)
-therefore counts only together with the right hash. That is a pinned hash, chosen by whoever wrote
+A boolean `checksum_verified` or `signature_verified` written into an override's `Input` (or an AutoPkg
+preference) therefore counts only together with the right hash. That is a pinned hash, chosen by whoever wrote
 the override, and the override's trust information does not cover its `Input`.
-
-`signature_verified` does not count: no step sets it. A later signature step must output the hash of
-the file it checked under a named key, and this guard must then accept that key in the same way, with
-the same comparison with the file that is imported.
 
 ### An MSI's facts
 
@@ -482,6 +488,196 @@ Hashes the file itself, in blocks, and compares it with the expected value.
 An empty value, a value that is not a SHA-256, a file that cannot be read, or a
 different hash is a `ProcessorError`. The message shows both hashes shortened.
 
+## AuthenticodeVerifier
+
+Some vendors publish no hash for their Windows installer, but sign it. This processor checks that
+signature with `osslsigncode` and stops the recipe unless all of this holds, for the signature and for
+every signature nested in it:
+
+1. **What the signature covers.** `osslsigncode` confirms the signature over what Authenticode covers.
+   For a PE file (`.exe`) that is every byte of the file except the checksum field of the header, the
+   certificate table's entry in the header, and the certificate table itself. For an MSI it is the content of
+   every stream except the two signature streams, and, through the stream `MsiDigitalSignatureEx`, the
+   streams' metadata. An MSI without `MsiDigitalSignatureEx` is refused (`osslsigncode` 2.16 only warns).
+2. **Nothing outside it, for a PE file.** The certificate table, which the signature does not cover, must hold
+   exactly one entry, of the PKCS#7 kind (revision 2), which starts on 8 bytes, ends at the end of the file, and
+   holds the signature that was read and nothing but zero bytes of padding to the next 8 bytes. A second entry,
+   bytes inside the entry after the signature, or bytes after the table are refused.
+   **What remains inside the table.** The signature itself has parts that it does not cover, and anyone could add
+   bytes there without breaking it. These are closed, in the signature, in each nested one and in the timestamp
+   (its token or its countersignature):
+   - an unsigned attribute of a `SignerInfo` may only be Microsoft's RFC 3161 timestamp token, the older PKCS #9
+     countersignature or Microsoft's nested signature (their identifiers are in the processor,
+     `ALLOWED_UNSIGNED_ATTRIBUTES`), each at most once and at most one timestamp; any other is refused with its
+     identifier in the message, and a timestamp may carry none of its own;
+   - a CRL field is refused;
+   - the parameters of every algorithm identifier that is read (the `digestAlgorithms` entries, a `SignerInfo`'s
+     digest and signature algorithm) must be absent or NULL. None of the four real signatures read on 2026-11-19
+     had others; a publisher that signs with RSASSA-PSS or ECDSA parameters is refused until that shape is added;
+   - `digestAlgorithms` must hold exactly the digest algorithm of the one `SignerInfo`, nothing more;
+   - the version numbers must be the ones the standards give, each written as one byte
+     (`SIGNATURE_SIGNED_DATA_VERSIONS` 1, `TOKEN_SIGNED_DATA_VERSIONS` 3, `SIGNER_INFO_VERSIONS` 1).
+
+   **The certificates are the only unsigned kind left.** The certificates that the signature carries, and those
+   that the timestamp token carries, are not covered by the signature, and an added certificate can hold bytes of
+   anyone's choosing (real signatures carry certificates that are on no chain, cross-certificates and the same
+   certificate twice, so a stricter rule would refuse genuine files). Windows accepts such a file too. It matters
+   only for an installer that reads its own signature area; for the others those bytes are never read, but the file
+   is then not byte for byte the publisher's. So for a PE file, every byte is covered by the signature or checked
+   here, except the checksum field, the table's entry in the header, and the certificates inside the signature.
+3. **The roots.** The chain of the signing certificate ends in a root that the recipe names in
+   `code_signing_roots`, and the chain of the timestamp in a root that the recipe names in `timestamp_roots`.
+   The tool is given those roots and no others (`-CAfile`, `-TSA-CAfile`); the system's roots are not used.
+   Each root is a `.pem` file beside the processor, and the processor holds the SHA-256 of its DER form
+   (`PINNED_ROOTS`): a file with another one, or with more than one certificate, is refused. The last
+   certificate of each chain that the tool prints must be one of the named roots (compared by serial number).
+4. **The timestamp.** The signature must have a timestamp, and the tool must have verified it. The chain is
+   then judged at the time of the timestamp, so a signing certificate that has expired since, or that lived a
+   few days only (a signing service that issues a new certificate for every release), still counts. A signature
+   without a timestamp is refused, by the processor's own reading of the signature and by the tool's output.
+5. **Revocation.** The tool reads the CRL that the signing certificate names (its CRL distribution point) and
+   the CRL that the timestamp's certificate names, over HTTP, while it verifies. The output must say
+   `Signature CRL verification: ok` and `Timestamp Server Signature CRL verification: ok`: a CRL that cannot be
+   fetched (no network, a server that is down, an answer that is not a CRL), a revoked certificate, and a
+   certificate that names no CRL are each a refusal.
+6. **The digest algorithm.** The digest of the file that was signed and the signer's digest must use an
+   algorithm that the recipe allows in `digest_algorithms`: `sha256` by default; `sha1`, `sha384` and `sha512`
+   when the recipe names them. The timestamp's own `SignerInfo` (the timestamp authority's digest) must use one of
+   them too. MD5 is never accepted.
+7. **The signer.** The certificate that signed has exactly the subject fields that the recipe gives in
+   `expected_signer`. See "Which certificate signed".
+
+### Which certificate signed
+
+A signature's PKCS#7 carries a bag of certificates, and anyone can add a certificate to that bag, also one with
+the expected publisher's name. So the processor does not look for a name in the bag or in the tool's printed
+text. It reads the signature itself (`osslsigncode extract-signature`, in DER, with a small reader in the
+processor that accepts DER only): the one `SignerInfo` names its certificate by issuer and serial number, and that
+certificate is taken from the bag. Then:
+
+- the bag must hold exactly one certificate with that serial number (the same certificate twice, byte for byte,
+  counts as one: a signing service was seen to add it twice), and its issuer must be the one that the
+  `SignerInfo` names; two different certificates with the serial number are refused, whatever their issuer;
+- the certificate whose chain the tool prints as verified (its `Signer #0`) must have that serial number;
+- its subject is decoded field by field (`UTF8String`, `PrintableString`, `IA5String`, `BMPString`,
+  `UniversalString`; another string type is refused), so an escaped comma (`Example\, Inc.` in the tool's text),
+  quotes and letters such as `ö` need no parsing of a printed name.
+
+**The fields.** `expected_signer` must give `CN`, `O` and `C`, and it gives every one of `OU`, `L` and `ST` that
+the signing certificate carries. Each field that it gives must be in the subject exactly once and equal the given
+text exactly (letter case included; no other normalisation). Each of these six fields that it does not give must
+be **absent** from the subject: a recipe for a publisher whose certificate has no `ST` names none, and a
+certificate with an `ST` is then refused. Other kinds of field (such as `emailAddress`) are not compared. `CN`,
+`O` and `C` alone do not identify one legal entity (the same name can be registered in another state or at
+another register court), which is why the recipes give `L` and `ST` too. When a publisher's next certificate
+names another place (an office move), the step stops the run until a person has looked and changed the recipe:
+that is intended.
+
+A `SignerInfo` that names its certificate by a key identifier, a SignedData with more than one `SignerInfo`,
+signed content that is not Authenticode's `SpcIndirectDataContent`, and anything that is not DER (an indefinite
+length, say) are refused. The certificate itself (its thumbprint or serial number) is never pinned: certificates
+are renewed, and some publishers get a new one for every release.
+
+### An MSI's container is not checked
+
+For an MSI, the processor checks the signature and the stream `MsiDigitalSignatureEx`, not the layout of the
+compound file that holds the streams. Tried with `osslsigncode` 2.16 on a signed MSI, all of these pass the tool
+and this processor: bytes appended after the last sector; a changed byte in the unused part of a stream's last
+sector; a changed byte in an unused directory entry. They are not part of any stream, and Windows Installer reads
+streams; but such an MSI is not byte for byte the file that the publisher signed, and the hash that the importers
+compare is the hash of those bytes. Closing this needs a reader of the whole compound file (its sector tables, the
+unused parts of sectors and of the directory, the small-stream area), which this processor does not have. So for
+an MSI, "verified" means: the streams are the publisher's; not that every byte of the file is.
+
+An MSI with a nested signature (for example one signed with SHA-1 and again with SHA-256) is refused as the
+processor stands: it requires exactly one `MsiDigitalSignatureEx` line in the whole output, and whether the tool
+prints one for each signature was not tried (no such MSI was at hand). That fails closed; a recipe for such an MSI
+needs that rule changed and tried first.
+
+### What it runs
+
+The file is first copied to a new private temporary folder and hashed while it is copied; every check runs on
+the copy, and the folder is removed afterwards. The processor sets no size limit of its own: a very large
+download is copied whole into the temporary folder. The tool runs as a list, without a shell, with standard
+input closed and an environment of `PATH=/usr/bin:/bin` and `HOME` only (so a proxy setting of the run is not
+passed on):
+
+    osslsigncode --version
+    osslsigncode extract-signature -in <copy> -out <folder>/signature.p7
+    osslsigncode verify -in <copy> -CAfile <folder>/code-roots.pem -TSA-CAfile <folder>/timestamp-roots.pem
+
+The two `.pem` files of the third command are written from the checked DER of the named roots. The version must
+be 2.16 or later: the output was read with 2.16 (with OpenSSL 4.1), and a version that prints otherwise is
+refused by the checks of its output. The verify step has a time limit of 300 seconds (it fetches CRLs), the
+others 60.
+
+The verify step must end with exit code 0 and the line `Succeeded`, report as many verified signatures as the
+file holds, and print for each signature, in the order of the file: `Timestamp Server Signature CRL
+verification: ok`, `Timestamp Server Signature verification: ok`, `Signature CRL verification: ok`, `Signature
+verification: ok`, one `Signature verification time:`, and both chains it verified; `Timestamp is not
+available` is a refusal. For an MSI it must also print `Current MsiDigitalSignatureEx` and `Calculated
+MsiDigitalSignatureEx` with the same value. Only the standard output is read for this; a refusal shows up to 8
+lines of either output that say what failed.
+
+`osslsigncode` is looked for in `/opt/homebrew/bin` and in `/usr/local/bin`, Homebrew's two places, and
+nowhere else: not on the run's `PATH`, and not where an input says. No input of a recipe, an override or `-k`
+can name another program. Without it the run stops: `brew install osslsigncode`.
+
+| Input | Required | Meaning |
+| --- | --- | --- |
+| `pathname` | yes | The downloaded `.exe` or `.msi` (any letter case). Another kind of file is refused, and so is a file whose first bytes are not those of its kind |
+| `expected_signer` | yes | A dictionary of the signing certificate's subject fields: `CN`, `O` and `C`, and every one of `OU`, `L` and `ST` that the certificate carries. Each is compared exactly, as text; a field of these six that is not given must be absent. Another key is refused |
+| `code_signing_roots` | yes | The names of the pinned roots that the signing chain may end in: a list, or one text with commas |
+| `timestamp_roots` | yes | The same for the timestamp's chain |
+| `digest_algorithms` | no | The digest algorithms that the file digest and the signer may use: a list, or one text with commas, of `sha1`, `sha256`, `sha384`, `sha512`. Default `sha256` only. `md5` is refused as an input |
+
+| Output | Meaning |
+| --- | --- |
+| `signature_verified` | True when every check passed. An importer reads it together with `signature_sha256` (see "A download that no step verified is refused") |
+| `signature_sha256` | The hash of the file that was checked (lower-case hex). The importer compares it with the hash of the file it imports |
+| `authenticode_signer` | The fields that were compared, as `CN=..., O=..., C=...` |
+| `authenticode_signing_time` | The time of the timestamp, as the tool prints it: the time at which the chain was judged |
+| `authenticode_tool` | The versions of `osslsigncode` and OpenSSL that checked the file |
+
+Every failure is a `ProcessorError` that names the file and the reason, and sets no output.
+
+**The pinned roots.** A recipe names roots by these names. The SHA-256 of each is in the processor; compare it
+with the owner's own page before a root is added or changed. DigiCert's page gives SHA-256 fingerprints;
+GlobalSign's and Microsoft's pages give only SHA-1 thumbprints, so for those the SHA-1 is what was compared.
+
+| Name | Root | Valid until |
+| --- | --- | --- |
+| `digicert-trusted-root-g4` | DigiCert Trusted Root G4 | 2038-01-15 |
+| `globalsign-code-signing-root-r45` | GlobalSign Code Signing Root R45, a root for code signing only | 2045-03-18 |
+| `globalsign-root-r6` | GlobalSign Root CA - R6. A timestamp chain of GlobalSign's "Timestamping Root R45" reaches it through the cross-certificate that the timestamps carry | 2034-12-10 |
+| `microsoft-identity-verification-root-2020` | Microsoft Identity Verification Root Certificate Authority 2020, the root of Microsoft's signing service for other publishers and of its timestamps | 2045-04-16 |
+
+**The timestamp authority.** Only its root is pinned: any certificate with the time-stamping purpose under the
+named timestamp root can timestamp. That matters only together with a stolen publisher key (a timestamp dated
+back to before a revocation).
+
+**What it proves.** The file is one that the expected publisher signed, under a root that the recipe chose, with
+a timestamp, and the signing certificate was not on its CA's CRL when the run read it; for a PE file, that every
+byte is covered by the signature or checked here, except the checksum field, the table's entry in the header and
+the certificates that the signature carries (see item 2).
+**What it does not prove.**
+- That the release is harmless: a bad release that the real publisher signed passes.
+- That it is the product and the version that the recipe wants: an older release, or another program that the
+  same publisher signed, passes this step. The recipes check that elsewhere: for an MSI the importers compare
+  the upgrade code with the item's; for an EXE the recipe's `WindowsExeVersion` step compares the version
+  resource's product and company names (the resource lies inside what the signature covers) and takes the label
+  from it.
+- That the publisher's key was not stolen before the CA revoked the certificate.
+- That a certificate revoked within the last CRL period is caught: the CRL comes over HTTP, and someone on the
+  way can hand over an older CRL that is still within its validity.
+- Anything about the revocation of an intermediate certificate: only the signing certificate's and the
+  timestamp certificate's CRLs are read, and OCSP is not used.
+- For an MSI, that every byte of the file is the publisher's (see "An MSI's container is not checked").
+- That the certificates inside the signature are the publisher's: an added one passes (see item 2).
+
+A recipe that names a broad root (one that issues for many publishers) depends on the `expected_signer` fields to
+tell publishers apart, and those fields are what the CA verified about the publisher.
+
 ## GitHubAssetDigest
 
 GitHub's API gives each release asset a `digest` (`sha256:<hex>`). The core
@@ -629,6 +825,9 @@ of megabytes). A version block of more than 1 MiB is an error.
 | --- | --- | --- | --- |
 | `pathname` | yes | | The downloaded `.exe` |
 | `set_version` | no | `true` | `true`: set `version` (see below). `false`: leave `version` as it is. Parsed like `cimian_dry_run`: only a boolean or the text `true`, `yes`, `1`, `false`, `no`, `0` (any letter case); anything else is an error |
+| `expected_product_name` | no | empty | When given: the `ProductName` string must be exactly this text, or the run stops |
+| `expected_company_name` | no | empty | When given: the `CompanyName` string must be exactly this text, or the run stops |
+| `expected_version` | no | empty | When given (with `set_version` true): the label that this processor chooses must be exactly this text, or the run stops. A cross-check of a version that an earlier step took from elsewhere, such as a file name |
 
 | Output | Meaning |
 | --- | --- |
@@ -637,6 +836,7 @@ of megabytes). A version block of more than 1 MiB is an error.
 | `exe_product_version_numbers` | The product version of the fixed file information: four numbers joined by dots (for a file of 14, 44, 35211 and 0: `14.44.35211.0`) |
 | `exe_file_version_numbers` | The file version of the fixed file information, the same way |
 | `exe_product_name` | The `ProductName` string, or an empty string |
+| `exe_company_name` | The `CompanyName` string, or an empty string |
 | `version` | Only when `set_version` is true. See "Which one `version` takes" |
 
 **Which one `version` takes.** The `ProductVersion` string when it is made of numbers
@@ -694,6 +894,14 @@ refused.
 A string whose declared length goes past its block is cut at the block's end. That is
 the one place where the walk is not strict: some tools write the length in bytes
 instead of characters, and the text still ends at its null character.
+
+**The expected values.** A recipe whose download is checked by `AuthenticodeVerifier` runs this step after
+it and gives the product's and the company's name as the vendor writes them in the file, and, where an earlier
+step took a version from somewhere else (a file name), that version as `expected_version`. A value that differs
+stops the run before anything is set, and the message names both. The version resource lies inside what an
+Authenticode signature covers, so after the signature step these strings and the label are the publisher's own
+for this file. A new spelling of a name by the vendor stops the run until a person has looked and changed the
+recipe.
 
 **What the version proves.** Nothing about the file's origin. It is data in the file,
 and whoever made the file chose it. It only gives the label that the importer and
@@ -972,6 +1180,25 @@ PyYAML, which AutoPkg's own Python has; in a Python without it they are skipped 
 version order, of the declarations and of the missing-PyYAML error still run).
 
 The tests of `VersionFromName` read only names and patterns; they open no file.
+
+The tests of `AuthenticodeVerifier` that sign and verify build everything in a temporary folder at test
+time: throwaway roots, signing and timestamp certificates (with `openssl`), a small PE file, signatures with
+a local timestamp (`osslsigncode sign` with `-TSA-certs`, `-TSA-key` and `-TSA-time`, so no timestamp server
+is asked), and the CRLs, served by a server on the loopback address. They change signed files in the ways
+that the certificate table allows (bytes after the table, inside the entry, a second entry, padding that is not
+zero, another entry type) and sign with SHA-1, SHA-384 and MD5. They need `osslsigncode` and OpenSSL 3.4
+or later, and are skipped with the reason where either is missing. No MSI is built (no tool here writes one):
+the MSI rules are tested on the tool's output only. The tests of the inputs, of the pinned roots, of the DER
+reader (with signatures written byte by byte for the cases that no signing tool makes: two `SignerInfo`s, a key
+identifier, a certificate with the signer's serial number and another issuer) and of the reading of the tool's
+output need no tool. None uses the network. One more test runs the step of each download recipe that has one on a real
+installer, and a copy of it with one byte changed, and is skipped unless a folder is named (it fetches the CRLs
+over the network):
+
+    AUTHENTICODE_SAMPLES=<folder> python3 -m unittest discover -s tests -t tests -p 'test_authenticode.py'
+
+The folder holds the installers under the name of the recipe's folder, for example `Win-Scratch.exe` or
+`Win-GeoGebra.msi`; a recipe without a file there is not checked.
 
 The tests of `GitHubNewestReleaseGuard` use made-up lists of releases in the shape of GitHub's answer and replace the function that sends the request; the tests of
 the request replace the lowest function (`open_request`), and a server on the loopback address answers the redirect tests. The recipes' own tests of the eight download

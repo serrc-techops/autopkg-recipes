@@ -4,7 +4,7 @@ A Windows recipe pair: Grammarly for Windows, the vendor's `.exe` installer pack
 
 **Status. Main caveat: Grammarly for Windows installs PER USER, into the profile of the account that runs its installer, and a Cimian client runs installers as SYSTEM, so the plain installer as an item gives the program to nobody. This folder therefore publishes a PACKED EXE (made by `GrammarlyPerUserPackager.py`, in this folder): run by the client as SYSTEM with no arguments, it stages the installer under `Program Files`, registers a scheduled task that runs at the sign-in of any user, as that user, and installs Grammarly into that person's profile when the person has none, writes an entry of the Windows uninstall list that the item's install check reads, and starts the task once for whoever is signed in. What ran: on 2026-11-16 a build of this folder ran under AutoPkg into a scratch repository, the packed EXE ran as SYSTEM on one Windows 11 test PC, the task started on demand gave Grammarly to that PC's one signed-in user (an administrator), and the removal worked (see "Results of 2026-11-16" below). That was the first build. The current form (it carries `install-user.ps1` and `remove.ps1` inside `install-machine.ps1`, checks the extraction folder and starts the task itself) also ran the same day: under AutoPkg into the scratch repository, and as SYSTEM on the same PC, where its own start of the task found Grammarly present for the same administrator (see "Results of 2026-11-16, for the current form"). **With the current form the per-user INSTALL path (a person without Grammarly) has not run**; it ran with the first build only. The removal was redesigned on 2026-11-18 (it now also removes each person's Grammarly through that person's own sign-in; see "The removal (2026-11-18)"): its first form ran once on one Windows 11 test PC on 2026-11-18 and removed the signed-in administrator's Grammarly; the current form (a lock shared by the install and the cleanup, and another order of the cleanup's end) has not been on a PC. NOT established: a real sign-in starting the task; a standard user; a second user; a first sign-in with a new profile; an upgrade to a newer staged version; the failure counter; a non-zero exit code coming back through the stub; the item through the Cimian client (install, check, removal); Windows 10; a PC whose policy sets an execution policy, or with AppLocker or WDAC. What it means for the PCs: every person who signs in on a PC with this item gets Grammarly in their profile (about 85 MB each), so it suits PCs of one person and not shared ones, and not roaming profiles (the check key roams, the program does not); Grammarly updates itself in each profile, so the item's version is only the version of the staged installer, and the install check is the entry (and the task), not any person's Grammarly; the vendor's file changes about every two weeks, so each real run then publishes about 87 MB more, and a person decides how often to run it. The item must NOT go into a manifest until the steps of "What must be proven on a PC" below have been done. Read on 2026-11-13: `https://download-windows.grammarly.com/GrammarlyInstaller.exe` answered a HEAD request with 200, no redirect, `Content-Type` `application/octet-stream`, `Content-Length` 87044640 and a `Last-Modified` of the same day (the file changes often); the address holds no version. The vendor's support article "How to deploy Grammarly for Windows" (`support.grammarly.com/hc/en-us/articles/4422076438029`) was read in full on that day and links that same address as its installer; it gives the install command `GrammarlyInstaller.exe /S`, the uninstall command `GrammarlyInstaller.exe /S /uninstall`, the parameters `/ignore-os-version` (needed on Windows Server 2016 and 2019), `/do-not-create-desktop-shortcut` and `/disable-launch-at-startup` (the names are case-sensitive), the minimum of Windows 10 version 1903 with .NET Framework 4.7.2 and WebView2, per-user MSI packages beside the EXE, an Intune setting `Install behavior: User`, and a detection rule on the registry value `DisplayVersion` of the key `Grammarly Desktop Integrations` under `HKEY_CURRENT_USER` (an uninstall key of the user's own hive); a per-machine install is unavailable by default (the vendor's Customer Success Manager enables it for a subscription bought through the vendor's Sales team). No hash for the file was found. READ on 2026-11-16: Microsoft's Store catalog (`storeedgefd.dsx.mp.microsoft.com/v9.0/packageManifests/XPDDXX9QW8N9D7`) lists Grammarly as installer type `exe`, scope `user`, at `https://download-windows.grammarly.com/versions/<version>/net10/x64/w/GrammarlyInstaller.exe` (version `1.2.305(.1980)` that day) with the silent switch `/windows-store`: the Store product is the same per-user EXE, not an app package, so nothing can be provisioned for all users. When a run fails, STOP: nothing was written (a run that fails before the import writes nothing). Read the error, correct the recipe or the processor, and only then look at the trust information. Never accept new trust information first to make a failure go away.**
 
-**Not verified. The download is NOT verified: the vendor publishes no hash that was found, and a check of the signature is not built; the packed EXE carries that unverified file, so it is NOT verified either. Because of this the shared importer REFUSES a real run of this recipe (nothing is published) unless the override sets `cimian_allow_unverified` (or `pcman_allow_unverified` for the package tool's recipe) to true. Do not set it before the signature check exists, or before a person has decided to accept an unverified download. Until then run the dry run only, and import by hand after a person has checked the file: `pcman import <file> --template grammarly --version <label>` (the file is the packed EXE; the label of an EXE: see "The label" below). The packed EXE in its current form has run once on one test PC, as SYSTEM; no person has received Grammarly through it. Do not put the item into a manifest before the steps of "What must be proven on a PC" have been done. The Windows overrides folder is not one of AutoPkg's override folders, so every override command here carries `--override-dir`: see the paragraph below.**
+**Verified by the installer's signature. The vendor publishes no hash that was found. The step `AuthenticodeVerifier` checks, BEFORE the packer, that the downloaded installer carries a valid, timestamped Authenticode signature of Grammarly, Inc.; the packer then hands that verification over to the packed EXE that it builds from that installer in the same run, and the importers accept a real run of the packed EXE (see "What protects, and what does not"). The packed EXE itself is not signed. That step and the hand-over were NOT run with AutoPkg; the step's processor was run on 2026-11-19 against the installer of that week (see there). The packed EXE in its current form has run once on one test PC, as SYSTEM; no person has received Grammarly through it. Do not put the item into a manifest before the steps of "What must be proven on a PC" have been done. The Windows overrides folder is not one of AutoPkg's override folders, so every override command here carries `--override-dir`: see the paragraph below.**
 
 **Results of 2026-11-13, for the plain installer (before this folder packed it).** Under AutoPkg 2.9.0, into a scratch Cimian repository with a hand-made first pkginfo of the item (`make-override` with `--override-dir`, `verify-trust-info` OK, a dry run, a real run, a second real run): the real run published `grammarly-1.2.312(.2004).exe`, and the second run said that nothing is new. On one Windows 11 test PC, as SYSTEM from a scheduled task, `<file> /S` ended with exit code 0 after 48 seconds; the file's signature was valid (Grammarly, Inc.), and it has a version resource (`1.2.312(.2004)`). **It installed into the profile of the account that ran it** (the PC listed `Grammarly for Windows` `1.2.312(.2004)` under SYSTEM's own `AppData\Local\Grammarly\DesktopIntegrations`, nothing under `Program Files`), and a process that it started was still running fifteen minutes later, when the test ended it. That is why this folder packs the installer. None of those runs used the packer.
 
@@ -14,14 +14,16 @@ A Windows recipe pair: Grammarly for Windows, the vendor's `.exe` installer pack
 
 | Recipe | Identifier | What it does |
 | --- | --- | --- |
-| `Grammarly-Win.download.recipe` | `com.github.serrc-techops.download.Grammarly-Win` | Downloads the Grammarly for Windows installer that the vendor serves at a fixed address (an EXE), reads its version from the file itself (`WindowsExeVersion`), and packs it with `GrammarlyPerUserPackager` (in this folder) into the self-extracting EXE in the recipe's cache. Its output `pathname` is the PACKED EXE, not the vendor's file. It has no hard check |
+| `Grammarly-Win.download.recipe` | `com.github.serrc-techops.download.Grammarly-Win` | Downloads the Grammarly for Windows installer that the vendor serves at a fixed address (an EXE), reads its version from the file itself (`WindowsExeVersion`), checks its signature (`AuthenticodeVerifier`), and packs it with `GrammarlyPerUserPackager` (in this folder) into the self-extracting EXE in the recipe's cache. Its output `pathname` is the PACKED EXE, not the vendor's file |
 | `Grammarly.cimian.recipe` | `com.github.serrc-techops.cimian.Grammarly` | Parent: the download recipe. Hands the packed EXE and its label to `CimianImporter`, which publishes it as a new version of the item into any Cimian repository (a copy of the repository's newest pkginfo of the item, with what belongs to the installer file replaced), or says that nothing is new |
 | `Grammarly.pcman.recipe` | `com.github.serrc-techops.pcman.Grammarly` | Parent: the download recipe. Hands the packed EXE and its label to the package tool (`pcman`), which publishes it as a new version of the template item, or says that nothing is new |
 
 **Three recipes.** The download recipe is the parent of both of the others. `Grammarly.cimian.recipe` is for any Cimian repository: its last step is `CimianImporter`, and no other tool is needed. `Grammarly.pcman.recipe` is the package tool's way, with `PcmanImporter`. The section "With any Cimian repository" comes first below, then "With the package tool (pcman)".
 
-The steps of the download recipe are `URLDownloader`, `EndOfCheckPhase`, `WindowsExeVersion`
-and `GrammarlyPerUserPackager`. `WindowsExeVersion` is a shared processor: it reads the
+The steps of the download recipe are `URLDownloader`, `EndOfCheckPhase`, `AuthenticodeVerifier`,
+`WindowsExeVersion` and `GrammarlyPerUserPackager`. `AuthenticodeVerifier` and `WindowsExeVersion` are
+shared processors: the first checks the downloaded installer's signature (see "What protects, and what
+does not"); the second it reads the
 ProductVersion of the downloaded EXE and outputs it as `version`; the packer keeps that
 `version` and replaces `pathname` with the packed EXE (another child recipe of this download
 recipe, in a fork say, therefore gets the packed EXE too); the cimian recipe passes `version` as
@@ -311,27 +313,89 @@ per-user install path ran with the first build only, for an administrator, start
 
 ## What protects, and what does not
 
-Nothing proves that the downloaded file is what the vendor published: there is no vendor
-hash, and a signature check is not built. The shared importer knows this: no step of
-the recipe sets `checksum_verified` with the hash of the file, so a real run is refused
-before the package tool starts. What remains does not replace a verification.
+The vendor publishes no hash that was found. **The download is verified by the installer's signature,
+and the packed EXE by being built from that installer in the same run.**
 
-- **The label.** An EXE has no version that the package tool can read for itself, so
-  the recipe passes the label that `WindowsExeVersion` read from the downloaded installer. That is data
-  in the file: it shows what the file claims, and proves nothing about where the file
-  came from. The label must equal what a person reads in the file's properties (the
-  Details tab of a Windows PC); the first dry run shows it.
+**The installer.** Right after `EndOfCheckPhase`, before anything reads or packs the file, the shared step
+`AuthenticodeVerifier` (see `../Win-SharedProcessors/README.md`) checks the downloaded `GrammarlyInstaller.exe`
+with `osslsigncode`, and stops the run unless all of this holds:
+
+- the signature covers every byte of the installer except the header's checksum field and the certificate
+  table (Authenticode leaves those out), and the certificate table holds exactly one entry with the signature
+  and nothing but zero padding, and ends the file. The certificates that the signature carries are not covered by
+  it, and an added certificate can hold other bytes; Windows accepts that too, and it matters only for an
+  installer that reads its own signature area (see the shared README, item 2). They are the only unsigned
+  part of the signature that is not refused or checked;
+- the certificate that signed has exactly the subject `CN=Grammarly, Inc.`, `O=Grammarly, Inc.`,
+  `L=San Francisco`, `ST=California`, `C=US`, and no `OU` (compared field by field, exactly: the comma inside
+  the name needs no escaping). When the vendor's next certificate names another place, the step stops the run
+  until a person has looked and changed the recipe: that is intended;
+- the digest is SHA-256 (the default; SHA-1 and MD5 are refused);
+- its chain, and the chain of its timestamp, end in the pinned root `digicert-trusted-root-g4` (DigiCert
+  Trusted Root G4);
+- the signature has a timestamp that the tool verified, and the CRL of the signing certificate and of the
+  timestamp's certificate could be read and does not list them.
+
+It outputs `signature_verified` and `signature_sha256`, the hash of the vendor's installer.
+
+**The packed EXE.** The importers accept a real run only when `signature_sha256` is the hash of the file they
+import, and that file is the packed EXE, not the vendor's installer. So the packer carries the verification
+over, the way the extractor of `../Win-WindowsAppRuntime/` does for its package, and only when all of this
+holds: `signature_verified` is true and `signature_sha256` is the hash of the installer that it reads; the copy
+of the installer that it packs has that hash too (it hashes the copy again after it was put into the stage); and
+the EXE is built in this run (a cached EXE is then not reused, because only its record in the cache says what it
+holds; the build gives the same bytes each time). Then it replaces `signature_sha256` with the hash of the packed
+EXE. A `signature_sha256` of another file stops the build; without `signature_verified` nothing is handed over.
+The packed EXE is then verified in this sense only: it is the stub of the LZMA SDK archive with the pinned
+`SFX_SDK_SHA256`, the two scripts that the packer writes (code of this repository, covered by the override's
+trust information), and the installer whose signature was verified. The EXE itself carries no signature.
+
+**Checked on 2026-11-19** (the processor itself, with `osslsigncode` 2.16 and the network for the CRLs; not the
+recipe under AutoPkg, and not the hand-over with a real build), against the installer that the vendor's address
+served that week, with the recipe's own arguments: it passed, signed by Grammarly, Inc., timestamped
+`Nov 18 01:23:45 2026 GMT`; the same file with one byte changed was refused; the same file with 1 KB of other
+bytes put into its certificate table (the entry and the header grown to hold them) was refused; with another `O`
+expected, or without `L`, it was refused; with another pinned root for the code or for the timestamp it was
+refused. The version step read `Grammarly for Windows`, `Grammarly Inc.` and `1.2.314.2009`.
+
+**What the signature does not prove.** That the release is harmless: a bad release that Grammarly itself
+signed passes. That the vendor's key was not stolen before the certificate was revoked. That a certificate
+revoked within the last CRL period is caught (the CRL comes over HTTP, and an older one that is still valid can be
+handed over). The revocation of the intermediate certificate (only the signing certificate's CRL is read). That it
+is the newest release (see "An older release, signed for real"). That the 7z program that writes the
+archive is honest (it is the build machine's own). **The step needs `osslsigncode`** (`brew install
+osslsigncode`) and HTTP access to the CRL addresses in the certificates (DigiCert's); without either it stops
+the run, also a dry run.
+
+**An older release, signed for real.** The signature step passes any file that the publisher signed, also an
+older release of the same product served again at the address. What then happens is the importers' rule, not
+the signature's: `CimianImporter` says "Nothing new" when the repository has that version or that file, and
+otherwise publishes it as one more version of the item, also when it is older than the newest one there (seen in
+a test on 2026-11-19: a template of 2.5.0 and a file labelled 1.0.0 gave `published 1.0.0`). It does not refuse
+an older version. The client installs the highest version of an item that is for its PC
+(`CatalogService.cs:43-56`, as the shared README reads it), so the older version is not installed while the
+newer one is in the catalog, but it is in the repository until a person removes it. With the package tool, its own `--if-new` decides (see `../Win-PcmanProcessors/README.md`); what it does
+with an older version was NOT established.
+
+What remains beside the signature:
+
+- **The label and the product.** An EXE has no version that the package tool can read for itself, so
+  the recipe passes the label that `WindowsExeVersion` read from the downloaded installer's version resource,
+  which lies inside what the signature covers. The same step stops the run unless the resource's `ProductName`
+  is `Grammarly for Windows` and its `CompanyName` `Grammarly Inc.`, so that another program that the vendor
+  signed is refused. The label must equal what a person reads in the file's properties (the Details tab of a
+  Windows PC); the first dry run shows it.
 - **The same product.** For an MSI the package tool refuses a different upgrade code.
-  Whether it has an equivalent check for an EXE was NOT established by the writer. For
-  this recipe the checks are the dry run and a person's look at what it plans.
+  Whether it has an equivalent check for an EXE was NOT established by the writer; the version step's names
+  are this recipe's check.
 - **Inside the EXE.** The packer writes the installer's SHA-256 into the scripts, and the
   scripts compare the unpacked, the staged and each person's copy with it. That proves that
-  the PC runs the file the packer packed, nothing about where that file came from.
+  the PC runs the file the packer packed.
 
-A file of another product, or with other content (a changed file of the vendor, or a
-changed download on the way), could pass these checks. A `checksum_sha256` that a future
-verification step leaves in the run is the hash of the downloaded installer, not of the packed
-EXE: the importers then stop the run, and the packer would first have to carry the verification over.
+Without the signature step, a file of another product, or with other content (a changed file of the vendor,
+or a changed download on the way), could pass these checks. A `checksum_sha256` that an earlier step leaves in
+the run is the hash of the downloaded installer, not of the packed EXE: the importers then stop the run (the
+packer carries over only the signature pair).
 
 ## The label
 
@@ -376,8 +440,11 @@ As an alternative the operator may set the AutoPkg preference `FAIL_RECIPES_WITH
 - The SDK archive at `SFX_SDK_URL`, compared with `SFX_SDK_SHA256` (the same LZMA SDK 26.06 as
   the Microsoft 365 Apps folder's); a different file stops the run.
 - About 200 MB in the recipe's cache: the download and the packed EXE of the current version
-  (an EXE of another version is removed). A second run with the same installer and the same
-  settings builds nothing.
+  (an EXE of another version is removed). A run whose installer's signature was verified always
+  builds the EXE again (the same bytes), so that the verification goes over to an EXE made in that run;
+  a run without it builds nothing when the installer and the settings are the same.
+- `osslsigncode` (`brew install osslsigncode`) for the signature step; it is looked for only in
+  `/opt/homebrew/bin` and `/usr/local/bin` (not on the `PATH`; no input names another program). Without it every run stops, also a dry run.
 
 ## The inputs (set them in the override, never in the recipe)
 
@@ -396,7 +463,7 @@ This way needs AutoPkg and nothing of the owner's: no package tool. It uses `Gra
 
 **Line numbers.** Two kinds. `StatusService.cs:194-219` and `:268-298` are from `windowsadmins/cimian` at commit `e10498b`, read on 2026-10-04 for another folder of this repository and not read again for this one. The lines about the `uninstaller` and `check.registry` below were read on 2026-11-16 in `windowsadmins/cimian` `main` at commit `6384299f` (2026-10-28), through a local clone of a branch that merges that `main`; the line numbers here are those of `6384299f`. That is the development branch, not a release: the client on a PC may be older or newer, and nothing here was checked against one.
 
-**The download of this program is NOT verified** (see the status line above, which speaks of `pcman_allow_unverified` for the package tool's way). For this way the same rule holds with the input `cimian_allow_unverified`: `CimianImporter` REFUSES a real run of a download that no step verified (nothing is published) unless the override sets `cimian_allow_unverified` to true. Do not set it before a verification step exists, or before a person has decided to accept an unverified download. A dry run is allowed, and prints a `WARNING: the download was NOT verified` line.
+**The download of this program is verified by the installer's signature** (see "What protects, and what does not"). `CimianImporter` accepts a real run of the packed EXE because the packer handed the signature step's `signature_verified` over to it with the EXE's hash. Without that step it REFUSES a real run (nothing is published) unless the override sets `cimian_allow_unverified` to true.
 
 ### 1. What must exist first
 
@@ -462,13 +529,13 @@ The dry run downloads the installer and BUILDS the packed EXE (the packer runs b
     Would write <CIMIAN_NAME> <version>: pkgsinfo/<the item's folder>/<CIMIAN_NAME>-<version>.yaml and pkgs/<the item's folder>/<CIMIAN_NAME>-<version>.exe (<size> bytes).
     Template: <CIMIAN_NAME> <the newest version in the repository> (pkgsinfo/<the item's folder>/...).
 
-followed by the NOTE and WARNING lines about what is carried from the template, and at the end the report row with the result `dry run, nothing written`. Before them the packer prints `Built GrammarlyPerUser-<version>.exe (<size> bytes), Grammarly <version>` (or `Nothing to build: ...` when the cache has it). The plan itself (the pkginfo's text) is not printed. The repository is unchanged. If the repository has this version already, the line is `Nothing new: <CIMIAN_NAME> <version> is in the repository already (it has this version). Nothing was written.` instead. That is correct. If the repository has no item of this name, the second line is `No template: the pkginfo is built from the inputs.`
+followed by the NOTE and WARNING lines about what is carried from the template, and at the end the report row with the result `dry run, nothing written`. Before them the signature step prints `Signature verified: GrammarlyInstaller.exe, signed by CN=Grammarly, Inc., O=Grammarly, Inc., C=US, ...`, and the packer prints `Built GrammarlyPerUser-<version>.exe (<size> bytes), Grammarly <version>` and that the installer's verified signature is handed over to the EXE. The plan itself (the pkginfo's text) is not printed. The repository is unchanged. If the repository has this version already, the line is `Nothing new: <CIMIAN_NAME> <version> is in the repository already (it has this version). Nothing was written.` instead. That is correct. If the repository has no item of this name, the second line is `No template: the pkginfo is built from the inputs.`
 
 **The same installer packs to the same bytes (2026-11-18).** The packer names the packed files one by one in a fixed order and gives each a fixed time and mode, with no creation or access time, so two builds from one installer, one stub and the same scripts are one file with one SHA-256, on any day and in any cache folder. Before this, each build stored the moment the files were staged: a second cache folder (another override, a cleared cache) packed the same installer into a file with another SHA-256, and an importer that had the version already refused it as another installer. Seen on that day with the real installer and stub: two builds in two folders, two seconds apart, the same SHA-256. A version that was published from a build of the old form has the old bytes: publish it again once from the new form, or wait for the vendor's next version.
 
 If the run stops before this, with an error from the download recipe's steps, nothing was written: read the error, and correct the recipe, never the trust information first.
 
-### 4. Switch a real run on (NOT YET: see the status line)
+### 4. Switch a real run on
 
     /usr/libexec/PlistBuddy -c 'Add :Input:cimian_dry_run bool false' \
         <the Windows overrides folder>/Grammarly.cimian.recipe
@@ -476,12 +543,12 @@ If the run stops before this, with an error from the download recipe's steps, no
 
 The trust check still reports OK: a change of the `Input` does not break trust. Do not use `-k cimian_dry_run=false` instead: on the command line it applies to every recipe of that run.
 
-**Not yet.** This download has no verification step, so `CimianImporter` refuses the real run below until the override also sets `cimian_allow_unverified` to true, which a person decides only after the file was checked by hand and the packed EXE was proven on a test PC, and which is then written in the override's `Input`, never in the recipe:
+That one line is enough for the importer: the signature step verifies the installer and the packer hands that over. The item still must not go into a manifest before the steps of "What must be proven on a PC". **Only when the signature step cannot be used** (for example when the vendor signs under another name and a person has checked the file by hand) may the override also set `cimian_allow_unverified` to true, and then the step must be taken out of a copy of the recipe, because it stops the run first. That is a person's decision, written in the override's `Input`, never in the recipe:
 
     /usr/libexec/PlistBuddy -c 'Add :Input:cimian_allow_unverified bool true' \
         <the Windows overrides folder>/Grammarly.cimian.recipe
 
-With it the run prints `WARNING: published WITHOUT a verified download` and the report row says `published, NOT verified`.
+With it a run of an unverified download prints `WARNING: published WITHOUT a verified download` and the report row says `published, NOT verified`.
 
 ### 5. The real run, the catalogs, the second run
 
@@ -489,7 +556,7 @@ With it the run prints `WARNING: published WITHOUT a verified download` and the 
 
        autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/Grammarly.cimian.recipe
 
-   Expected: `Published <CIMIAN_NAME> <version> (pkgsinfo/<the item's folder>/<CIMIAN_NAME>-<version>.yaml). Build the catalogs with makecatalogs.` and a report row with the result `published, NOT verified`. The repository now has the packed EXE under `pkgs/` (copied beside its place, checked against its SHA-256, and moved into place), then the pkginfo under `pkgsinfo/`. Neither file replaces another: a file that is there already stops the run. (Where the share does not allow hard links the check and the rename are two steps: do not run two runs of one item at the same time.)
+   Expected: `Published <CIMIAN_NAME> <version> (pkgsinfo/<the item's folder>/<CIMIAN_NAME>-<version>.yaml). Build the catalogs with makecatalogs.` and a report row with the result `published`. The repository now has the packed EXE under `pkgs/` (copied beside its place, checked against its SHA-256, and moved into place), then the pkginfo under `pkgsinfo/`. Neither file replaces another: a file that is there already stops the run. (Where the share does not allow hard links the check and the rename are two steps: do not run two runs of one item at the same time.)
 
 2. **Build the catalogs with Cimian's `makecatalogs`** against the repository (`CimianImporter` does not do it; see Cimian's documentation for how it is run). Without it no PC sees the new version.
 
@@ -618,46 +685,54 @@ the code and the rehearsals of the other folders, NOT seen for this recipe, when
 current version is not yet in the repository:
 
     WARNING: DRY RUN. Nothing was written, because pcman_dry_run is on. ...
-    WARNING: the download was NOT verified: no step of the recipe set checksum_verified together with the checksum_sha256 of this file. ...
     Dry run: the package tool wrote nothing (pcman_dry_run is on):
     Name          Version                   Catalogs    Result
-    grammarly   <the label of the EXE>    Production  dry run, nothing written, NOT verified
+    grammarly   <the label of the EXE>    Production  dry run, nothing written
 
-Before that, the run prints the two lines of the version step (see "The label") and the
-packer's `Built ...` line. The plan itself is not printed. The repository is unchanged.
+Before that, the run prints the signature step's `Signature verified: GrammarlyInstaller.exe, signed by
+CN=Grammarly, Inc., ...` line, the two lines of the version step (see "The label") and the
+packer's `Built ...` line and its line about the hand-over. The plan itself is not printed. The repository is unchanged.
 If the current version is in the repository already (the template was made from it), the
 line is `Nothing new: ... is in the repository already. Nothing was written.` instead.
 That is correct.
 
-## d. Switch a real run on (NOT YET: see the second paragraph at the top)
+## d. Switch a real run on
 
-A real run of this recipe is refused. `pcman_dry_run` set to false is not enough:
+The signature step verifies the installer and the packer hands that over to the packed EXE, so one
+line in the override is enough:
+
+    /usr/libexec/PlistBuddy -c 'Add :Input:pcman_dry_run bool false' \
+        <the Windows overrides folder>/Grammarly.pcman.recipe
+    autopkg verify-trust-info --override-dir=<the Windows overrides folder> <the Windows overrides folder>/Grammarly.pcman.recipe
+
+A change of the `Input` does not break trust (rehearsed with 7-Zip). Do not use `-k`
+instead: on the command line it applies to every recipe of that run.
+
+**Without the signature step** (a copy of the recipe without it, for example when the vendor
+signs under another name) a real run is refused, because no step verified the file:
 
     The download was not verified: no step of the recipe set checksum_verified together
-    with the checksum_sha256 of this file. Nothing was published. Publish by hand after
-    checking the file, or set pcman_allow_unverified to true in the override.
+    with the checksum_sha256 of this file, or signature_verified together with the
+    signature_sha256 of this file. Nothing was published. Publish by hand after checking
+    the file, or set pcman_allow_unverified to true in the override.
 
-**The right way for now: import by hand.** A person checks the file first. The command
-is the same for every new version. It uses the template, so it makes no second item:
+Then import by hand after a person has checked the file. The command is the same for every new
+version. It uses the template, so it makes no second item:
 
     pcman import <the file> --template grammarly --version <the label>
 
 The file is the packed EXE from the override's cache. The label of an EXE is needed: the
 package tool never takes it from the file (see "The label"). Then `pcman catalogs` (step e.3).
-
-**Only after the signature check exists, or when a person has decided to accept an
-unverified download:** the override allows it. Both lines are needed.
+Or, when a person has decided to accept an unverified download, the override allows it.
+Both lines are needed.
 
     /usr/libexec/PlistBuddy -c 'Add :Input:pcman_dry_run bool false' \
         <the Windows overrides folder>/Grammarly.pcman.recipe
     /usr/libexec/PlistBuddy -c 'Add :Input:pcman_allow_unverified bool true' \
         <the Windows overrides folder>/Grammarly.pcman.recipe
-    autopkg verify-trust-info --override-dir=<the Windows overrides folder> <the Windows overrides folder>/Grammarly.pcman.recipe
 
-A change of the `Input` does not break trust (rehearsed with 7-Zip). Do not use `-k`
-instead: on the command line it applies to every recipe of that run. A run then prints
-`WARNING: published WITHOUT a verified download ...` at any verbosity, and the report's
-row says `published, NOT verified`.
+A run then prints `WARNING: published WITHOUT a verified download ...` at any verbosity, and the
+report's row says `published, NOT verified`.
 
 ## e. The real run, the catalogs, the second run
 
@@ -665,12 +740,11 @@ row says `published, NOT verified`.
 
        autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/Grammarly.pcman.recipe
 
-   Only after both lines of step d. Expected: `Published grammarly ...`, the warning
-   `published WITHOUT a verified download`, and the table
+   Expected: `Published grammarly ...` and the table
 
        The following versions were published by the package tool:
        Name          Version                   Catalogs    Result
-       grammarly   <the label of the EXE>    Production  published, NOT verified
+       grammarly   <the label of the EXE>    Production  published
 
    The repository then has the packed EXE under `pkgs/` and its pkginfo under
    `pkgsinfo/`. The item file of the template is not changed.
@@ -724,7 +798,8 @@ Nothing was written. Mount the share, then run again.
   decides how often the recipe runs and removes old versions as the repository's rules allow.
 - AutoPkg asks the server whether the file changed; whether this server answers that
   question is NOT established. If every run downloads the whole file, that is the reason. The
-  packer builds again only when the installer's SHA-256 or a setting changed; the importers decide by
+  packer builds again at every run whose installer's signature was verified (see "What protects, and
+  what does not"), else only when the installer's SHA-256 or a setting changed; the importers decide by
   the label.
 - If the address answers "not found" or "access denied", the vendor moved the file. Read
   the vendor's article on deploying Grammarly for Windows in a browser, then correct the recipe.
@@ -732,8 +807,8 @@ Nothing was written. Mount the share, then run again.
   The cache therefore holds one download, replaced by each new one, and one packed EXE.
 - The recipe's `NAME` is `Grammarly` and `PCMAN_TEMPLATE` is `grammarly`. Change
   the template name in the override's `Input` (`PCMAN_TEMPLATE`), not in the recipe.
-- `-p` (a local file instead of the download) skips the download. The file is not
-  checked at all; the version is still read from it, and it is packed.
+- `-p` (a local file instead of the download) skips the download. The signature step still
+  checks that file; the version is read from it, and it is packed.
 
 ## Tests
 
@@ -742,15 +817,17 @@ From the repository's root, no AutoPkg, no 7z and no network needed:
     python3 -m unittest discover -s Win-Grammarly/tests -t Win-Grammarly/tests
 
 `tests/test_recipes.py` checks that the three files are property lists, that the Description of
-every recipe and the top of this README say that the download is not verified, that a real run is
-refused, what was rehearsed and what was not, the per-user caveat, that this README states no hash
+every recipe and the top of this README say how the download is verified and what that does not prove,
+what was rehearsed and what was not, the per-user caveat, that this README states no hash
 of a download, that every argument is an input that the processors declare, the order of the steps,
 that this README has no `make-override` without `--override-dir` and runs no recipe by its
 identifier, and that nothing site-specific is in the folder; it also runs the cimian recipe's step
 against a temporary Cimian repository (needs PyYAML; skipped without it).
 `tests/test_packager.py` pins the scripts that the packer writes (the task's principal, the
 per-user checks, the allowed parameters, the exit codes, ASCII only) and runs a build with the
-network and 7z replaced, and tests the stub's checks (the SDK's SHA-256, the `MZ` member, the size
+network and 7z replaced, with and without the signature step's output (the hand-over to the packed EXE, a
+hash of another file, a cached EXE that is not reused, an installer that changes while it is staged),
+and tests the stub's checks (the SDK's SHA-256, the `MZ` member, the size
 cap). They also pin the removal of 2026-11-18: the order of `remove.ps1`, the hashes it compares,
 the guards and the exact accepted command of `uninstall-user.ps1`, that `cleanup.ps1` only uses
 `Test-Path` toward a profile and its 90 days, and install after remove. The tests parse no PowerShell (a parse test runs only where `pwsh` is installed). On

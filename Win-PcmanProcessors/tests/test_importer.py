@@ -270,17 +270,39 @@ class UnverifiedDownloadTests(ToolTestCase):
         self.assertEqual(self.always_shown(processor, "WARNING:"), [])
         self.assertEqual(processor.env["pcman_importer_summary_result"]["data"]["result"], "published")
 
-    def test_a_signature_flag_does_not_count_alone_or_with_the_hash(self):
-        """No signature step exists that outputs what it verified."""
-        for hashed in (False, True):
-            with self.subTest(with_the_hash=hashed):
-                env = self.unverified()
-                env["signature_verified"] = True
-                if not hashed:
-                    env.pop("checksum_sha256")
-                self.refused_message(env)
+    def test_a_verified_signature_of_this_file_counts_like_a_checksum(self):
+        env = self.unverified(signature_verified=True, signature_sha256=sha256_hex(self.exe))
+        env.pop("checksum_sha256")
+        processor, _ = run_processor(PCMAN, env)
+        self.assertIs(processor.env["pcman_repo_changed"], True)
+        self.assertEqual(self.always_shown(processor, "WARNING:"), [])
+        self.assertEqual(processor.env["pcman_importer_summary_result"]["data"]["result"], "published")
+
+    def test_a_signature_flag_counts_only_as_a_boolean_true_with_the_hash_of_this_file(self):
+        for flag, value in ((True, None), (True, "not a hash"), ("true", "real"), (1, "real"), (False, "real")):
+            with self.subTest(flag=flag, value=value):
+                env = self.unverified(signature_verified=flag)
+                env.pop("checksum_sha256")
+                if value is not None:
+                    env["signature_sha256"] = sha256_hex(self.exe) if value == "real" else value
+                self.assertIn("not verified", self.refused_message(env))
+
+    def test_a_signature_of_another_file_stops_the_run_also_with_the_allowance(self):
+        for allow in (False, True):
+            with self.subTest(allow=allow):
+                env = self.env(signature_verified=True, signature_sha256="d" * 64, pcman_allow_unverified=allow)
+                message = self.refused_message(env)
+                self.assertIn("The file to import is not the file whose signature was verified", message)
+                self.assertIn("signature_sha256 is %s" % importer.shorten("d" * 64), message)
+
+    def test_the_signature_names_are_those_that_the_signature_step_sets(self):
+        import AuthenticodeVerifier
+        self.assertEqual(importer.SIGNATURE_FLAG_VARIABLE, "signature_verified")
+        self.assertEqual(importer.SIGNATURE_HASH_VARIABLE, "signature_sha256")
+        outputs = AuthenticodeVerifier.AuthenticodeVerifier.output_variables
+        self.assertIn(importer.SIGNATURE_FLAG_VARIABLE, outputs)
+        self.assertIn(importer.SIGNATURE_HASH_VARIABLE, outputs)
         self.assertNotIn("signature_verified", PCMAN.input_variables)
-        self.assertNotIn("signature_verified", inspect.getsource(importer.check_verification))
 
     def test_the_hash_without_the_flag_does_not_count(self):
         for flag in (None, False, "true"):

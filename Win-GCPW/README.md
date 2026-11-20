@@ -4,7 +4,7 @@ A Windows recipe pair: Google Credential Provider for Windows (GCPW), the 64-bit
 
 **Status. Run on 2026-10-04 under AutoPkg 2.9.0, as follows. No item with the GCPW installer existed in the package tool's repository, so the first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the item `gcpw` (an MSI item, version `150.0.7871.100` read from the MSI, architectures `x64`, no icon because the repository had none for it) in the catalog `Production`; `gcpw` was the right name, and the override needed no change of `PCMAN_TEMPLATE`. The override of `GCPW.pcman` (`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false) then ran for real: the download went through, and the importer REFUSED the run with `The download was not verified: no step of the recipe set checksum_verified together with the checksum_sha256 of this file. Nothing was published. ...` (exit 70), which is what an unverified download must get; `pcman_allow_unverified` was not set. The override downloaded the file again about ten minutes after the first import, and its hash was the imported file's. The hand-import form `pcman import <file> --template gcpw --no-prompt --if-new --dry-run` printed `Nothing new: gcpw <version> exists already ...` with exit 3. `pcman catalogs` ran once for all the new items together (2026-10-04): the tool's configured command ran `makecatalogs` on the repository's server, with exit 0, and wrote the catalogs `All` and `Production`, 106 items each. The MSI's own upgrade code was read at the import; the silent install is the client's (`/qn /norestart` for an MSI) and was NOT tested on a PC. Still NOT established after those runs: that the MSI installs silently on a PC; any install. Some facts of the source were fetched by the writer on 2026-10-02, before those runs: Read from Google's server on that day: (1) `https://dl.google.com/credentialprovider/gcpwstandaloneenterprise64.msi` answered 200 with no redirect, 47382528 bytes, last modified 2026-10-02 08:45 GMT; (2) the 32-bit file beside it, `gcpwstandaloneenterprise.msi`, is 25264128 bytes; the recipe takes the 64-bit file only, kept under the file name of the address. NOT established: that Google publishes no hash for this file and that no signature check exists for it (the writer knows of none); that Google's server answers the questions that AutoPkg asks about a changed file (a last-modified date was seen, nothing else was looked at); the silent install of the MSI on a PC. The first install on a test PC is the check of what is NOT established. When a run fails, STOP: nothing was written (a run that fails before the import writes nothing). Read the real address in a browser, correct the recipe, and only then look at the trust information. Never accept new trust information first to make a failure go away.**
 
-**Not verified. The download is NOT verified: Google publishes no hash for the file, and a check of the signature is not built. Because of this the shared importer REFUSES a real run of this recipe (nothing is published) unless the override sets `pcman_allow_unverified` to true. Do not set it before the signature check exists. Until then run the dry run only, and import by hand after a person has checked the file: `pcman import <file> --template gcpw` (no `--version` for an MSI; use the real item name when it is not `gcpw`). A real run of this recipe was REFUSED on 2026-10-04 (see the status line above), and nothing has been installed on a PC. The Windows overrides folder is not one of AutoPkg's override folders, so every override command here carries `--override-dir`: see the paragraph below.**
+**Not verified. The download is NOT verified: Google publishes no hash for the file, and the shared signature check (`AuthenticodeVerifier`) is not part of this recipe. Because of this the shared importer REFUSES a real run of this recipe (nothing is published) unless the override sets `pcman_allow_unverified` to true. Do not set it before a signature check is part of this recipe. Until then run the dry run only, and import by hand after a person has checked the file: `pcman import <file> --template gcpw` (no `--version` for an MSI; use the real item name when it is not `gcpw`). A real run of this recipe was REFUSED on 2026-10-04 (see the status line above), and nothing has been installed on a PC. The Windows overrides folder is not one of AutoPkg's override folders, so every override command here carries `--override-dir`: see the paragraph below.**
 
 | Recipe | Identifier | What it does |
 | --- | --- | --- |
@@ -26,7 +26,7 @@ Below, `pcman` stands for
 ## What protects, and what does not
 
 Nothing proves that the downloaded file is what Google published: there is no vendor
-hash, and a signature check is not built. The shared importer knows this: no step of
+hash, and the shared signature check (`AuthenticodeVerifier`) is not part of this recipe. The shared importer knows this: no step of
 the recipe sets `checksum_verified` with the hash of the file, so a real run is refused
 before the package tool starts. Two checks of the package tool remain. They do not
 replace a verification.
@@ -252,7 +252,7 @@ repository (the lines of the 7-Zip rehearsal, with this program's name; they wer
 NOT seen for this recipe, and the version is the MSI's own):
 
     WARNING: DRY RUN. Nothing was written, because pcman_dry_run is on. ...
-    WARNING: the download was NOT verified: no step of the recipe set checksum_verified together with the checksum_sha256 of this file. ...
+    WARNING: the download was NOT verified: no step of the recipe set checksum_verified together with the checksum_sha256 of this file, or signature_verified together with the signature_sha256 of this file. ...
     Dry run: the package tool wrote nothing (pcman_dry_run is on):
     Name   Version  Catalogs    Result
     gcpw   <the MSI's own version>  Production  dry run, nothing written, NOT verified
@@ -267,8 +267,9 @@ That is correct.
 A real run of this recipe is refused. `pcman_dry_run` set to false is not enough:
 
     The download was not verified: no step of the recipe set checksum_verified together
-    with the checksum_sha256 of this file. Nothing was published. Publish by hand after
-    checking the file, or set pcman_allow_unverified to true in the override.
+    with the checksum_sha256 of this file, or signature_verified together with the
+    signature_sha256 of this file. Nothing was published. Publish by hand after checking
+    the file, or set pcman_allow_unverified to true in the override.
 
 **The right way for now: import by hand.** A person checks the file first. The command
 is the same for every new version. It uses the template, so it makes no second item:

@@ -58,6 +58,7 @@ def _install_autopkglib_stub():
 
 _install_autopkglib_stub()
 
+import AuthenticodeVerifier as authenticode  # noqa: E402
 import ChecksumVerifier as checksum  # noqa: E402
 import CimianImporter as cimian  # noqa: E402
 import GitHubAssetDigest as digest  # noqa: E402

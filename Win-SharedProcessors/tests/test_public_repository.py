@@ -58,7 +58,7 @@ class PublicRepositoryTests(unittest.TestCase):
         self.assertIn("None of them needs the package tool or any other tool", description)
         self.assertIn("they work with any Cimian repository", description)
         for name in ("CimianImporter", "ChecksumVerifier", "GitHubAssetDigest", "GitHubNewestReleaseGuard",
-                     "WindowsExeVersion", "VersionFromName"):
+                     "WindowsExeVersion", "VersionFromName", "AuthenticodeVerifier"):
             self.assertIn("/" + name if name != "CimianImporter" else "SharedProcessors/" + name, description)
         self.assertNotIn("PcmanImporter", description)
 
@@ -92,12 +92,15 @@ class PublicRepositoryTests(unittest.TestCase):
             os.path.join("tests", "test_readme.py"), os.path.join("tests", "test_version_name.py"),
             "MicrosoftStorePackageDownloader.py", "microsoft-root-2011.pem",
             os.path.join("tests", "test_store_downloader.py"),
+            "AuthenticodeVerifier.py", "digicert-trusted-root-g4.pem", "globalsign-code-signing-root-r45.pem",
+            "globalsign-root-r6.pem", "microsoft-identity-verification-root-2020.pem",
+            os.path.join("tests", "test_authenticode.py"),
         ]  # this file is not listed: it is not scanned
         self.assertEqual(names, sorted(expected))
 
     def test_each_processor_file_has_a_class_of_the_same_name(self):
         for name in ("CimianImporter", "ChecksumVerifier", "GitHubAssetDigest", "GitHubNewestReleaseGuard",
-                     "WindowsExeVersion", "VersionFromName"):
+                     "WindowsExeVersion", "VersionFromName", "AuthenticodeVerifier"):
             with open(os.path.join(PROCESSOR_DIR, name + ".py"), "r", encoding="utf-8") as handle:
                 self.assertIn("class %s(Processor):" % name, handle.read())
 

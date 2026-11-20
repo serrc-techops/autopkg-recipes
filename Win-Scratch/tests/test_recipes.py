@@ -6,10 +6,11 @@ processors is compared with what that processor declares: the shared ones
 ../../Win-PcmanProcessors) and this folder's own ScratchInfoProvider (tested in
 test_info_provider.py). The other folders' tests are run separately.
 
-The download of this program has NO hard check (no hash was found published,
-and a check of the signature is not built). The tests make sure that nobody can
-overlook that: the Description of every recipe and the top of the README say
-it, and no recipe invents a check. The label of the EXE is the version in the
+No hash of this program was found published: the download is verified by its
+Authenticode signature (the shared AuthenticodeVerifier, tested in its own folder).
+The tests make sure that the step is where it belongs, with the Scratch Foundation's
+name and the pinned root, that the Description of every recipe and the README say
+what it proves and what not, and that no recipe invents a checksum. The label of the EXE is the version in the
 file name that the download address redirects to, set by ScratchInfoProvider;
 the file is not read for a version. The tests check the chain as a whole with
 the provider's answer made up and a stand-in for the downloaded file.
@@ -89,7 +90,8 @@ def flat(text):
 
 def processor_classes():
     classes = {OWN_PROCESSOR: own.ScratchInfoProvider}
-    for name in ("PcmanImporter", "CimianImporter", "ChecksumVerifier", "GitHubAssetDigest", "WindowsExeVersion"):
+    for name in ("PcmanImporter", "CimianImporter", "ChecksumVerifier", "GitHubAssetDigest", "WindowsExeVersion",
+                 "AuthenticodeVerifier"):
         classes[name] = getattr(importlib.import_module(name), name)
     return classes
 
@@ -138,14 +140,22 @@ class RecipeFileTests(unittest.TestCase):
 
     def test_the_download_steps_in_order(self):
         steps = [step["Processor"] for step in load(DOWNLOAD)["Process"]]
-        self.assertEqual(steps, [OWN_PROCESSOR, "URLDownloader", "EndOfCheckPhase"])
+        self.assertEqual(steps, [OWN_PROCESSOR, "URLDownloader", "EndOfCheckPhase", SHARED_PREFIX + "AuthenticodeVerifier",
+                                 SHARED_PREFIX + "WindowsExeVersion"])
 
-    def test_no_step_reads_a_version_from_the_file(self):
-        """The label is the provider's: a WindowsExeVersion step would replace it (and stop on a
-        file without a version resource), and VersionFromName would read the cached name."""
-        text = read(DOWNLOAD)
-        for name in ("WindowsExeVersion", "VersionFromName", "set_version"):
-            self.assertNotIn(name, text)
+    def test_the_label_is_the_signed_files_own_and_the_name_is_a_cross_check(self):
+        """The label is the version resource of the signed file (WindowsExeVersion, after the signature
+        step); the version of the redirect's file name must equal it, and the product and the company
+        must be the expected ones."""
+        steps = load(DOWNLOAD)["Process"]
+        names = [step["Processor"] for step in steps]
+        version_step = steps[names.index(SHARED_PREFIX + "WindowsExeVersion")]
+        self.assertGreater(names.index(SHARED_PREFIX + "WindowsExeVersion"), names.index(SHARED_PREFIX + "AuthenticodeVerifier"))
+        self.assertEqual(version_step["Arguments"], {"pathname": "%pathname%", "expected_product_name": "Scratch 3",
+                                                     "expected_company_name": "Scratch Foundation",
+                                                     "expected_version": "%version%"})
+        self.assertNotIn("set_version", read(DOWNLOAD))
+        self.assertNotIn("VersionFromName", read(DOWNLOAD))
 
     def test_the_provider_takes_no_arguments_and_the_recipe_has_no_input_but_name(self):
         recipe = load(DOWNLOAD)
@@ -227,7 +237,7 @@ class RecipeFileTests(unittest.TestCase):
             recipe = load(path)
             values = [value for value in recipe["Input"].values() if isinstance(value, str)]
             for step in recipe["Process"]:
-                values.extend(step.get("Arguments", {}).values())
+                values.extend(value for value in step.get("Arguments", {}).values() if isinstance(value, str))
             for value in values:
                 with self.subTest(path=os.path.basename(path), value=value):
                     self.assertFalse(value.startswith(("/", "~", ".")), value)
@@ -238,13 +248,14 @@ class RecipeFileTests(unittest.TestCase):
     def test_the_description_says_what_a_reader_must_know(self):
         text = flat(load(DOWNLOAD)["Description"])
         for needle in ("ScratchInfoProvider", "reads the Location header of the one answer", "follows no redirect",
-                       "the file itself is not read for a version", "NOT established", "a name without spaces",
+                       "is only a cross-check", "NOT established", "a name without spaces",
                        "were read from the Scratch Foundation's server on 2026-11-13", "NOT run with AutoPkg"):
             self.assertIn(needle, text)
         for path in (CIMIAN, PCMAN):
             text = flat(load(path)["Description"])
             with self.subTest(path=os.path.basename(path)):
-                for needle in ("EXE", "version label", "ScratchInfoProvider", "ProductVersion", "dry run",
+                for needle in ("EXE", "version label", "WindowsExeVersion", "signed file's own version resource",
+                               "the product Scratch 3 of the company Scratch Foundation", "dry run",
                                "installs for the whole machine when the client runs it as SYSTEM is NOT established"):
                     self.assertIn(needle, text)
         self.assertIn("pcman_dry_run", load(PCMAN)["Description"])
@@ -257,27 +268,56 @@ class RecipeFileTests(unittest.TestCase):
             self.assertNotRegex(text, r"(?i)\bwas tried\b")
 
 
-class NotVerifiedTests(unittest.TestCase):
-    """The download has no hard check. The recipes must say so in their first sentence."""
+SIGNER = {"CN": "Scratch Foundation", "O": "Scratch Foundation", "L": "New York", "ST": "New York", "C": "US"}
+ROOT = "microsoft-identity-verification-root-2020"
 
-    def test_the_description_of_every_recipe_begins_by_saying_that_nothing_is_verified(self):
-        for path in (DOWNLOAD, CIMIAN, PCMAN):
+
+class SignatureTests(unittest.TestCase):
+    """The download is verified by its signature. The step is the last of the download
+    recipe, after EndOfCheckPhase, and the recipes say what it proves."""
+
+    def step(self):
+        steps = [step for step in load(DOWNLOAD)["Process"] if step["Processor"].endswith("/AuthenticodeVerifier")]
+        self.assertEqual(len(steps), 1)
+        return steps[0]
+
+    def test_the_step_checks_the_downloaded_file_with_the_publishers_name_and_the_pinned_root(self):
+        import AuthenticodeVerifier
+        arguments = self.step()["Arguments"]
+        self.assertEqual(arguments["pathname"], "%pathname%")
+        self.assertEqual(arguments["expected_signer"], SIGNER)
+        self.assertEqual(arguments["code_signing_roots"], [ROOT])
+        self.assertEqual(arguments["timestamp_roots"], [ROOT])
+        self.assertIn(ROOT, AuthenticodeVerifier.PINNED_ROOTS)
+        self.assertNotIn("osslsigncode_path", arguments)
+
+    def test_the_step_comes_right_after_the_check_phase_and_before_the_version_step(self):
+        names = [step["Processor"] for step in load(DOWNLOAD)["Process"]]
+        self.assertEqual(names.index("EndOfCheckPhase") + 1, names.index(SHARED_PREFIX + "AuthenticodeVerifier"))
+        self.assertEqual(names[-1], SHARED_PREFIX + "WindowsExeVersion")
+
+    def test_every_description_says_how_the_download_is_verified(self):
+        self.assertIn("verified by its Authenticode signature, not by a hash",
+                      first_sentence(load(DOWNLOAD)["Description"]))
+        for path in (CIMIAN, PCMAN):
             with self.subTest(path=os.path.basename(path)):
-                self.assertIn("NOT verified yet", first_sentence(load(path)["Description"]))
+                self.assertIn("verified by the signature step of the download recipe",
+                              first_sentence(load(path)["Description"]))
 
-    def test_the_download_description_names_the_two_missing_checks_and_both_flags(self):
-        sentence = first_sentence(load(DOWNLOAD)["Description"])
-        self.assertIn("no hash", sentence)
-        self.assertIn("signature", sentence)
+    def test_the_download_description_says_what_is_checked_and_what_is_not(self):
         text = flat(load(DOWNLOAD)["Description"])
-        self.assertIn("refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true "
-                      "(pcman_allow_unverified for the package tool's recipe)", text)
+        for needle in ("publishes no hash", "AuthenticodeVerifier", "CN and O Scratch Foundation, L and ST New York, C US, and no OU", "WindowsExeVersion", "ProductName must be Scratch 3", ROOT,
+                       "valid only through its timestamp", "CRLs", "signature_verified and signature_sha256",
+                       "does not prove that a release that the Scratch Foundation itself signed is harmless",
+                       "the root issues for many publishers", "not the intermediates'", "needs osslsigncode",
+                       "NOT run with AutoPkg"):
+            self.assertIn(needle, text)
 
-    def test_the_importer_descriptions_say_that_a_real_run_is_refused(self):
+    def test_the_importer_descriptions_name_the_flag_for_a_run_without_the_step(self):
         for path, flag in ((CIMIAN, "cimian_allow_unverified"), (PCMAN, "pcman_allow_unverified")):
             text = flat(load(path)["Description"])
             with self.subTest(path=os.path.basename(path)):
-                self.assertIn("A real run is refused", text)
+                self.assertIn("Without that step", text)
                 self.assertIn(flag, text)
                 self.assertIn("published, NOT verified", text)
         self.assertNotIn("upgrade code", load(PCMAN)["Description"])  # that check is an MSI's
@@ -287,27 +327,16 @@ class NotVerifiedTests(unittest.TestCase):
     def test_no_recipe_sets_the_allowance_or_a_verified_flag_itself(self):
         for path in (DOWNLOAD, CIMIAN, PCMAN):
             text = read(path)
-            self.assertNotIn("<key>pcman_allow_unverified</key>", text)
-            self.assertNotIn("<key>cimian_allow_unverified</key>", text)
-            self.assertNotIn("checksum_verified", text)
-            self.assertNotIn("signature_verified", text)
-
-    def test_no_step_of_the_chain_sets_the_verified_flag(self):
-        classes = processor_classes()
-        names = [step["Processor"].rsplit("/", 1)[-1]
-                 for path in (DOWNLOAD, CIMIAN, PCMAN) for step in load(path)["Process"]]
-        for name in names:
-            if name in classes:
-                self.assertNotIn("checksum_verified", classes[name].output_variables, name)
-                self.assertNotIn("checksum_sha256", classes[name].output_variables, name)
-        self.assertNotIn("ChecksumVerifier", names)
+            for word in ("<key>pcman_allow_unverified</key>", "<key>cimian_allow_unverified</key>",
+                         "<key>checksum_verified</key>", "<key>signature_verified</key>",
+                         "<key>signature_sha256</key>", "<key>checksum_sha256</key>"):
+                self.assertNotIn(word, text)
 
     def test_no_recipe_invents_a_checksum_step(self):
         for path in (DOWNLOAD, CIMIAN, PCMAN):
             text = read(path)
             for word in ("ChecksumVerifier", "GitHubAssetDigest", "expected_sha256", "CodeSignatureVerifier"):
                 self.assertNotIn(word, text)
-            self.assertNotIn("sha256", text.lower())
             self.assertIsNone(HEX_64.search(text))
 
     def test_the_readme_opens_with_a_bold_status_line(self):
@@ -316,25 +345,35 @@ class NotVerifiedTests(unittest.TestCase):
         self.assertTrue(lines[1].startswith("A Windows recipe pair"))
         self.assertTrue(lines[2].startswith("**Status."))
         self.assertTrue(lines[2].endswith("**"))
-        for needle in ("NOT verified", "signature", "REFUSES a real run", "pcman_allow_unverified",
-                       "Do not set it before the signature check exists",
-                       "pcman import <file> --template scratch --version <the label>",
-                       "an EXE needs `--version`"):
+        for needle in ("verified by its signature, not by a hash", "`AuthenticodeVerifier`",
+                       "That step was NOT run with AutoPkg"):
             self.assertIn(needle, status_line())
 
-    def test_the_readme_says_what_still_protects_and_that_it_is_not_enough(self):
+    def test_the_readme_says_what_the_signature_proves_and_what_not(self):
         text = flat(read(README))
-        for needle in ("The address.", "It does not show what the file at that address is.",
-                       "Whether it has an equivalent check for an EXE was NOT established by the writer.",
-                       "do not replace a verification", "a real run is refused before the package tool starts",
-                       "An installer of another content under the same address would pass all of these."):
+        for needle in ("**The download is verified by its signature.**", "`CN=Scratch Foundation`",
+                       "`O=Scratch Foundation`", "`C=US`", "and no `OU`", "`%s`" % ROOT, "lived from 2026-06-08 to 2026-06-11",
+                       "valid only through its timestamp", "**Checked on 2026-11-19**",
+                       "the same file with one byte changed was refused",
+                       "a bad release that the Scratch Foundation itself signed passes",
+                       "only the signing certificate's CRL is read", "for many publishers",
+                       "**The step needs `osslsigncode`**", "The address.",
+                       "It does not show what the file at that address is.",
+                       "Whether it has an equivalent check for an EXE was NOT established by the writer",
+                       "**The product and the version come from the signed file.**", "`L=New York`", "`ST=New York`",
+                       "**An older release, signed for real.**", "It does not refuse an older version",
+                       "the step stops the run until a person has looked and changed the recipe",
+                       "Without the signature step, an installer of another content under the same address would "
+                       "pass all of these."):
             self.assertIn(needle, text)
 
-    def test_the_real_run_steps_say_not_yet(self):
+    def test_the_real_run_steps_need_only_the_dry_run_switch(self):
         text = read(README)
-        self.assertIn("## d. Switch a real run on (NOT YET: see the status line)", text)
-        self.assertIn("### 4. Switch a real run on (NOT YET: see the status line)", text)
+        self.assertIn("## d. Switch a real run on\n", text)
+        self.assertIn("### 4. Switch a real run on\n", text)
+        self.assertNotIn("NOT YET", text)
         self.assertLess(text.index("**Status."), text.index("## a."))
+        self.assertIn("That one line is enough: the signature step verifies the download.", flat(text))
 
     def test_the_hand_command_uses_the_template_and_a_label(self):
         """After the template exists, `pcman import` without --template would make a second item."""
@@ -344,7 +383,7 @@ class NotVerifiedTests(unittest.TestCase):
         self.assertIn("--version <the label>", match.group(1))
         self.assertNotIn("--name", match.group(1))
         self.assertNotIn("--build", match.group(1))
-        self.assertIn("it makes no second item", flat(text))
+        self.assertIn("It uses the template, so it makes no second item", flat(text))
         first_imports = list(re.finditer(r"pcman import [^`]*?--name", text))
         self.assertEqual(len(first_imports), 1)
         self.assertLess(first_imports[0].start(), text.index("## b."))
@@ -353,7 +392,8 @@ class NotVerifiedTests(unittest.TestCase):
         text = read(README)
         for needle in ("Add :Input:pcman_dry_run bool false", "Add :Input:pcman_allow_unverified bool true",
                        "Both lines are needed", "Add :Input:cimian_allow_unverified bool true",
-                       "published, NOT verified", "published WITHOUT a verified download"):
+                       "published, NOT verified", "published WITHOUT a verified download",
+                       "**Without the signature step**", "**Only when the signature step cannot be used**"):
             self.assertIn(needle, text)
         import PcmanImporter
         refusal = "The download was not verified: %s. Nothing was published." % PcmanImporter.UNVERIFIED_REASON
@@ -548,7 +588,7 @@ class ReadmeTests(unittest.TestCase):
     def test_the_sections_come_in_the_order_of_the_model(self):
         positions = [self.raw.index(mark) for mark in (
             "**Status.", "| Recipe |", "## What protects, and what does not",
-            "## The label is the version in the file's name, and nothing compares it with the product's",
+            "## The label is the signed file's version, and the file name is a cross-check",
             "## Run every override with `--override-dir`", "## With any Cimian repository",
             "### 1. What must exist first", "### 2. Make the override INTO THE WINDOWS OVERRIDES FOLDER",
             "### 3. First try: a dry run", "### 4. Switch a real run on", "### 5. The real run, the catalogs, the second run",
@@ -582,7 +622,9 @@ class ReadmeTests(unittest.TestCase):
         self.assertIn("no package tool", self.generic)
         for needle in ("defaults write com.github.autopkg CIMIAN_REPO -string", "Add :Input:cimian_dry_run bool false",
                        "Cimian's `makecatalogs`", "What a person completes by hand for an `.exe`",
-                       "StatusService.cs:194-219", "does NOT give the silent arguments", "**Not yet.**"):
+                       "StatusService.cs:194-219", "does NOT give the silent arguments",
+                       "**The download of this program is verified by its signature**",
+                       "**`osslsigncode` on the build machine**"):
             self.assertIn(needle, self.generic)
 
     def test_the_lines_that_the_generic_way_quotes_are_in_the_processor(self):
@@ -602,16 +644,13 @@ class ReadmeTests(unittest.TestCase):
         self.assertIn("`Scratch's download address`", self.text)
         self.assertIn("the recipe never reads an address from another host than `downloads.scratch.mit.edu`", self.text)
 
-    def test_the_label_section_says_nothing_compares_it(self):
-        heading = "## The label is the version in the file's name, and nothing compares it with the product's"
+    def test_the_label_section_says_where_the_label_comes_from(self):
+        heading = "## The label is the signed file's version, and the file name is a cross-check"
         start = self.text.index(heading)
         section = self.text[start:self.text.index("## Run every override")]
-        for needle in ("No step of this recipe compares them", "The file's own `ProductVersion` was not read",
-                       "has not been read by anyone", "would still publish under the name's number",
-                       "that number orders the versions in the repository", "A person checks it",
-                       "stop and tell the owner before anything is published", "After the first install on a test PC",
-                       "NOT established", "A first part of `3` meets neither rule",
-                       "whether this file has one was NOT read"):
+        for needle in ("The label that the importers get is the `ProductVersion` of the downloaded file",
+                       "after the signature step", "must equal it", "On 2026-11-13 both were `3.32.1`",
+                       "NOT established", "A first part of `3` meets neither rule"):
             self.assertIn(needle, section)
 
     def test_the_readme_says_how_the_address_is_found_and_why_the_name_has_no_space(self):
@@ -635,8 +674,8 @@ class ReadmeTests(unittest.TestCase):
                        "`Content-Length` 204843840", "`Last-Modified` 2026-08-12",
                        "`download.bundle.js`", "No hash for the file was found"):
             self.assertIn(needle, verified)
-        for needle in ("that the file has a version resource", "the version that the installed program reports",
-                       "the architecture of the EXE", "the publisher named in its signature", "any install check",
+        for needle in ("the version that the installed program reports",
+                       "the architecture of the EXE", "any install check",
                        "any install on a PC", "wrote by hand after the real answer of 2026-11-13",
                        "STOP: nothing was written", "Never accept new trust information first"):
             self.assertIn(needle, not_established)
@@ -697,6 +736,14 @@ class ChainTests(_pcman_support.ToolTestCase):
         self.assertIn("pcman_allow_unverified", str(caught.exception))
         self.assertFalse(self.was_run(), "the tool must not start")
 
+    def test_a_real_run_with_the_signature_steps_output_publishes_as_verified(self):
+        self.behave(result=_pcman_support.result_file_content(name="scratch", version=LABEL))
+        env = self.steps_run()
+        run = self.importer_env(env, pcman_dry_run=False, signature_verified=True,
+                                signature_sha256=_win_support.sha256_hex(env["pathname"]))
+        processor, _ = _win_support.run_processor(_pcman_support.importer.PcmanImporter, run)
+        self.assertEqual(processor.env["pcman_importer_summary_result"]["data"]["result"], "published")
+
     def test_the_dry_run_of_the_chain_warns_and_passes_the_label_to_the_tool(self):
         self.behave(result=_pcman_support.result_file_content(result="dry-run", name="scratch", version=LABEL))
         processor, _ = _win_support.run_processor(_pcman_support.importer.PcmanImporter,
@@ -737,6 +784,12 @@ class CimianChainTests(_win_support.RepoTestCase):
         env.update(arguments)
         env.update(extra)
         return _win_support.run_processor(_win_support.cimian.CimianImporter, env)
+
+    @_win_support.needs_yaml
+    def test_the_chain_with_the_signature_steps_output_publishes_as_verified(self):
+        processor, messages = self.run_chain(signature_verified=True, signature_sha256=_win_support.sha256_hex(self.exe))
+        self.assertEqual(processor.env["cimian_importer_summary_result"]["data"]["result"], "published")
+        self.assertFalse([m for m in messages if "NOT verified" in m or "WITHOUT a verified" in m])
 
     @_win_support.needs_yaml
     def test_the_chain_is_refused_and_then_publishes_when_allowed(self):

@@ -5,9 +5,11 @@ The recipes are read as property lists. The step that names our shared
 processor is compared with what that processor declares (see
 ../../Win-SharedProcessors). The shared folder's tests are run separately.
 
-The download of this program has NO hard check (no vendor hash, no signature
-check). The tests make sure that nobody can overlook that: the Description of
-both recipes and the top of the README say it, and no recipe invents a check.
+No vendor hash of this program was found: the vendor's installer is verified by its
+Authenticode signature (the shared AuthenticodeVerifier, tested in its own folder) before
+the packer, which hands that over to the packed EXE (tested in test_packager.py). The tests
+make sure that the step is where it belongs, that the descriptions and the README say what it
+proves and what not, and that no recipe invents a checksum.
 
 The plain installer was rehearsed on 2026-11-13 (under AutoPkg, and as SYSTEM on a test PC,
 where it installed into SYSTEM's own profile). So the download recipe now packs it with
@@ -83,7 +85,8 @@ def read(path):
 def processor_classes():
     import importlib
     classes = {}
-    for name in ("PcmanImporter", "CimianImporter", "ChecksumVerifier", "GitHubAssetDigest", "WindowsExeVersion"):
+    for name in ("PcmanImporter", "CimianImporter", "ChecksumVerifier", "GitHubAssetDigest", "WindowsExeVersion",
+                 "AuthenticodeVerifier"):
         classes[name] = getattr(importlib.import_module(name), name)
     return classes
 
@@ -121,15 +124,17 @@ class RecipeFileTests(unittest.TestCase):
 
     def test_the_download_steps_in_order(self):
         steps = [step["Processor"] for step in load(DOWNLOAD)["Process"]]
-        self.assertEqual(steps, ["URLDownloader", "EndOfCheckPhase", SHARED_PREFIX + "WindowsExeVersion",
-                                 "GrammarlyPerUserPackager"])
+        self.assertEqual(steps, ["URLDownloader", "EndOfCheckPhase", SHARED_PREFIX + "AuthenticodeVerifier",
+                                 SHARED_PREFIX + "WindowsExeVersion", "GrammarlyPerUserPackager"])
 
     def test_the_version_step_comes_after_the_end_of_the_check_phase_with_only_the_pathname(self):
         steps = load(DOWNLOAD)["Process"]
         names = [step["Processor"] for step in steps]
         self.assertGreater(names.index(SHARED_PREFIX + "WindowsExeVersion"), names.index("EndOfCheckPhase"))
         version_step = steps[names.index(SHARED_PREFIX + "WindowsExeVersion")]
-        self.assertEqual(version_step.get("Arguments"), {"pathname": "%pathname%"})
+        self.assertEqual(version_step.get("Arguments"), {"pathname": "%pathname%",
+                                                         "expected_product_name": "Grammarly for Windows",
+                                                         "expected_company_name": "Grammarly Inc."})
         # nothing of the processor's inputs is changed: set_version stays at its default
         self.assertNotIn("set_version", read(DOWNLOAD))
 
@@ -168,7 +173,7 @@ class RecipeFileTests(unittest.TestCase):
         self.assertIn("seen on a test PC on 2026-11-13, where the installer run as SYSTEM installed into SYSTEM's own profile", text)
         self.assertIn("On 2026-11-16 a build of this recipe ran under AutoPkg into a scratch repository", text)
         self.assertIn("but with it the per-user install path and the removal have not run", text)
-        self.assertIn("This recipe's output pathname is the PACKED EXE built below, not the vendor's file", text[:900])
+        self.assertIn("This recipe's output pathname is the PACKED EXE built below, not the vendor's file", text[:1000])
         self.assertIn("then packs it with GrammarlyPerUserPackager", text)
 
     def test_the_download_description_says_that_the_version_is_read_from_the_exe(self):
@@ -263,19 +268,70 @@ class RecipeFileTests(unittest.TestCase):
                     self.assertNotIn("Testing", value)
 
 
-class NotVerifiedTests(unittest.TestCase):
-    """The download has no hard check. The recipes must say so in their first sentence."""
+SIGNER = {"CN": "Grammarly, Inc.", "O": "Grammarly, Inc.", "L": "San Francisco", "ST": "California", "C": "US"}
+ROOT = "digicert-trusted-root-g4"
 
-    def test_the_description_of_both_recipes_begins_by_saying_that_nothing_is_verified(self):
-        for path in (DOWNLOAD, PCMAN):
+
+class SignatureTests(unittest.TestCase):
+    """The vendor's installer is verified by its signature before the packer, and the packer hands that
+    over to the packed EXE. The recipes and the README say so, and what it does not prove."""
+
+    def test_the_step_checks_the_downloaded_installer_with_the_vendors_name_and_the_pinned_root(self):
+        import AuthenticodeVerifier
+        steps = [step for step in load(DOWNLOAD)["Process"] if step["Processor"] == SHARED_PREFIX + "AuthenticodeVerifier"]
+        self.assertEqual(len(steps), 1)
+        arguments = steps[0]["Arguments"]
+        self.assertEqual(arguments["pathname"], "%pathname%")
+        self.assertEqual(arguments["expected_signer"], SIGNER)
+        self.assertEqual(arguments["code_signing_roots"], [ROOT])
+        self.assertEqual(arguments["timestamp_roots"], [ROOT])
+        self.assertIn(ROOT, AuthenticodeVerifier.PINNED_ROOTS)
+        self.assertNotIn("osslsigncode_path", arguments)
+
+    def test_the_step_comes_right_after_the_check_phase_and_before_the_version_step_and_the_packer(self):
+        names = [step["Processor"] for step in load(DOWNLOAD)["Process"]]
+        position = names.index(SHARED_PREFIX + "AuthenticodeVerifier")
+        self.assertEqual(position, names.index("EndOfCheckPhase") + 1)
+        self.assertLess(position, names.index(SHARED_PREFIX + "WindowsExeVersion"))
+        self.assertLess(position, names.index("GrammarlyPerUserPackager"))
+
+    def test_the_packer_hands_over_exactly_the_pair_that_the_importers_accept(self):
+        import AuthenticodeVerifier
+        import CimianImporter
+        import GrammarlyPerUserPackager as packer
+        import PcmanImporter
+        self.assertEqual(packer.SIGNATURE_FLAG_VARIABLE, CimianImporter.SIGNATURE_FLAG_VARIABLE)
+        self.assertEqual(packer.SIGNATURE_HASH_VARIABLE, CimianImporter.SIGNATURE_HASH_VARIABLE)
+        self.assertEqual(packer.SIGNATURE_HASH_VARIABLE, PcmanImporter.SIGNATURE_HASH_VARIABLE)
+        self.assertIn(packer.SIGNATURE_HASH_VARIABLE, AuthenticodeVerifier.AuthenticodeVerifier.output_variables)
+        self.assertIn(packer.SIGNATURE_HASH_VARIABLE, packer.GrammarlyPerUserPackager.output_variables)
+
+    def test_every_description_says_how_the_download_is_verified_first(self):
+        self.assertIn("verified by the Authenticode signature of the vendor's installer, not by a hash",
+                      first_sentence(load(DOWNLOAD)["Description"]))
+        for path in (CIMIAN, PCMAN):
             with self.subTest(path=os.path.basename(path)):
-                sentence = first_sentence(load(path)["Description"])
-                self.assertIn("NOT verified yet", sentence)
+                self.assertTrue(load(path)["Description"].startswith(
+                    "This import is verified by the signature step of the download recipe"))
 
-    def test_the_download_description_names_the_two_missing_checks(self):
-        sentence = first_sentence(load(DOWNLOAD)["Description"])
-        self.assertIn("no hash", sentence)
-        self.assertIn("signature", sentence)
+    def test_the_download_description_says_what_is_checked_and_what_is_not(self):
+        text = re.sub(r"\s+", " ", load(DOWNLOAD)["Description"])
+        for needle in ("no hash was found for the file", "AuthenticodeVerifier", "before anything reads or packs the file",
+                       "CN and O Grammarly, Inc., L San Francisco, ST California, C US, and no OU",
+                       "ProductName must be Grammarly for Windows", ROOT, "verified timestamp", "CRLs",
+                       "signature_verified and signature_sha256", "the EXE is built in that run",
+                       "The packed EXE itself is not signed",
+                       "does not prove that a release that the vendor itself signed is harmless",
+                       "not the intermediate's", "needs osslsigncode", "NOT run with AutoPkg"):
+            self.assertIn(needle, text)
+
+    def test_the_child_descriptions_name_the_flag_for_a_run_without_the_step(self):
+        for path, flag in ((CIMIAN, "cimian_allow_unverified"), (PCMAN, "pcman_allow_unverified")):
+            text = re.sub(r"\s+", " ", load(path)["Description"])
+            with self.subTest(path=os.path.basename(path)):
+                self.assertIn("Without that step", text)
+                self.assertIn("%s to true" % flag, text)
+                self.assertIn("published, NOT verified", text)
 
     def test_the_pcman_description_says_what_is_not_established_about_what_still_protects(self):
         text = re.sub(r"\s+", " ", load(PCMAN)["Description"])
@@ -285,27 +341,13 @@ class NotVerifiedTests(unittest.TestCase):
         self.assertIn("pcman_dry_run", text)
         self.assertIn("dry run", text)
 
-    def test_the_descriptions_say_that_a_real_run_is_refused_unless_the_override_allows_it(self):
-        for path in (DOWNLOAD, PCMAN):
-            text = re.sub(r"\s+", " ", load(path)["Description"])
-            with self.subTest(path=os.path.basename(path)):
-                self.assertIn("refuses a real run" if path == DOWNLOAD else "A real run is refused", text)
-                self.assertIn("pcman_allow_unverified", text)
-                self.assertIn("true", text)
-
     def test_no_recipe_sets_the_allowance_or_a_verified_flag_itself(self):
-        for path in (DOWNLOAD, PCMAN):
+        for path in (DOWNLOAD, CIMIAN, PCMAN):
             text = read(path)
-            self.assertNotIn("<key>pcman_allow_unverified</key>", text)
-            self.assertNotIn("checksum_verified", text)
-            self.assertNotIn("signature_verified", text)
-
-    def test_the_importer_would_refuse_a_real_run_of_this_chain(self):
-        """The download recipe has no step that sets a verified flag, so the
-        shared importer refuses a real run: read here from the steps."""
-        setters = {"ChecksumVerifier": "checksum_verified"}
-        names = [step["Processor"].rsplit("/", 1)[-1] for step in load(DOWNLOAD)["Process"] + load(PCMAN)["Process"]]
-        self.assertFalse(set(names) & set(setters))
+            for word in ("<key>pcman_allow_unverified</key>", "<key>cimian_allow_unverified</key>",
+                         "<key>checksum_verified</key>", "<key>signature_verified</key>",
+                         "<key>signature_sha256</key>", "<key>checksum_sha256</key>"):
+                self.assertNotIn(word, text)
 
     def test_no_recipe_invents_a_checksum_step(self):
         """The only hash in a recipe is the LZMA SDK's (the stub of the packer), the same value as the
@@ -321,23 +363,22 @@ class NotVerifiedTests(unittest.TestCase):
             hashes = re.findall(r"(?i)<key>([^<]*sha256[^<]*)</key>", text)
             self.assertEqual(hashes, ["SFX_SDK_SHA256", "sfx_sdk_sha256"] if path == DOWNLOAD else [])
 
-    def test_the_readme_opens_with_a_status_line_and_a_not_verified_line_both_bold(self):
+    def test_the_readme_opens_with_a_status_line_and_a_verification_line_both_bold(self):
         lines = [line for line in read(README).splitlines() if line.strip()]
         self.assertTrue(lines[0].startswith("# "))
         self.assertTrue(lines[1].startswith("A Windows recipe pair: Grammarly for Windows, the vendor's `.exe` installer packed"))
-        status, not_verified = lines[2], lines[3]
+        status, verified = lines[2], lines[3]
         self.assertTrue(status.startswith("**Status. Main caveat:"), status[:100])
         self.assertTrue(status.endswith("**"))
-        self.assertTrue(not_verified.startswith("**Not verified. The download is NOT verified:"), not_verified[:60])
-        self.assertTrue(not_verified.endswith("**"))
-        for needle in ("signature check", "REFUSES a real run", "cimian_allow_unverified", "pcman_allow_unverified",
-                       "Do not set it before the signature check exists",
-                       "pcman import <file> --template grammarly --version <label>", "the label of an EXE",
+        self.assertTrue(verified.startswith("**Verified by the installer's signature."), verified[:60])
+        self.assertTrue(verified.endswith("**"))
+        for needle in ("`AuthenticodeVerifier`", "BEFORE the packer", "the packer then hands that verification over to "
+                       "the packed EXE that it builds from that installer in the same run",
+                       "The packed EXE itself is not signed", "That step and the hand-over were NOT run with AutoPkg",
                        "The packed EXE in its current form has run once on one test PC, as SYSTEM; no person has received "
                        "Grammarly through it",
-                       "the packed EXE carries that unverified file, so it is NOT verified either",
                        "Do not put the item into a manifest before the steps of \"What must be proven on a PC\" have been done"):
-            self.assertIn(needle, not_verified)
+            self.assertIn(needle, verified)
 
     def test_the_status_line_says_what_was_read_and_what_was_not_established(self):
         status = [line for line in read(README).splitlines() if line.startswith("**Status.")][0]
@@ -399,21 +440,30 @@ class NotVerifiedTests(unittest.TestCase):
         self.assertIn("it changes nobody's Grammarly", text)
         self.assertIn("**Grammarly installs per user.**", text)
 
-    def test_the_readme_says_what_still_protects_and_that_it_is_not_enough(self):
+    def test_the_readme_says_what_the_signature_proves_and_what_still_protects(self):
         text = re.sub(r"\s+", " ", read(README))
-        self.assertIn("**The label.**", text)
-        self.assertIn("**The same product.**", text)
-        self.assertIn("For an MSI the package tool refuses a different upgrade code", text)
-        self.assertIn("Whether it has an equivalent check for an EXE was NOT established by the writer", text)
-        self.assertIn("proves nothing about where the file came from", text)
-        self.assertIn("What remains does not replace a verification", text)
-        self.assertIn("a real run is refused before the package tool starts", text)
+        for needle in ("**The download is verified by the installer's signature, and the packed EXE by being built from "
+                       "that installer in the same run.**", "`CN=Grammarly, Inc.`", "`O=Grammarly, Inc.`", "`C=US`",
+                       "`digicert-trusted-root-g4`", "**The packed EXE.**",
+                       "it hashes the copy again after it was put into the stage", "the EXE is built in this run",
+                       "A `signature_sha256` of another file stops the build", "The EXE itself carries no signature",
+                       "**Checked on 2026-11-19**", "the same file with one byte changed was refused",
+                       "a bad release that Grammarly itself signed passes", "only the signing certificate's CRL is read",
+                       "**The step needs `osslsigncode`**", "**The label and the product.**", "**The same product.**", "`L=San Francisco`",
+                       "`ST=California`", "**An older release, signed for real.**", "It does not refuse an older version",
+                       "1 KB of other bytes put into its certificate table", "`Grammarly Inc.`",
+                       "For an MSI the package tool refuses a different upgrade code",
+                       "Whether it has an equivalent check for an EXE was NOT established by the writer",
+                       "Without the signature step, a file of another product"):
+            self.assertIn(needle, text)
 
-    def test_the_real_run_step_says_not_yet(self):
+    def test_the_real_run_steps_need_only_the_dry_run_switch(self):
         text = read(README)
-        self.assertIn("## d. Switch a real run on (NOT YET: see the second paragraph at the top)", text)
-        self.assertLess(text.index("**Status."), text.index("**Not verified."))
-        self.assertLess(text.index("**Not verified."), text.index("## a."))
+        self.assertIn("## d. Switch a real run on\n", text)
+        self.assertIn("### 4. Switch a real run on\n", text)
+        self.assertNotIn("NOT YET", text)
+        self.assertLess(text.index("**Status."), text.index("**Verified by the installer's signature."))
+        self.assertLess(text.index("**Verified by the installer's signature."), text.index("## a."))
 
     def test_the_hand_command_uses_the_template_and_the_label(self):
         """S2: after the template exists, `pcman import` without --template would make a second item.
@@ -425,7 +475,7 @@ class NotVerifiedTests(unittest.TestCase):
         self.assertIn("--version <the label>", match.group(1))
         self.assertNotIn("--name", match.group(1))
         self.assertNotIn("--build", match.group(1))
-        self.assertIn("it makes no second item", re.sub(r"\s+", " ", text))
+        self.assertIn("It uses the template, so it makes no second item", re.sub(r"\s+", " ", text))
         # the only `pcman import` with --name is the first import of step a.3
         first_imports = [m for m in re.finditer(r"pcman import [^`]*?--name", text)]
         self.assertEqual(len(first_imports), 1)
@@ -443,6 +493,8 @@ class NotVerifiedTests(unittest.TestCase):
         self.assertIn(refusal, re.sub(r"\s+", " ", text))
         self.assertIn("published, NOT verified", text)
         self.assertIn("published WITHOUT a verified download", text)
+        self.assertIn("**Without the signature step**", text)
+        self.assertIn("**Only when the signature step cannot be used**", text)
 
 
 class SharedProcessorTests(unittest.TestCase):
@@ -762,10 +814,10 @@ class CaveatTests(unittest.TestCase):
                 with self.subTest(path=os.path.basename(path), needle=needle):
                     self.assertIn(needle, text)
 
-    def test_the_caveat_comes_right_after_the_not_verified_sentences(self):
+    def test_the_caveat_comes_right_after_the_verification_sentences(self):
         for path in (DOWNLOAD, CIMIAN, PCMAN):
             text = re.sub(r"\s+", " ", load(path)["Description"])
-            self.assertLess(text.index("NOT verified yet"), text.index("MAIN CAVEAT"))
+            self.assertLess(text.index("verified by the"), text.index("MAIN CAVEAT"))
             self.assertLess(text.index("MAIN CAVEAT"), 1300, os.path.basename(path))
 
     def test_no_recipe_gives_silent_arguments_or_an_install_check(self):
@@ -785,11 +837,11 @@ class CaveatTests(unittest.TestCase):
 class FlagNameTests(unittest.TestCase):
     """The cimian recipe's flag for an unverified download is `cimian_allow_unverified`; `pcman_allow_unverified` is the package tool's."""
 
-    def test_the_download_description_names_the_flag_of_each_recipe_correctly(self):
-        text = re.sub(r"\s+", " ", load(DOWNLOAD)["Description"])
-        self.assertIn("refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true "
-                      "(pcman_allow_unverified for the package tool's recipe)", text)
-        self.assertNotIn("of the cimian recipe unless the override sets pcman_allow_unverified", text)
+    def test_each_child_description_names_its_own_flag(self):
+        self.assertIn("cimian_allow_unverified", load(CIMIAN)["Description"])
+        self.assertNotIn("pcman_allow_unverified", load(CIMIAN)["Description"])
+        self.assertIn("pcman_allow_unverified", load(PCMAN)["Description"])
+        self.assertNotIn("cimian_allow_unverified", load(PCMAN)["Description"])
 
 
 class CimianVersionArgumentTextTests(unittest.TestCase):
@@ -914,14 +966,12 @@ class CimianRecipeTests(unittest.TestCase):
                           "cimian_allow_product_change to true", description)
         self.assertNotIn("warns when an MSI", description)
 
-    def test_the_description_of_an_unverified_download_says_so_first(self):
+    def test_the_description_says_how_the_download_is_verified_first(self):
         description = load(CIMIAN)["Description"]
-        if True:
-            self.assertTrue(description.startswith("This import is NOT verified yet:"))
-            self.assertIn("cimian_allow_unverified", description)
-            self.assertIn("published, NOT verified", description)
-        else:
-            self.assertNotIn("NOT verified yet", description)
+        self.assertTrue(description.startswith("This import is verified by the signature step of the download recipe"))
+        self.assertIn("cimian_allow_unverified", description)
+        self.assertIn("published, NOT verified", description)
+        self.assertNotIn("NOT verified yet", description)
 
     def test_the_cimian_recipe_names_only_the_shared_importer_and_it_is_in_the_shared_folder(self):
         for step in load(CIMIAN)["Process"]:
@@ -1052,16 +1102,12 @@ class CimianReadmeTests(unittest.TestCase):
         self.assertIsNone(re.search(r"(?i)\b[0-9a-f]{64}\b", self.generic))
         self.assertNotIn("Published grammarly", self.generic)
 
-    def test_an_unverified_download_is_said_not_yet_in_the_generic_way(self):
-        if True:
-            self.assertIn("**The download of this program is NOT verified**", self.generic)
-            self.assertIn("### 4. Switch a real run on (NOT YET: see the status line)", self.generic)
-            self.assertIn("Add :Input:cimian_allow_unverified bool true", self.generic)
-            self.assertIn("**Not yet.**", self.generic)
-            self.assertLess(self.generic.index("Add :Input:cimian_dry_run bool false"), self.generic.index("Add :Input:cimian_allow_unverified bool true"))
-        else:
-            self.assertNotIn("cimian_allow_unverified bool true", self.generic)
-            self.assertNotIn("NOT verified", self.generic)
+    def test_the_generic_way_says_that_the_signature_verifies(self):
+        self.assertIn("**The download of this program is verified by the installer's signature**", self.generic)
+        self.assertIn("### 4. Switch a real run on\n", self.generic)
+        self.assertIn("Add :Input:cimian_allow_unverified bool true", self.generic)
+        self.assertIn("**Only when the signature step cannot be used**", self.generic)
+        self.assertLess(self.generic.index("Add :Input:cimian_dry_run bool false"), self.generic.index("Add :Input:cimian_allow_unverified bool true"))
 
     def test_the_package_tools_way_says_the_tool_is_not_in_this_repository(self):
         self.assertIn("**not part of this repository**", self.tool)
@@ -1170,6 +1216,75 @@ class CimianChainTests(_win_support.RepoTestCase):
         processor, messages = self.run_chain(self.installer(), cimian_allow_unverified=True)
         self.assertEqual(processor.env["cimian_result"], "nothing-new")
         self.assertEqual(self.repo_tree(), before)
+
+
+class SignatureHandOverChainTests(_win_support.RepoTestCase):
+    """The packer (its stub and 7z replaced) with what the signature step leaves in the run, then the real
+    CimianImporter with what the packer leaves: the packed EXE counts as verified only through the hand-over."""
+
+    def build(self, **signature):
+        import GrammarlyPerUserPackager as packer
+        installer = os.path.join(self.downloads, "GrammarlyInstaller.exe")
+        with open(installer, "wb") as handle:
+            handle.write(b"MZ" + b"g" * 100)
+
+        class Fake(packer.GrammarlyPerUserPackager):
+            def stub(self, work):
+                path = os.path.join(work, "stub.sfx")
+                with open(path, "wb") as handle:
+                    handle.write(b"MZstub")
+                return path
+
+            def sevenzip(self):
+                return "/usr/bin/true"
+        real_run = packer.subprocess.run
+
+        def run(command, **kwargs):
+            if command[0] == "/usr/bin/true" and command[1] == "a":
+                with open(command[command.index("-y") + 1], "wb") as handle:
+                    handle.write(b"ARCHIVE")
+            return real_run(["/usr/bin/true"], capture_output=True, text=True)
+        packer.subprocess.run = run
+        self.addCleanup(lambda: setattr(packer.subprocess, "run", real_run))
+        env = {"RECIPE_CACHE_DIR": os.path.join(self.downloads, "cache"), "pathname": installer, "version": "1.2.3",
+               "sfx_sdk_url": "https://example.invalid/sdk.7z", "sfx_sdk_sha256": "0" * 64,
+               "grammarly_installer_arguments": ""}
+        env.update({key: (_win_support.sha256_hex(installer) if value == "installer" else value)
+                    for key, value in signature.items()})
+        processor = Fake(env)
+        processor.output = lambda *args, **kwargs: None
+        processor.main()
+        return processor.env
+
+    def import_packed(self, env, **extra):
+        run = {key: env[key] for key in ("pathname", "version", "signature_verified", "signature_sha256") if key in env}
+        run.update({"cimian_repo": self.repo, "cimian_name": "Example-Chain", "cimian_dry_run": False,
+                    "cimian_path": self.msi_bin})
+        run.update(extra)
+        return _win_support.run_processor(_win_support.cimian.CimianImporter, run)
+
+    @_win_support.needs_yaml
+    def test_the_packed_exe_of_a_verified_installer_is_published_as_verified(self):
+        env = self.build(signature_verified=True, signature_sha256="installer")
+        processor, messages = self.import_packed(env)
+        self.assertEqual(processor.env["cimian_importer_summary_result"]["data"]["result"], "published")
+        self.assertFalse([m for m in messages if "NOT verified" in m or "WITHOUT a verified" in m])
+
+    @_win_support.needs_yaml
+    def test_without_the_signature_step_the_packed_exe_is_refused(self):
+        env = self.build()
+        with self.assertRaises(_win_support.ProcessorError) as caught:
+            self.import_packed(env)
+        self.assertIn("The download was not verified", str(caught.exception))
+
+    @_win_support.needs_yaml
+    def test_the_installers_hash_is_not_taken_for_the_packed_exe(self):
+        env = self.build()
+        env.update(signature_verified=True, signature_sha256=_win_support.sha256_hex(
+            os.path.join(self.downloads, "GrammarlyInstaller.exe")))
+        with self.assertRaises(_win_support.ProcessorError) as caught:
+            self.import_packed(env, cimian_allow_unverified=True)
+        self.assertIn("is not the file whose signature was verified", str(caught.exception))
 
 
 if __name__ == "__main__":

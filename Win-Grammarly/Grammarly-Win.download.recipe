@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>Description</key>
-    <string>This download is NOT verified yet: no hash was found for the file, and a check of the signature is not built, so nothing proves that the file is what the vendor published. The shared importer therefore refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true (pcman_allow_unverified for the package tool's recipe). This recipe's output pathname is the PACKED EXE built below, not the vendor's file: every child recipe gets the packed EXE. MAIN CAVEAT: Grammarly for Windows installs PER USER, into the profile of the account that runs its installer (the vendor's article; seen on a test PC on 2026-11-13, where the installer run as SYSTEM installed into SYSTEM's own profile), and a per-machine install needs a subscription bought through the vendor's Sales team. A Cimian client runs installers as SYSTEM, so the downloaded installer is NOT published as it is: it is packed into one self-extracting EXE (GrammarlyPerUserPackager, in this folder) that stages the installer under Program Files and registers a scheduled task that runs at the sign-in of any user, as that user, and installs Grammarly into that person's profile when the person has none; the EXE starts the task once for whoever is signed in. So every person who signs in on a PC with this item gets Grammarly (about 85 MB each): it suits PCs of one person, not shared ones. Grammarly then updates itself in each profile, so the item's version is only the version of the staged installer, and the item's install check reads the entry that the EXE writes, not any person's Grammarly. On 2026-11-16 a build of this recipe ran under AutoPkg into a scratch repository, the packed EXE ran as SYSTEM on one Windows 11 test PC with exit code 0, and an on-demand start of the task gave Grammarly to that PC's one signed-in user (an administrator); that was the first build. The current form, which carries the two per-user scripts inside install-machine.ps1, checks the extraction folder and starts the task once itself, also ran there under AutoPkg and as SYSTEM on that PC (exit code 0; its start of the task found Grammarly present), but with it the per-user install path and the removal have not run. NOT established: a real sign-in, a standard user, an upgrade, the item through the Cimian client. Downloads the current Grammarly for Windows installer (the EXE at the fixed address that the vendor's article on deploying Grammarly for Windows links), kept under the file name of the address, reads the version from the EXE itself with the shared processor WindowsExeVersion, because the address has no version in it, and then packs it with GrammarlyPerUserPackager. The packer needs a 7z program on the build machine and the stub 7zS2con.sfx of the public-domain LZMA SDK, downloaded from SFX_SDK_URL and compared with SFX_SDK_SHA256 (the same archive as the Microsoft 365 Apps folder's). GRAMMARLY_INSTALLER_ARGUMENTS takes the vendor's documented parameters beside /S (/do-not-create-desktop-shortcut, /disable-launch-at-startup, /ignore-os-version; the names are case-sensitive); empty by default. The recipe never stops on an unchanged download, so a failed import is tried again at the next run.</string>
+    <string>This download is verified by the Authenticode signature of the vendor's installer, not by a hash: no hash was found for the file. The packer hands that verification over to the packed EXE that it builds from the verified installer in the same run (see the signature check below). This recipe's output pathname is the PACKED EXE built below, not the vendor's file: every child recipe gets the packed EXE. MAIN CAVEAT: Grammarly for Windows installs PER USER, into the profile of the account that runs its installer (the vendor's article; seen on a test PC on 2026-11-13, where the installer run as SYSTEM installed into SYSTEM's own profile), and a per-machine install needs a subscription bought through the vendor's Sales team. A Cimian client runs installers as SYSTEM, so the downloaded installer is NOT published as it is: it is packed into one self-extracting EXE (GrammarlyPerUserPackager, in this folder) that stages the installer under Program Files and registers a scheduled task that runs at the sign-in of any user, as that user, and installs Grammarly into that person's profile when the person has none; the EXE starts the task once for whoever is signed in. So every person who signs in on a PC with this item gets Grammarly (about 85 MB each): it suits PCs of one person, not shared ones. Grammarly then updates itself in each profile, so the item's version is only the version of the staged installer, and the item's install check reads the entry that the EXE writes, not any person's Grammarly. On 2026-11-16 a build of this recipe ran under AutoPkg into a scratch repository, the packed EXE ran as SYSTEM on one Windows 11 test PC with exit code 0, and an on-demand start of the task gave Grammarly to that PC's one signed-in user (an administrator); that was the first build. The current form, which carries the two per-user scripts inside install-machine.ps1, checks the extraction folder and starts the task once itself, also ran there under AutoPkg and as SYSTEM on that PC (exit code 0; its start of the task found Grammarly present), but with it the per-user install path and the removal have not run. NOT established: a real sign-in, a standard user, an upgrade, the item through the Cimian client. Downloads the current Grammarly for Windows installer (the EXE at the fixed address that the vendor's article on deploying Grammarly for Windows links), kept under the file name of the address, reads the version from the EXE itself with the shared processor WindowsExeVersion, because the address has no version in it, and then packs it with GrammarlyPerUserPackager. The packer needs a 7z program on the build machine and the stub 7zS2con.sfx of the public-domain LZMA SDK, downloaded from SFX_SDK_URL and compared with SFX_SDK_SHA256 (the same archive as the Microsoft 365 Apps folder's). GRAMMARLY_INSTALLER_ARGUMENTS takes the vendor's documented parameters beside /S (/do-not-create-desktop-shortcut, /disable-launch-at-startup, /ignore-os-version; the names are case-sensitive); empty by default. The recipe never stops on an unchanged download, so a failed import is tried again at the next run. Signature check: after EndOfCheckPhase, before anything reads or packs the file, the shared processor AuthenticodeVerifier checks with osslsigncode that the installer is the bytes that were signed (Authenticode leaves out the checksum field and the certificate table; the processor checks that the table holds one entry with the signature and its zero padding and ends the file; the certificates inside the signature are not covered by it and can hold other bytes), that the certificate that signed it is the vendor's (CN and O Grammarly, Inc., L San Francisco, ST California, C US, and no OU), that its chain and the chain of its timestamp end in the pinned root digicert-trusted-root-g4, that the signature has a verified timestamp, and that the CRLs of the signing and the timestamp certificate could be read and do not list them; it sets signature_verified and signature_sha256 (the installer's hash). The packer hands that over to the packed EXE only when signature_sha256 is the hash of the installer it packs and the EXE is built in that run, and replaces signature_sha256 with the EXE's hash; the importers accept it only for the file they import. The packed EXE itself is not signed. The check does not prove that a release that the vendor itself signed is harmless, only the signing certificate's CRL is read (over HTTP), not the intermediate's, and a new place in the vendor's next certificate stops the run until a person updates the recipe. The version step (WindowsExeVersion) then reads the signed installer's own version resource: its ProductName must be Grammarly for Windows and its CompanyName Grammarly Inc., or the run stops. The step needs osslsigncode and HTTP access to the CRL addresses; without them every run stops. The step and the hand-over were NOT run with AutoPkg; the step's processor passed the installer of that week on 2026-11-19.</string>
     <key>Identifier</key>
     <string>com.github.serrc-techops.download.Grammarly-Win</string>
     <key>Input</key>
@@ -38,11 +38,45 @@
         </dict>
         <dict>
             <key>Processor</key>
+            <string>com.github.serrc-techops.SharedProcessors/AuthenticodeVerifier</string>
+            <key>Arguments</key>
+            <dict>
+                <key>pathname</key>
+                <string>%pathname%</string>
+                <key>expected_signer</key>
+                <dict>
+                    <key>CN</key>
+                    <string>Grammarly, Inc.</string>
+                    <key>O</key>
+                    <string>Grammarly, Inc.</string>
+                    <key>L</key>
+                    <string>San Francisco</string>
+                    <key>ST</key>
+                    <string>California</string>
+                    <key>C</key>
+                    <string>US</string>
+                </dict>
+                <key>code_signing_roots</key>
+                <array>
+                    <string>digicert-trusted-root-g4</string>
+                </array>
+                <key>timestamp_roots</key>
+                <array>
+                    <string>digicert-trusted-root-g4</string>
+                </array>
+            </dict>
+        </dict>
+        <dict>
+            <key>Processor</key>
             <string>com.github.serrc-techops.SharedProcessors/WindowsExeVersion</string>
             <key>Arguments</key>
             <dict>
                 <key>pathname</key>
                 <string>%pathname%</string>
+                <key>expected_product_name</key>
+                <string>Grammarly for Windows</string>
+                <key>expected_company_name</key>
+                <string>Grammarly Inc.</string>
             </dict>
         </dict>
         <dict>

@@ -5,10 +5,11 @@ processors is compared with what that processor declares: the shared ones
 (see ../../Win-SharedProcessors and ../../Win-PcmanProcessors) and this
 folder's own GeoGebraInfoProvider (tested in test_info_provider.py).
 
-The download of this program has NO hard check (GeoGebra publishes no hash, and
-a check of the signature is not built). The tests make sure that nobody can
-overlook that: the Description of every recipe and the top of the README say it,
-and no recipe invents a check. The file is an MSI: no recipe passes a version
+GeoGebra publishes no hash: the download is verified by its Authenticode signature
+(the shared AuthenticodeVerifier, tested in its own folder). The tests make sure that the
+step is where it belongs, with GeoGebra's name and the pinned roots, that the
+Description of every recipe and the README say what it proves and what not, and that
+no recipe invents a checksum. The file is an MSI: no recipe passes a version
 label, the importers read the MSI's own ProductVersion.
 
 Nothing of this folder was run with AutoPkg, and no installer was downloaded.
@@ -99,7 +100,7 @@ def flat(text):
 def processor_classes():
     import importlib
     classes = {OWN_PROCESSOR: own.GeoGebraInfoProvider}
-    for name in ("PcmanImporter", "CimianImporter", "ChecksumVerifier", "GitHubAssetDigest"):
+    for name in ("PcmanImporter", "CimianImporter", "ChecksumVerifier", "GitHubAssetDigest", "AuthenticodeVerifier"):
         classes[name] = getattr(importlib.import_module(name), name)
     return classes
 
@@ -144,7 +145,7 @@ class RecipeFileTests(unittest.TestCase):
 
     def test_the_download_steps_in_order(self):
         steps = [step["Processor"] for step in load(DOWNLOAD)["Process"]]
-        self.assertEqual(steps, [OWN_PROCESSOR, "URLDownloader", "EndOfCheckPhase"])
+        self.assertEqual(steps, [OWN_PROCESSOR, "URLDownloader", "EndOfCheckPhase", SHARED_PREFIX + "AuthenticodeVerifier"])
 
     def test_the_provider_has_no_arguments_and_the_recipe_no_input_but_its_name(self):
         recipe = load(DOWNLOAD)
@@ -243,7 +244,7 @@ class RecipeFileTests(unittest.TestCase):
         text = flat(load(DOWNLOAD)["Description"])
         for needle in ("GeoGebraInfoProvider", "Location header of the one answer", "follows no redirect",
                        "may be relative", "no version label", "MSI's own ProductVersion",
-                       "6-0-936-0 on 2026-11-13", "is NOT established",
+                       "6.0.936.0 and the address said 6-0-936-0", "is NOT established",
                        "read from GeoGebra's server on 2026-11-13", "NOT run with AutoPkg",
                        "GeoGebra Classic 6"):
             self.assertIn(needle, text)
@@ -257,29 +258,67 @@ class RecipeFileTests(unittest.TestCase):
             self.assertIn("NOT run with AutoPkg", text)
 
 
-class NotVerifiedTests(unittest.TestCase):
-    """The download has no hard check. The recipes must say so in their first sentence."""
+SIGNER = {"CN": "GeoGebra GmbH", "O": "GeoGebra GmbH", "L": "Linz", "ST": "Ober\u00f6sterreich", "C": "AT"}
 
-    def test_the_description_of_every_recipe_begins_by_saying_that_nothing_is_verified(self):
-        for path in RECIPES:
+
+class SignatureTests(unittest.TestCase):
+    """The download is verified by its signature. The step is the last of the download
+    recipe, after EndOfCheckPhase, and the recipes say what it proves."""
+
+    def step(self):
+        steps = [step for step in load(DOWNLOAD)["Process"] if step["Processor"].endswith("/AuthenticodeVerifier")]
+        self.assertEqual(len(steps), 1)
+        return steps[0]
+
+    def test_the_step_checks_the_downloaded_file_with_geogebras_name_and_the_pinned_roots(self):
+        import AuthenticodeVerifier
+        arguments = self.step()["Arguments"]
+        self.assertEqual(arguments["pathname"], "%pathname%")
+        self.assertEqual(arguments["expected_signer"], SIGNER)
+        self.assertEqual(arguments["code_signing_roots"], ["globalsign-code-signing-root-r45"])
+        self.assertEqual(arguments["timestamp_roots"], ["globalsign-root-r6"])
+        # the vendor's MSI is signed with SHA-1 only; its timestamp authority signs with SHA-384
+        self.assertEqual(arguments["digest_algorithms"], ["sha1", "sha384"])
+        for name in arguments["code_signing_roots"] + arguments["timestamp_roots"]:
+            self.assertIn(name, AuthenticodeVerifier.PINNED_ROOTS)
+        self.assertNotIn("osslsigncode_path", arguments)
+
+    def test_the_step_comes_after_the_check_phase_and_last(self):
+        names = [step["Processor"] for step in load(DOWNLOAD)["Process"]]
+        self.assertEqual(names.index("EndOfCheckPhase") + 1, names.index(SHARED_PREFIX + "AuthenticodeVerifier"))
+        self.assertEqual(names[-1], SHARED_PREFIX + "AuthenticodeVerifier")
+
+    def test_the_signature_pair_is_what_both_importers_accept(self):
+        import AuthenticodeVerifier
+        import CimianImporter
+        import PcmanImporter
+        outputs = AuthenticodeVerifier.AuthenticodeVerifier.output_variables
+        for module in (CimianImporter, PcmanImporter):
+            self.assertIn(module.SIGNATURE_FLAG_VARIABLE, outputs)
+            self.assertIn(module.SIGNATURE_HASH_VARIABLE, outputs)
+
+    def test_every_description_says_how_the_download_is_verified(self):
+        self.assertIn("verified by its Authenticode signature, not by a hash", first_sentence(load(DOWNLOAD)["Description"]))
+        for path in (CIMIAN, PCMAN):
             with self.subTest(path=os.path.basename(path)):
-                self.assertIn("NOT verified yet", first_sentence(load(path)["Description"]))
+                self.assertIn("verified by the signature step of the download recipe",
+                              first_sentence(load(path)["Description"]))
 
-    def test_the_download_description_names_the_two_missing_checks(self):
-        sentence = first_sentence(load(DOWNLOAD)["Description"])
-        self.assertIn("no hash", sentence)
-        self.assertIn("signature", sentence)
+    def test_the_download_description_says_what_is_checked_and_what_is_not(self):
+        text = flat(load(DOWNLOAD)["Description"])
+        for needle in ("GeoGebra publishes no hash", "AuthenticodeVerifier", "CN and O GeoGebra GmbH, L Linz, ST Ober\u00f6sterreich, C AT, and no OU",
+                       "globalsign-code-signing-root-r45", "globalsign-root-r6", "uses SHA-1", "move to SHA-256 when GeoGebra does",
+                       "MsiDigitalSignatureEx", "the compound file around the streams is not checked", "verified timestamp", "CRLs",
+                       "signature_verified and signature_sha256", "does not prove that a release that GeoGebra itself "
+                       "signed is harmless", "not the intermediate's", "needs osslsigncode", "NOT run with AutoPkg"):
+            self.assertIn(needle, text)
 
-    def test_the_descriptions_name_the_flag_of_each_importer(self):
-        download = flat(load(DOWNLOAD)["Description"])
-        self.assertIn("refuses a real run of the cimian recipe unless the override sets cimian_allow_unverified to true "
-                      "(pcman_allow_unverified for the package tool's recipe)", download)
+    def test_the_child_descriptions_name_the_flag_of_each_importer_for_a_run_without_the_step(self):
         cimian = flat(load(CIMIAN)["Description"])
-        self.assertIn("A real run is refused", cimian)
-        self.assertIn("cimian_allow_unverified to true", cimian)
+        self.assertIn("Without that step CimianImporter refuses a real run unless the override sets "
+                      "cimian_allow_unverified to true", cimian)
         self.assertNotIn("pcman", cimian)
         pcman = flat(load(PCMAN)["Description"])
-        self.assertIn("A real run is refused", pcman)
         self.assertIn("pcman_allow_unverified to true", pcman)
         for text in (cimian, pcman):
             self.assertIn("published, NOT verified", text)
@@ -289,24 +328,15 @@ class NotVerifiedTests(unittest.TestCase):
         for path in RECIPES:
             text = read(path)
             for word in ("<key>pcman_allow_unverified</key>", "<key>cimian_allow_unverified</key>",
-                         "checksum_verified", "signature_verified"):
+                         "<key>checksum_verified</key>", "<key>signature_verified</key>",
+                         "<key>signature_sha256</key>", "<key>checksum_sha256</key>"):
                 self.assertNotIn(word, text)
-
-    def test_no_step_of_the_chain_sets_the_verified_flag(self):
-        classes = processor_classes()
-        names = [step["Processor"].rsplit("/", 1)[-1] for path in RECIPES for step in load(path)["Process"]]
-        for name in names:
-            if name in classes:
-                self.assertNotIn("checksum_verified", classes[name].output_variables, name)
-                self.assertNotIn("checksum_sha256", classes[name].output_variables, name)
-        self.assertNotIn("ChecksumVerifier", names)
 
     def test_no_recipe_invents_a_checksum_step(self):
         for path in RECIPES:
             text = read(path)
             for word in ("ChecksumVerifier", "GitHubAssetDigest", "expected_sha256", "CodeSignatureVerifier"):
                 self.assertNotIn(word, text)
-            self.assertNotIn("sha256", text.lower())
             self.assertIsNone(HEX_64.search(text))
 
     def test_the_readme_opens_with_a_bold_status_line(self):
@@ -314,44 +344,54 @@ class NotVerifiedTests(unittest.TestCase):
         self.assertEqual(lines[0], "# Win-GeoGebra")
         self.assertTrue(lines[1].startswith("A Windows recipe pair"))
         status = lines[2]
-        self.assertTrue(status.startswith("**Status. New, and NOT run:"), status[:60])
+        self.assertTrue(status.startswith("**Status. First written on 2026-11-13, before any run;"), status[:60])
         self.assertTrue(status.endswith("**"))
-        for needle in ("nothing of this folder has run under AutoPkg", "no installer was downloaded",
-                       "nothing was installed on a PC", "NOT verified", "signature", "REFUSES a real run",
-                       "pcman_allow_unverified", "cimian_allow_unverified",
-                       "Do not set it before the signature check exists",
-                       "`pcman import <file> --template geogebra` (no `--version` for an MSI)"):
+        for needle in ("the paragraph \"Results of 2026-11-13\" below is newer and holds where the two differ",
+                       "verified by its signature, not by a hash",
+                       "`AuthenticodeVerifier`", "That step was NOT run with AutoPkg"):
             self.assertIn(needle, status)
 
-    def test_the_readme_says_what_still_protects_and_that_it_is_not_enough(self):
+    def test_the_readme_says_what_the_signature_proves_and_what_not(self):
         text = flat(read(README))
-        for needle in ("The address.", "It does not show what the file at that address is.",
-                       "The same product.", "upgrade code", "do not replace a verification",
-                       "a real run is refused before the package tool starts",
+        for needle in ("**The download is verified by its signature.**", "`CN=GeoGebra GmbH`", "`O=GeoGebra GmbH`",
+                       "`L=Linz`", "`ST=Ober\u00f6sterreich`", "`C=AT`", "and no `OU`", "`globalsign-code-signing-root-r45`", "`globalsign-root-r6`",
+                       "**Checked on 2026-11-19**", "the digest is SHA-1", "The recipe should move to SHA-256 when\nGeoGebra does".replace("\n", " "),
+                       "a collision needs GeoGebra to sign content that the attacker prepared",
+                       "not necessarily every byte of the file", "**An older release, signed for real.**",
+                       "It does not refuse an older version", "an older one that is still valid can be handed over",
+                       "the step stops the run until a person has looked and changed the recipe",
+                       "the same file with one byte changed was refused",
+                       "a bad release that GeoGebra itself signed passes",
+                       "only the signing certificate's CRL is read",
+                       "**The step needs `osslsigncode`**", "The address.",
+                       "It does not show what the file at that address is.", "The same product.", "upgrade code",
+                       "Without the signature step, an MSI of the right product with other content",
                        "would pass all of these."):
             self.assertIn(needle, text)
 
-    def test_the_real_run_steps_say_not_yet(self):
+    def test_the_real_run_steps_need_only_the_dry_run_switch(self):
         text = read(README)
-        self.assertIn("### 4. Switch a real run on (NOT YET: see the status line)", text)
-        self.assertIn("## d. Switch a real run on (NOT YET: see the status line)", text)
+        self.assertIn("### 4. Switch a real run on\n", text)
+        self.assertIn("## d. Switch a real run on\n", text)
+        self.assertNotIn("NOT YET", text)
+        self.assertIn("That one line is enough: the signature step verifies the download.", flat(text))
+        self.assertIn("The signature step verifies the download, so one line in the override is enough", flat(text))
 
     def test_the_hand_command_uses_the_template_and_no_version(self):
         text = read(README)
-        match = re.search(r"\n    (pcman import <the file> --template geogebra[^\n]*)\n", text)
+        match = re.search(r"\(`(pcman import <the file> --template\s+geogebra)`", text)
         self.assertTrue(match)
         self.assertNotIn("--version", match.group(1))
-        self.assertNotIn("--name", match.group(1))
-        self.assertIn("it makes no second item", flat(text))
         first_imports = list(re.finditer(r"pcman import [^`]*?--name", text))
         self.assertEqual(len(first_imports), 1)
         self.assertLess(first_imports[0].start(), text.index("## b."))
 
-    def test_the_override_lines_that_allow_an_unverified_run_are_marked(self):
+    def test_the_override_lines_that_allow_an_unverified_run_are_kept_for_a_run_without_the_step(self):
         text = read(README)
         for needle in ("Add :Input:pcman_dry_run bool false", "Add :Input:pcman_allow_unverified bool true",
                        "Add :Input:cimian_dry_run bool false", "Add :Input:cimian_allow_unverified bool true",
-                       "Both lines are needed", "published, NOT verified", "published WITHOUT a verified download"):
+                       "Both lines are needed", "published, NOT verified", "published WITHOUT a verified download",
+                       "**Without the signature step**", "**Only when the signature step cannot be used**"):
             self.assertIn(needle, text)
         import PcmanImporter
         refusal = "The download was not verified: %s. Nothing was published." % PcmanImporter.UNVERIFIED_REASON
@@ -520,10 +560,10 @@ class ReadmeTests(unittest.TestCase):
                        "`msiexec /i <the MSI> ALLUSERS=2 /qn`", "mass installations of Classic 6 do not update themselves",
                        "GeoGebra non-commercial license", "the licence text itself was NOT read"):
             self.assertIn(needle, read_part)
-        for needle in ("the MSI's own ProductVersion", "the MSI's UpgradeCode", "the MSI's platform",
+        for needle in ("whether later MSIs keep the four numbers of their address", "the MSI's UpgradeCode", "the MSI's platform",
                        "without `ALLUSERS=2`", "the install path", "does not update itself",
-                       "that the signature of the file is valid", "folder `6.0`",
-                       "any run with AutoPkg", "any install on a PC",
+                       "folder `6.0`",
+                       "a run with this recipe's signature step under AutoPkg", "an install through a Cimian client",
                        "wrote by hand after the real answer of 2026-11-13", "STOP: nothing was written",
                        "Never accept new trust information first"):
             self.assertIn(needle, not_established)
@@ -553,7 +593,7 @@ class ReadmeTests(unittest.TestCase):
     def test_the_readme_tells_the_reader_to_compare_the_two_versions(self):
         section = self.text[self.text.index("## The label is the MSI's version"):self.text.index("## Run every override")]
         for needle in ("No step of this recipe compares it with the four numbers of the address",
-                       "Nobody has read the MSI's ProductVersion", "A person checks it, at the first dry run",
+                       "On 2026-11-13 the MSI's ProductVersion was `6.0.936.0`", "A person checks it, at the first dry run",
                        "with `-v`", "stop and tell the owner before anything is published",
                        "After the first install on a test PC"):
             self.assertIn(needle, section)
@@ -651,9 +691,9 @@ class CimianReadmeTests(unittest.TestCase):
             self.assertIn(fragment, source)
             self.assertIn(fragment.strip(), self.generic.replace("`", ""))
 
-    def test_an_unverified_download_is_said_not_yet_in_the_generic_way(self):
-        self.assertIn("**The download of this program is NOT verified**", self.generic)
-        self.assertIn("**Not yet.**", self.generic)
+    def test_the_generic_way_says_that_the_signature_verifies_and_needs_the_tool(self):
+        self.assertIn("**The download of this program is verified by its signature**", self.generic)
+        self.assertIn("**`osslsigncode` on the build machine**", self.generic)
         self.assertLess(self.generic.index("Add :Input:cimian_dry_run bool false"),
                         self.generic.index("Add :Input:cimian_allow_unverified bool true"))
 
@@ -706,7 +746,18 @@ class ChainTests(_pcman_support.ToolTestCase):
         self.assertIn("pcman_allow_unverified", str(caught.exception))
         self.assertFalse(self.was_run(), "the tool must not start")
 
-    def test_the_dry_run_warns_and_passes_no_version(self):
+    def signed(self, path):
+        """What the signature step leaves in the run for this file."""
+        return {"signature_verified": True, "signature_sha256": _win_support.sha256_hex(path)}
+
+    def test_a_real_run_with_the_signature_steps_output_publishes_as_verified(self):
+        path, _ = self.downloaded_file()
+        self.behave(result=_pcman_support.result_file_content(name="geogebra", version="9.9.9"))
+        processor, _ = _win_support.run_processor(
+            _pcman_support.importer.PcmanImporter, self.importer_env(path, pcman_dry_run=False, **self.signed(path)))
+        self.assertEqual(processor.env["pcman_importer_summary_result"]["data"]["result"], "published")
+
+    def test_the_dry_run_without_the_signature_step_warns_and_passes_no_version(self):
         path, _ = self.downloaded_file()
         self.behave(result=_pcman_support.result_file_content(result="dry-run", name="geogebra", version="9.9.9"))
         processor, _ = _win_support.run_processor(_pcman_support.importer.PcmanImporter, self.importer_env(path))
@@ -749,6 +800,12 @@ class CimianChainTests(_win_support.RepoTestCase):
         env.update(arguments)
         env.update(extra)
         return _win_support.run_processor(_win_support.cimian.CimianImporter, env)
+
+    @_win_support.needs_yaml
+    def test_a_real_run_with_the_signature_steps_output_publishes_as_verified(self):
+        processor, messages = self.run_chain(signature_verified=True, signature_sha256=_win_support.sha256_hex(self.msi))
+        self.assertEqual(processor.env["cimian_importer_summary_result"]["data"]["result"], "published")
+        self.assertFalse([m for m in messages if "NOT verified" in m or "WITHOUT a verified" in m])
 
     @_win_support.needs_yaml
     def test_a_real_run_is_refused_and_the_allowed_one_publishes_not_verified(self):

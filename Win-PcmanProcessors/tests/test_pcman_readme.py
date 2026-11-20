@@ -65,17 +65,24 @@ class ReadmeTests(unittest.TestCase):
                        "also in a dry run, and `pcman_allow_unverified` does not override it",
                        "That is a pinned hash, chosen by whoever wrote the override, and the override's "
                        "trust information does not cover its `Input`",
-                       "`signature_verified` does not count: no step sets it",
-                       "A later signature step must output the hash of the file it checked under a named key",
+                       "`signature_verified` is a boolean `true` (the shared `AuthenticodeVerifier` sets it)",
+                       "Both pairs are checked: a good checksum does not hide a signature of another file",
                        "The download was not verified: no step of the recipe set checksum_verified together "
-                       "with the checksum_sha256 of this file"):
+                       "with the checksum_sha256 of this file, or signature_verified together with the "
+                       "signature_sha256 of this file"):
             self.assertIn(needle, text)
 
-    def test_the_readme_does_not_say_that_a_signature_flag_counts(self):
+    def test_the_package_tools_if_new_decides_what_is_new(self):
         text = normalized_text()
-        self.assertNotIn("or `signature_verified`", text)
-        self.assertNotIn("checksum_verified or signature_verified", text)
-        self.assertEqual(text.count("signature_verified"), 1)
+        self.assertIn("The package tool's own `--if-new` decides what happens with a version that is not new", text)
+        self.assertIn("The processor adds nothing to that rule", text)
+
+    def test_the_signature_pair_is_the_importers(self):
+        import PcmanImporter
+        text = normalized_text()
+        for name in (PcmanImporter.SIGNATURE_FLAG_VARIABLE, PcmanImporter.SIGNATURE_HASH_VARIABLE):
+            self.assertIn("`%s`" % name, text)
+        self.assertNotIn("does not count: no step sets it", text)
 
     def test_the_importer_message_is_the_one_in_the_readme(self):
         """The text of the refusal in the README is the real text."""

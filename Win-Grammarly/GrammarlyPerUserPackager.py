@@ -75,11 +75,26 @@ The stub is 7zS2con.sfx of the public-domain LZMA SDK, as in the
 Microsoft 365 Apps folder of this repository; it ends with setup.bat's exit
 code.
 
-NOT verified: the vendor publishes no hash for its installer, and no signature
-is checked here. This processor sets no checksum_verified; the importers refuse
-a real run until the override allows an unverified download. A checksum_sha256
-that an earlier step left in the run is the hash of the downloaded file, not of
-the EXE built here, and the importers stop on it (on purpose).
+Verification. The vendor publishes no hash for its installer. The download
+recipe runs the shared AuthenticodeVerifier on the installer BEFORE this step: it
+sets signature_verified and signature_sha256 (the hash of the installer). The
+importers count a download as verified only when signature_sha256 is the hash of
+the file they import, and that file is the EXE built here. So this processor hands
+the verification over to the EXE only when all of this holds: signature_verified
+is true and signature_sha256 is the hash of the installer; the copy of the
+installer that is packed has that hash too (it is hashed again after it was
+copied into the stage); and the EXE is built in this run (a cached EXE is not
+reused then, because nothing but its record in the cache says what it holds).
+Then it replaces signature_sha256 with the hash of the EXE and leaves
+signature_verified true. The EXE is then verified in this sense only: it is the
+stub of the LZMA SDK archive with the pinned SHA-256, the two scripts that this
+processor writes, and the installer whose signature was verified. The EXE
+itself is not signed. When signature_verified is not true, nothing is handed
+over (the importers then refuse a real run unless the override allows an
+unverified download); a signature_sha256 of another file stops the run. A
+checksum_sha256 that an earlier step left in the run is the hash of the
+downloaded file, not of the EXE built here, and the importers stop on it (on
+purpose).
 
 Seen on 2026-11-16 (see the README): the first build (scripts as files in the
 archive) under AutoPkg, as SYSTEM on one PC, one on-demand start of the task
@@ -186,6 +201,9 @@ MAX_SDK_BYTES = 16 * 1024 * 1024
 # installer was about 87 MB on 2026-11-13; a much larger file is not this program.
 MAX_INSTALLER_BYTES = 256 * 1024 * 1024
 STUB_MEMBER = "bin/7zS2con.sfx"
+# What the shared AuthenticodeVerifier sets for the installer (see "Verification" above).
+SIGNATURE_FLAG_VARIABLE = "signature_verified"
+SIGNATURE_HASH_VARIABLE = "signature_sha256"
 # Every packed file gets this time and mode, so that the same installer and scripts
 # pack to the same bytes on any day and in any cache folder (2020-01-01 00:00 UTC).
 PACKED_FILE_TIME = 1577836800
@@ -1033,6 +1051,8 @@ class GrammarlyPerUserPackager(Processor):
         "version": {"description": "Unchanged: the version of the staged installer."},
         "grammarly_installer_sha256": {"description": "The SHA-256 of the installer inside the EXE."},
         "grammarly_packager_summary_result": {"description": "What was built."},
+        "signature_sha256": {"description": "The SHA-256 of the EXE, only when the installer's signature was verified "
+                                            "and the EXE was built in this run."},
     }
 
     # -- helpers ---------------------------------------------------------
@@ -1070,6 +1090,23 @@ class GrammarlyPerUserPackager(Processor):
             raise ProcessorError("The LZMA SDK holds no %s that is a Windows program." % STUB_MEMBER)
         return path
 
+    def verified_input(self, installer_sha256):
+        """True when the installer's signature was verified: signature_verified is exactly
+        true and signature_sha256 is the installer's SHA-256. A signature_sha256 of another
+        file stops the run; a flag that is not true, or a hash that is not a SHA-256, is
+        not verified."""
+        if self.env.get(SIGNATURE_FLAG_VARIABLE) is not True:
+            return False
+        try:
+            claimed = check_sha256(self.env.get(SIGNATURE_HASH_VARIABLE, ""))
+        except ValueError:
+            return False
+        if claimed != installer_sha256:
+            raise ProcessorError(
+                "%s is the hash of another file than the installer (the installer has %s...). Nothing was built."
+                % (SIGNATURE_HASH_VARIABLE, installer_sha256[:12]))
+        return True
+
     # -- main ------------------------------------------------------------
     def main(self):
         env = self.env
@@ -1089,6 +1126,7 @@ class GrammarlyPerUserPackager(Processor):
         if not is_windows_program(installer):
             raise ProcessorError("The installer is not a Windows program.")
         installer_sha256 = sha256_of_file(installer)
+        handed_over = self.verified_input(installer_sha256)
         scripts = {
             "setup.bat": setup_bat(),
             MACHINE_SCRIPT_NAME: machine_script(version, installer_sha256, arguments),
@@ -1112,7 +1150,7 @@ class GrammarlyPerUserPackager(Processor):
             record = {}
         env["version"] = version
         env["grammarly_installer_sha256"] = installer_sha256
-        if (os.path.isfile(exe_path) and record.get("settings") == settings
+        if (not handed_over and os.path.isfile(exe_path) and record.get("settings") == settings
                 and record.get("size") == os.path.getsize(exe_path)
                 and record.get("sha256") == sha256_of_file(exe_path)):
             env["pathname"] = exe_path
@@ -1125,6 +1163,8 @@ class GrammarlyPerUserPackager(Processor):
             stage = os.path.join(work, "stage")
             os.makedirs(stage)
             shutil.copyfile(installer, os.path.join(stage, INSTALLER_NAME))
+            if sha256_of_file(os.path.join(stage, INSTALLER_NAME)) != installer_sha256:
+                raise ProcessorError("The installer changed while it was copied into the stage. Nothing was built.")
             for name in ("setup.bat", MACHINE_SCRIPT_NAME):  # the other four are inside install-machine.ps1
                 text = scripts[name]
                 with open(os.path.join(stage, name), "w", encoding="ascii", newline="") as handle:
@@ -1150,16 +1190,23 @@ class GrammarlyPerUserPackager(Processor):
             if os.path.exists(exe_path + ".partial"):
                 os.remove(exe_path + ".partial")
 
+        exe_sha256 = sha256_of_file(exe_path)
         with open(record_path, "w", encoding="utf-8") as handle:
-            json.dump({"settings": settings, "size": os.path.getsize(exe_path), "sha256": sha256_of_file(exe_path),
+            json.dump({"settings": settings, "size": os.path.getsize(exe_path), "sha256": exe_sha256,
                        "version": version,
                        "installer_sha256": installer_sha256, "arguments": arguments}, handle, indent=2)
         for name in os.listdir(cache):  # an EXE of another version is 87 MB of no use
             if re.fullmatch(r"GrammarlyPerUser-.*\.exe(\.json)?", name) and not name.startswith(os.path.basename(exe_path)):
                 os.remove(os.path.join(cache, name))
         env["pathname"] = exe_path
+        if handed_over:
+            env[SIGNATURE_HASH_VARIABLE] = exe_sha256
+            self.output("The installer's verified signature is handed over to the EXE built from it in this run "
+                        "(%s is now the EXE's SHA-256)." % SIGNATURE_HASH_VARIABLE)
         env["grammarly_packager_summary_result"] = {
-            "summary_text": "The following Grammarly per-user installer was built (NOT verified: see the processor):",
+            "summary_text": ("The following Grammarly per-user installer was built from an installer whose signature "
+                             "was verified:" if handed_over else
+                             "The following Grammarly per-user installer was built (NOT verified: see the processor):"),
             "report_fields": ["version", "size", "path"],
             "data": {"version": version, "size": str(os.path.getsize(exe_path)), "path": exe_path},
         }

@@ -36,21 +36,21 @@ or --allow-version-label, and has no input that could.
 A download that no step verified is not published silently. A download counts
 as verified when checksum_verified is true (ChecksumVerifier sets it) AND
 checksum_sha256 (ChecksumVerifier outputs it: the hash of the file it checked)
-is a SHA-256 that equals the hash of the file about to be imported. This
-processor hashes that file itself, once. A boolean alone is not enough: it could
-be set by hand, and a step could have checked another file than the one that is
-imported. A real run of a download that does not count is refused before the
-tool starts, unless pcman_allow_unverified is true in the override. Then it goes
-on, prints a WARNING at every verbosity, and the summary says "published, NOT
-verified". A dry run of such a download prints a WARNING too.
+is a SHA-256 that equals the hash of the file about to be imported; or, in the
+same way, when signature_verified is true (AuthenticodeVerifier sets it) AND
+signature_sha256 (the hash of the file whose signature it checked) equals that
+hash. This processor hashes that file itself, once. A boolean alone is not
+enough: it could be set by hand, and a step could have checked another file than
+the one that is imported. A real run of a download that does not count is
+refused before the tool starts, unless pcman_allow_unverified is true in the
+override. Then it goes on, prints a WARNING at every verbosity, and the summary
+says "published, NOT verified". A dry run of such a download prints a WARNING
+too.
 
-A checksum_sha256 that is a SHA-256 but is not the hash of the file is a
-different case: the file that was verified is not the file that is imported. It
-stops the run, in a dry run too, and pcman_allow_unverified does not override it.
-
-signature_verified does not count (no step sets it). A later signature step
-must output the hash of the file it checked under a named key, and this guard
-must then accept that key in the same way.
+A checksum_sha256 or signature_sha256 that is a SHA-256 but is not the hash of
+the file is a different case: the file that was verified is not the file that is
+imported. It stops the run, in a dry run too, and pcman_allow_unverified does not
+override it.
 
 What is passed on from the tool's output: the lines that begin with ERROR:
 (when the run failed) and the lines that begin with WARNING: or NOTE: (when it
@@ -173,11 +173,19 @@ PUBLISHED_UNVERIFIED_SUMMARY_RESULT = "published, NOT verified"
 # SHA-256 of the file that is imported. ChecksumVerifier sets both.
 VERIFIED_FLAG_VARIABLE = "checksum_verified"
 VERIFIED_HASH_VARIABLE = "checksum_sha256"
-# Why a download does not count, for the messages. Nothing else is named: a
-# signature step does not exist yet.
+# The same pair from AuthenticodeVerifier, which checks a signature.
+SIGNATURE_FLAG_VARIABLE = "signature_verified"
+SIGNATURE_HASH_VARIABLE = "signature_sha256"
+# Each pair, with the word that a message uses for it.
+VERIFICATIONS = (
+    (VERIFIED_FLAG_VARIABLE, VERIFIED_HASH_VARIABLE, "checksum"),
+    (SIGNATURE_FLAG_VARIABLE, SIGNATURE_HASH_VARIABLE, "signature"),
+)
+# Why a download does not count, for the messages.
 UNVERIFIED_REASON = (
     "no step of the recipe set checksum_verified together with the "
-    "checksum_sha256 of this file"
+    "checksum_sha256 of this file, or signature_verified together with the "
+    "signature_sha256 of this file"
 )
 
 # The same rules as ChecksumVerifier. A processor does not depend on a sibling
@@ -259,29 +267,34 @@ def sha256_of_file(path):
 
 
 def check_verification(env, installer):
-    """True when the download counts as verified: checksum_verified is exactly
-    true (a boolean; text does not count) and checksum_sha256 is the SHA-256 of
-    `installer`. False when checksum_verified is not true, or when
-    checksum_sha256 is missing or is not a SHA-256. A checksum_sha256 that is a
+    """True when the download counts as verified by one of VERIFICATIONS: its flag
+    is exactly true (a boolean; text does not count) and its hash is the SHA-256
+    of `installer`. A pair whose flag is not true, or whose hash is missing or is
+    not a SHA-256, does not count. A pair whose flag is true and whose hash is a
     SHA-256 of another file is an error: the file that was verified is not the
-    file that is imported. The file is hashed once, and only when the flag is
-    true."""
-    if env.get(VERIFIED_FLAG_VARIABLE) is not True:
-        return False
-    claimed = normalize_sha256(env.get(VERIFIED_HASH_VARIABLE))
-    if claimed is None:
-        return False
-    try:
-        actual = sha256_of_file(installer)
-    except OSError as err:
-        raise ProcessorError("Could not read %s: %s" % (installer, err))
-    if claimed != actual:
-        raise ProcessorError(
-            "The file to import is not the file whose checksum was verified: "
-            "%s is %s, but %s has the SHA-256 %s. Nothing was published."
-            % (VERIFIED_HASH_VARIABLE, shorten(claimed), os.path.basename(installer), shorten(actual))
-        )
-    return True
+    file that is imported. Each pair is checked, so that one of them cannot hide
+    the other's error. The file is hashed once, and only when a pair claims it."""
+    actual = None
+    verified = False
+    for flag, hash_variable, kind in VERIFICATIONS:
+        if env.get(flag) is not True:
+            continue
+        claimed = normalize_sha256(env.get(hash_variable))
+        if claimed is None:
+            continue
+        if actual is None:
+            try:
+                actual = sha256_of_file(installer)
+            except OSError as err:
+                raise ProcessorError("Could not read %s: %s" % (installer, err))
+        if claimed != actual:
+            raise ProcessorError(
+                "The file to import is not the file whose %s was verified: "
+                "%s is %s, but %s has the SHA-256 %s. Nothing was published."
+                % (kind, hash_variable, shorten(claimed), os.path.basename(installer), shorten(actual))
+            )
+        verified = True
+    return verified
 
 
 def raw_text(value):
@@ -460,10 +473,11 @@ class PcmanImporter(Processor):
             "default": False,
             "description": (
                 "False (the default): a real run of a download that no step "
-                "verified (checksum_verified is not true, or checksum_sha256 is "
-                "missing) is refused. True: it goes on, with a WARNING, and the "
-                "summary says 'published, NOT verified'. It does not override a "
-                "checksum_sha256 that is not the hash of the file: that always "
+                "verified (neither checksum_verified with checksum_sha256 nor "
+                "signature_verified with signature_sha256) is refused. True: it "
+                "goes on, with a WARNING, and the summary says 'published, NOT "
+                "verified'. It does not override a checksum_sha256 or "
+                "signature_sha256 that is not the hash of the file: that always "
                 "stops the run. Set in an override, never in a recipe."
             ),
         },

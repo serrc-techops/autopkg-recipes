@@ -19,6 +19,13 @@ or when the string table has neither a ProductVersion nor a FileVersion, or
 when the label that would be chosen has no digit other than zero (a file whose
 version resource says zeros has no version). A value is never guessed.
 
+The optional inputs expected_product_name, expected_company_name and
+expected_version stop the run when the file's ProductName, its CompanyName or
+the chosen label is not exactly that text; nothing is set then. After a
+signature check of the file (AuthenticodeVerifier) these strings are the
+signer's own, because the version resource lies inside what the signature
+covers.
+
 The version proves nothing about where the file came from: it is data in the
 file. It only gives the label that the importer and the client compare.
 """
@@ -66,6 +73,7 @@ TABLE_KEY_PATTERN = re.compile(r"[0-9A-Fa-f]{8}")
 PRODUCT_VERSION_KEY = "ProductVersion"
 FILE_VERSION_KEY = "FileVersion"
 PRODUCT_NAME_KEY = "ProductName"
+COMPANY_NAME_KEY = "CompanyName"
 
 # A label that is made of numbers and dots only.
 NUMERIC_VERSION_PATTERN = re.compile(r"[0-9]+(?:\.[0-9]+)*")
@@ -348,11 +356,12 @@ def parse_version_info(data):
         "exe_product_version_numbers": dotted(product_ms, product_ls),
         "exe_file_version_numbers": dotted(file_ms, file_ls),
         "exe_product_name": strings.get(PRODUCT_NAME_KEY, ""),
+        "exe_company_name": strings.get(COMPANY_NAME_KEY, ""),
     }
 
 
 def read_exe_version(path):
-    """The version facts of an .exe, as a dict of the five outputs. Raises
+    """The version facts of an .exe, as a dict of the six outputs. Raises
     ValueError with a reason that is safe to show, OSError for a file that
     cannot be opened."""
     with open(path, "rb") as handle:
@@ -390,6 +399,16 @@ def choose_version(facts):
     return label, source
 
 
+def check_expected(expected):
+    """Raise ValueError unless each expected value that is given equals the file's exactly.
+    `expected` maps an input name to (its value, the fact it is compared with, what it is)."""
+    for name, (wanted, actual, what) in expected.items():
+        if not wanted:
+            continue
+        if actual != wanted:
+            raise ValueError("its %s is %r, but %s is %r" % (what, shown(actual), name, shown(wanted)))
+
+
 class WindowsExeVersion(Processor):
     description = __doc__
     input_variables = {
@@ -405,6 +424,25 @@ class WindowsExeVersion(Processor):
                 "is numbers and dots only, else to the numbers of the fixed file "
                 "information; a label of zeros stops the run. False: leave "
                 "'version' alone."
+            ),
+        },
+        "expected_product_name": {
+            "required": False,
+            "default": "",
+            "description": "When given: the file's ProductName string must be exactly this text, or the run stops.",
+        },
+        "expected_company_name": {
+            "required": False,
+            "default": "",
+            "description": "When given: the file's CompanyName string must be exactly this text, or the run stops.",
+        },
+        "expected_version": {
+            "required": False,
+            "default": "",
+            "description": (
+                "When given (with set_version true): the label that this processor chooses must be exactly "
+                "this text, or the run stops. A cross-check of a version that an earlier step took from "
+                "somewhere else, such as a file name."
             ),
         },
     }
@@ -424,10 +462,21 @@ class WindowsExeVersion(Processor):
         "exe_product_name": {
             "description": "The ProductName string, or an empty string.",
         },
+        "exe_company_name": {
+            "description": "The CompanyName string, or an empty string.",
+        },
         "version": {
             "description": "Set only when set_version is true: the label for the importer.",
         },
     }
+
+    def text_input(self, name):
+        value = self.env.get(name, "")
+        if value is None:
+            return ""
+        if not isinstance(value, str):
+            raise ValueError("%s must be text" % name)
+        return value
 
     def main(self):
         set_version = parse_bool(self.env.get("set_version", True), "set_version")
@@ -440,6 +489,16 @@ class WindowsExeVersion(Processor):
             # The label is chosen before anything is set, so that a refused
             # label leaves the run as it was.
             label, source = choose_version(facts) if set_version else (None, None)
+            expected_version = self.text_input("expected_version")
+            if expected_version and not set_version:
+                raise ValueError("expected_version needs set_version true")
+            check_expected({
+                "expected_product_name": (self.text_input("expected_product_name"), facts["exe_product_name"],
+                                          "ProductName"),
+                "expected_company_name": (self.text_input("expected_company_name"), facts["exe_company_name"],
+                                          "CompanyName"),
+                "expected_version": (expected_version, label, "version label (from %s)" % source),
+            })
         except ValueError as err:
             raise ProcessorError("%s: %s." % (name, err))
         except OSError as err:

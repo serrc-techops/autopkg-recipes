@@ -2,14 +2,14 @@
 
 A Windows recipe pair: GeoGebra Classic 6, the `.msi` that GeoGebra serves for installations on many computers, with the version label read from the MSI.
 
-**Status. New, and NOT run: nothing of this folder has run under AutoPkg, no installer was downloaded, and nothing was installed on a PC. The download is NOT verified: GeoGebra publishes no hash for the file, and a check of the signature is not built. Because of this the shared importer REFUSES a real run of this recipe (nothing is published) unless the override sets `pcman_allow_unverified` to true (`cimian_allow_unverified` for the cimian recipe). Do not set it before the signature check exists. Until then run the dry run only, and import by hand after a person has checked the file: `pcman import <file> --template geogebra` (no `--version` for an MSI). Read by the writer on 2026-11-13, with header and small page requests only and no browser identity: (1) `https://download.geogebra.org/package/win-msi6` answered 302 with the relative Location `/installers/6.0/GeoGebra-Windows-Installer-6-0-936-0.msi`; (2) `https://download.geogebra.org/package/win` answered 302 to `/installers/5.4/GeoGebra-Windows-Installer-5-4-936-0.exe`, the Classic 5 EXE, which this recipe does not use; (3) the folder `https://download.geogebra.org/installers/6.0/` is a plain index that lists four MSIs (`6-0-932-1`, `6-0-933-1`, `6-0-934-0`, `6-0-936-0`; the last one 108032000 bytes, dated 11-Nov-2026), an EXE beside each, portable ZIP files, files for macOS and `version.txt`, whose content was `6-0-936-0`; it lists no hash, checksum or signature file; (4) GeoGebra's page on mass installation (`https://geogebra.github.io/docs/reference/en/GeoGebra_Mass_Installation/`) names the address of (1) as the MSI of GeoGebra 6 for many Windows computers, says that it holds `GeoGebra.exe` (Classic 6) beside the apps of the Calculator Suite (`GeoGebraCalculator.exe`, `GeoGebraCAS.exe`, `GeoGebraGeometry.exe`, `GeoGebraGraphing.exe`), gives `msiexec /i <the MSI> ALLUSERS=2 /qn` as the silent command, and says that mass installations of Classic 6 do not update themselves; (5) GeoGebra's pages say that its installers are subject to the GeoGebra non-commercial license (the licence text itself was NOT read: whether a school's use fits it is the owner's question). NOT established: the MSI's own ProductVersion, and whether it has the same four numbers as the address (`6.0.936.0`); the MSI's UpgradeCode and whether the next release keeps it; the MSI's platform; that the client's silent install (`/qn /norestart`, without `ALLUSERS=2`) installs for every user when it runs as SYSTEM; the install path and the shortcuts that a user sees; that the program does not update itself after such an install (only the vendor's sentence was read); that the signature of the file is valid (nothing checks it); that the next release stays in the folder `6.0` with this form of name; any run with AutoPkg; any install on a PC. The tests use answers that the writer wrote by hand after the real answer of 2026-11-13, so they prove what the code does with answers of that form and nothing about GeoGebra's server today. The first dry run and the first install on a test PC are the check of what is NOT established. When a run fails, STOP: nothing was written (a run that fails before the import writes nothing). Read GeoGebra's real address with a header request or in a browser, correct the processor or the recipe, and only then look at the trust information. Never accept new trust information first to make a failure go away.**
+**Status. First written on 2026-11-13, before any run; the paragraph "Results of 2026-11-13" below is newer and holds where the two differ (a run under AutoPkg, an import, an install on one test PC). The download is verified by its signature, not by a hash (GeoGebra publishes none): the step `AuthenticodeVerifier` checks that the MSI carries a valid, timestamped Authenticode signature of GeoGebra GmbH (see "What protects, and what does not"), and the importers then accept a real run. That step was NOT run with AutoPkg; its processor was run on 2026-11-19 against the MSI of 2026-11-13 (see there). Read by the writer on 2026-11-13, with header and small page requests only and no browser identity: (1) `https://download.geogebra.org/package/win-msi6` answered 302 with the relative Location `/installers/6.0/GeoGebra-Windows-Installer-6-0-936-0.msi`; (2) `https://download.geogebra.org/package/win` answered 302 to `/installers/5.4/GeoGebra-Windows-Installer-5-4-936-0.exe`, the Classic 5 EXE, which this recipe does not use; (3) the folder `https://download.geogebra.org/installers/6.0/` is a plain index that lists four MSIs (`6-0-932-1`, `6-0-933-1`, `6-0-934-0`, `6-0-936-0`; the last one 108032000 bytes, dated 11-Nov-2026), an EXE beside each, portable ZIP files, files for macOS and `version.txt`, whose content was `6-0-936-0`; it lists no hash, checksum or signature file; (4) GeoGebra's page on mass installation (`https://geogebra.github.io/docs/reference/en/GeoGebra_Mass_Installation/`) names the address of (1) as the MSI of GeoGebra 6 for many Windows computers, says that it holds `GeoGebra.exe` (Classic 6) beside the apps of the Calculator Suite (`GeoGebraCalculator.exe`, `GeoGebraCAS.exe`, `GeoGebraGeometry.exe`, `GeoGebraGraphing.exe`), gives `msiexec /i <the MSI> ALLUSERS=2 /qn` as the silent command, and says that mass installations of Classic 6 do not update themselves; (5) GeoGebra's pages say that its installers are subject to the GeoGebra non-commercial license (the licence text itself was NOT read: whether a school's use fits it is the owner's question). NOT established: whether later MSIs keep the four numbers of their address as their ProductVersion (on 2026-11-13 both were `6.0.936.0`); the MSI's UpgradeCode and whether the next release keeps it; the MSI's platform; that the client's silent install (`/qn /norestart`, without `ALLUSERS=2`) installs for every user when it runs as SYSTEM; the install path and the shortcuts that a user sees; that the program does not update itself after such an install (only the vendor's sentence was read); that the next release stays in the folder `6.0` with this form of name; a run with this recipe's signature step under AutoPkg; an install through a Cimian client. The tests use answers that the writer wrote by hand after the real answer of 2026-11-13, so they prove what the code does with answers of that form and nothing about GeoGebra's server today. The first dry run and the first install on a test PC are the check of what is NOT established. When a run fails, STOP: nothing was written (a run that fails before the import writes nothing). Read GeoGebra's real address with a header request or in a browser, correct the processor or the recipe, and only then look at the trust information. Never accept new trust information first to make a failure go away.**
 
 **Results of 2026-11-13, newer than the status above; where the two differ, this paragraph holds.** Under AutoPkg 2.9.0, into a scratch Cimian repository with a hand-made first pkginfo of the item (`make-override` with `--override-dir`, `verify-trust-info` OK, a dry run, a real run, a second real run): the real run published `geogebra-6.0.936.0.msi`, and the second run said that nothing is new. On one Windows 11 test PC, as SYSTEM from a scheduled task, `msiexec /i <file> /qn /norestart` ended with exit code 0 after 17 seconds; the file's signature was valid (GeoGebra GmbH); the PC then listed `GeoGebra Classic` with DisplayVersion `6.0.936.0` (in the 32-bit view of the registry), installed in `C:\Program Files (x86)\GeoGebra Classic`, product code `{4748282E-2448-11E8-81BC-53A8D56EE868}`. No property such as `ALLUSERS` was passed. The program was not started, an upgrade over an older version and the uninstall were not tested, and no Cimian client installed it.
 
 
 | Recipe | Identifier | What it does |
 | --- | --- | --- |
-| `GeoGebra-Win.download.recipe` | `com.github.serrc-techops.download.GeoGebra-Win` | Finds the address of the current MSI with `GeoGebraInfoProvider` and downloads it under a name made of the address's four numbers. It has no hard check |
+| `GeoGebra-Win.download.recipe` | `com.github.serrc-techops.download.GeoGebra-Win` | Finds the address of the current MSI with `GeoGebraInfoProvider` and downloads it under a name made of the address's four numbers, then checks its signature with `AuthenticodeVerifier` |
 | `GeoGebra.cimian.recipe` | `com.github.serrc-techops.cimian.GeoGebra` | Parent: the download recipe. Hands the file to `CimianImporter`, which takes the MSI's own version and publishes it as a new version of the item into any Cimian repository (a copy of the repository's newest pkginfo of the item, with what belongs to the installer file replaced), or says that nothing is new |
 | `GeoGebra.pcman.recipe` | `com.github.serrc-techops.pcman.GeoGebra` | Parent: the download recipe. Hands the file to the package tool (`pcman`), which takes the MSI's own version and publishes it as a new version of the template item, or says that nothing is new |
 
@@ -45,10 +45,60 @@ Below, `pcman` stands for
 
 ## What protects, and what does not
 
-Nothing proves that the downloaded file is what GeoGebra published: there is no vendor
-hash, and a signature check is not built. The shared importer knows this: no step of
-the recipe sets `checksum_verified` with the hash of the file, so a real run is refused
-before the package tool starts. The checks that remain do not replace a verification.
+GeoGebra publishes no hash for the file. **The download is verified by its signature.** Right
+after `EndOfCheckPhase` the shared step `AuthenticodeVerifier` (see `../Win-SharedProcessors/README.md`)
+checks the downloaded MSI with `osslsigncode`, and stops the run unless all of this holds:
+
+- the signature covers the content of every stream of the MSI, and through the stream
+  `MsiDigitalSignatureEx` (required) the streams' metadata. The compound file around the streams is not
+  checked: bytes after the last sector, in the unused part of a sector or in an unused directory entry pass
+  (see "An MSI's container is not checked" in the shared README), so the MSI's streams are GeoGebra's, but
+  not necessarily every byte of the file;
+- the certificate that signed has exactly the subject `CN=GeoGebra GmbH`, `O=GeoGebra GmbH`, `L=Linz`,
+  `ST=Oberösterreich`, `C=AT`, and no `OU` (compared field by field, exactly; its `emailAddress` is not
+  compared). When GeoGebra's next certificate names another place, the step stops the run until a person has
+  looked and changed the recipe: that is intended;
+- its chain ends in the pinned root `globalsign-code-signing-root-r45` (GlobalSign Code Signing Root R45, a
+  root for code signing only), and the chain of the timestamp in `globalsign-root-r6` (GlobalSign Root CA -
+  R6, which GlobalSign's "Timestamping Root R45" reaches through a cross-certificate);
+- the digest is SHA-1. GeoGebra signs this MSI with SHA-1 only (the file digest and the signer's digest; no
+  second signature with SHA-256), so the recipe allows `sha1` by name (`digest_algorithms`), and `sha384`, which
+  GlobalSign's timestamp authority uses for the timestamp's own signature (the step checks that digest too); the
+  step allows only SHA-256 otherwise. That is tolerated here because the attacker that this step guards against does not
+  hold GeoGebra's key: making a second file with the SHA-1 of a file that GeoGebra signed is not feasible, and
+  a collision needs GeoGebra to sign content that the attacker prepared. The recipe should move to SHA-256 when
+  GeoGebra does;
+- the signature has a timestamp that the tool verified, and the CRL of the signing certificate and of
+  the timestamp's certificate could be read and does not list them.
+
+The step outputs `signature_verified` and `signature_sha256` (the hash of the MSI), and both importers
+accept a real run only when that hash is the hash of the file they import.
+
+**Checked on 2026-11-19** (the processor itself, with `osslsigncode` 2.16 and the network for the CRLs;
+not the recipe under AutoPkg), against the MSI `6-0-936-0` of 2026-11-13, with the recipe's own arguments:
+it passed, signed by GeoGebra GmbH, timestamped `Nov  5 18:13:23 2026 GMT`; the same file with one byte
+changed was refused; with another `O` expected, or without `L`, it was refused; with another pinned root for
+the code or for the timestamp it was refused; without `sha1` allowed it was refused.
+
+**What the signature does not prove.** That the release is harmless: a bad release that GeoGebra itself
+signed passes. That GeoGebra's key was not stolen before the certificate was revoked. That a certificate
+revoked within the last CRL period is caught (the CRL comes over HTTP, and an older one that is still valid can
+be handed over). The revocation of the intermediate certificate (only the signing certificate's CRL is read).
+That it is the newest release (see "An older release, signed for real"). **The step needs `osslsigncode`**
+(`brew install osslsigncode`) and HTTP access to the CRL addresses in GeoGebra's and GlobalSign's
+certificates; without either it stops the run, also a dry run.
+
+**An older release, signed for real.** The signature step passes any file that the publisher signed, also an
+older release of the same product served again at the address. What then happens is the importers' rule, not
+the signature's: `CimianImporter` says "Nothing new" when the repository has that version or that file, and
+otherwise publishes it as one more version of the item, also when it is older than the newest one there (seen in
+a test on 2026-11-19: a template of 2.5.0 and a file labelled 1.0.0 gave `published 1.0.0`). It does not refuse
+an older version. The client installs the highest version of an item that is for its PC
+(`CatalogService.cs:43-56`, as the shared README reads it), so the older version is not installed while the
+newer one is in the catalog, but it is in the repository until a person removes it. With the package tool, its own `--if-new` decides (see `../Win-PcmanProcessors/README.md`); what it does
+with an older version was NOT established.
+
+The checks below remain beside the signature:
 
 - **The address.** The processor accepts only an address of exactly one form on one
   fixed host (`download.geogebra.org`), reached through one answer of that host. That
@@ -59,16 +109,16 @@ before the package tool starts. The checks that remain do not replace a verifica
 - **The label.** The recipe gives no version label. Both importers take the MSI's own
   ProductVersion.
 
-An MSI of the right product with other content (a changed file of the vendor, or a
-changed download on the way) would pass all of these.
+Without the signature step, an MSI of the right product with other content (a changed file of the
+vendor, or a changed download on the way) would pass all of these.
 
 ## The label is the MSI's version, and nothing compares it with the address's
 
 **The label that the importers get is the ProductVersion inside the downloaded MSI. No
 step of this recipe compares it with the four numbers of the address.** `GeoGebraInfoProvider`
 prints the address's version (`6.0.936.0` on 2026-11-13), and nothing compares it with the
-label. Nobody has read the MSI's ProductVersion: whether it has the same four numbers is NOT
-established. A person checks it, at the first dry run:
+label. On 2026-11-13 the MSI's ProductVersion was `6.0.936.0`, the same four numbers (the import of that
+day); for a later MSI nothing compares them. A person checks it, at the first dry run:
 
 1. Run the dry run with `-v` (step 3 or step c) and read the two versions that it prints: the
    provider's line `GeoGebra's address names version ...`, and the version in the importer's
@@ -76,7 +126,7 @@ established. A person checks it, at the first dry run:
 2. If they differ, stop and tell the owner before anything is published. A label that only
    adds or drops parts may still order the versions in another way than GeoGebra's numbers do.
 3. After the first install on a test PC, compare the label with the version that Windows'
-   list of installed programs shows. Nobody has done that.
+   list of installed programs shows (on 2026-11-13 it showed `6.0.936.0`, the same).
 
 ## Run every override with `--override-dir`
 
@@ -90,7 +140,7 @@ This way needs AutoPkg, `msiinfo` (msitools: `brew install msitools`) for the MS
 
 **Line numbers.** A file and a line of the Cimian client that this section names (for example `InstallerService.cs:936`) are from `windowsadmins/cimian` at commit `e10498b`, read on 2026-10-04 for another folder of this repository and not checked against a later version.
 
-**The download of this program is NOT verified** (see the status line above). `CimianImporter` REFUSES a real run of a download that no step verified (nothing is published) unless the override sets `cimian_allow_unverified` to true. Do not set it before a verification step exists. A dry run is allowed, and prints a `WARNING: the download was NOT verified` line.
+**The download of this program is verified by its signature** (see "What protects, and what does not"). `CimianImporter` accepts a real run because the step `AuthenticodeVerifier` set `signature_verified` with the hash of the MSI. Without that step it REFUSES a real run (nothing is published) unless the override sets `cimian_allow_unverified` to true.
 
 ### 1. What must exist first
 
@@ -107,9 +157,11 @@ This way needs AutoPkg, `msiinfo` (msitools: `brew install msitools`) for the MS
    The root is the folder that has `pkgs/` and `pkgsinfo/`. Write the value as a string. The share must be mounted;
    `CimianImporter` never makes the root, `pkgs/` or `pkgsinfo/`. The input is named `cimian_repo`; the preference is the one name in upper case.
 
-3. **`msiinfo` on the PATH of the run** (`brew install msitools`): `CimianImporter` reads the MSI's ProductVersion and its two codes with it, and does not parse an MSI itself. A job that `launchd` starts may have no Homebrew on its `PATH`, so the importer looks in `/opt/homebrew/bin` and `/usr/local/bin` too; the input `cimian_path` changes that list. This recipe cannot run without it: its step passes an empty `version`, and an argument of a step wins over an override's `Input`, so the label can only come from the MSI. The run stops and names the facts that are missing.
+3. **`osslsigncode` on the build machine** (`brew install osslsigncode`): the step `AuthenticodeVerifier` checks the signature with it, and looks for it only in `/opt/homebrew/bin` and `/usr/local/bin` (not on the `PATH`; no input names another program). Without it every run stops, also a dry run.
 
-4. **The item.** The item's name is the recipe's input `CIMIAN_NAME`, `geogebra`. If the repository has an item of that name, its newest pkginfo (by the client's order of versions) is the template: nothing is to be made, and its catalogs, arguments, scripts and checks are carried into the new version. The recipe's `pkginfo` does not change a template: a key that the template lacks is added, a key that the template has with another value keeps the template's, and a NOTE names each (the display name of the recipe does not rename an item that has another). `cimian_pkginfo_wins` set to true in the override lets the recipe's `pkginfo` win instead, for example `pkginfo: {catalogs: [Testing]}` to put new versions into another catalog first. If it has no item of that name, the first real run builds a pkginfo from the recipe's `pkginfo` (the display name `GeoGebra Classic 6` and the developer `GeoGebra`) and the inputs, in the catalog `Development`; that pkginfo is then the template of every later version. If the repository has pkginfo files of the item for several architectures, the run stops until the override gives `cimian_architecture`.
+4. **`msiinfo` on the PATH of the run** (`brew install msitools`): `CimianImporter` reads the MSI's ProductVersion and its two codes with it, and does not parse an MSI itself. A job that `launchd` starts may have no Homebrew on its `PATH`, so the importer looks in `/opt/homebrew/bin` and `/usr/local/bin` too; the input `cimian_path` changes that list. This recipe cannot run without it: its step passes an empty `version`, and an argument of a step wins over an override's `Input`, so the label can only come from the MSI. The run stops and names the facts that are missing.
+
+5. **The item.** The item's name is the recipe's input `CIMIAN_NAME`, `geogebra`. If the repository has an item of that name, its newest pkginfo (by the client's order of versions) is the template: nothing is to be made, and its catalogs, arguments, scripts and checks are carried into the new version. The recipe's `pkginfo` does not change a template: a key that the template lacks is added, a key that the template has with another value keeps the template's, and a NOTE names each (the display name of the recipe does not rename an item that has another). `cimian_pkginfo_wins` set to true in the override lets the recipe's `pkginfo` win instead, for example `pkginfo: {catalogs: [Testing]}` to put new versions into another catalog first. If it has no item of that name, the first real run builds a pkginfo from the recipe's `pkginfo` (the display name `GeoGebra Classic 6` and the developer `GeoGebra`) and the inputs, in the catalog `Development`; that pkginfo is then the template of every later version. If the repository has pkginfo files of the item for several architectures, the run stops until the override gives `cimian_architecture`.
 
    **For an `.msi` nothing needs completing for a silent install:** the client runs `msiexec /i <file> /qn /norestart` itself and then the arguments of the item (`InstallerService.cs:936-948`), so the recipe gives no silent arguments, and `CimianImporter` writes the install check of an MSI (an `installs` entry of type `msi` with the MSI's codes and version). What the MSI's own properties allow (features, per-user or per-machine) is the template's business: give them as `installer: {args: [...]}` in the override's `pkginfo`. GeoGebra's page on mass installation adds `ALLUSERS=2` to its silent command; the client's command does not have it. Whether the MSI installs for every user without it, when the client runs as SYSTEM, is NOT established: a person decides after the first test PC whether the item needs `ALLUSERS=2` as an argument. An MSI whose upgrade code is not the template's, or that has none where the template's item had one, is refused (Windows Installer does not upgrade across upgrade codes): `cimian_allow_product_change` set to true in the override allows it, with a WARNING.
 
@@ -140,11 +192,11 @@ Expected, also without `-v` (the lines that `CimianImporter` prints, read in its
     Would write <CIMIAN_NAME> <version>: pkgsinfo/<the item's folder>/<CIMIAN_NAME>-<version>.yaml and pkgs/<the item's folder>/<CIMIAN_NAME>-<version>.msi (<size> bytes).
     Template: <CIMIAN_NAME> <the newest version in the repository> (pkgsinfo/<the item's folder>/...).
 
-followed by the NOTE and WARNING lines about what is carried from the template, and at the end the report row with the result `dry run, nothing written, NOT verified`. `<version>` is the MSI's own: compare it with the provider's line (see the section on the label). The plan itself (the pkginfo's text) is not printed. The repository is unchanged. If the repository has this version already, the line is `Nothing new: <CIMIAN_NAME> <version> is in the repository already (it has this version). Nothing was written.` instead. That is correct. If the repository has no item of this name, the second line is `No template: the pkginfo is built from the inputs.`
+before them, with `-v`, the line `Signature verified: GeoGebra-Windows-Installer-<n>.msi, signed by CN=GeoGebra GmbH, O=GeoGebra GmbH, C=AT, timestamp ...; SHA-256 ...`, and after them the NOTE and WARNING lines about what is carried from the template, and at the end the report row with the result `dry run, nothing written`. `<version>` is the MSI's own: compare it with the provider's line (see the section on the label). The plan itself (the pkginfo's text) is not printed. The repository is unchanged. If the repository has this version already, the line is `Nothing new: <CIMIAN_NAME> <version> is in the repository already (it has this version). Nothing was written.` instead. That is correct. If the repository has no item of this name, the second line is `No template: the pkginfo is built from the inputs.`
 
 If the run stops before this, with an error from the download recipe's steps, nothing was written: read the error, and correct the recipe, never the trust information first.
 
-### 4. Switch a real run on (NOT YET: see the status line)
+### 4. Switch a real run on
 
     /usr/libexec/PlistBuddy -c 'Add :Input:cimian_dry_run bool false' \
         <the Windows overrides folder>/GeoGebra.cimian.recipe
@@ -152,12 +204,12 @@ If the run stops before this, with an error from the download recipe's steps, no
 
 The trust check still reports OK: a change of the `Input` does not break trust (seen with another recipe of this repository). Do not use `-k cimian_dry_run=false` instead: on the command line it applies to every recipe of that run.
 
-**Not yet.** This download has no verification step, so `CimianImporter` refuses the real run below until the override also sets `cimian_allow_unverified` to true, which a person decides only after the file was checked by hand, and which is then written in the override's `Input`, never in the recipe:
+That one line is enough: the signature step verifies the download. **Only when the signature step cannot be used** (for example when GeoGebra signs with another certificate and a person has checked the file by hand) may the override also set `cimian_allow_unverified` to true, and then the step must be taken out of a copy of the recipe, because it stops the run first. That is a person's decision, written in the override's `Input`, never in the recipe:
 
     /usr/libexec/PlistBuddy -c 'Add :Input:cimian_allow_unverified bool true' \
         <the Windows overrides folder>/GeoGebra.cimian.recipe
 
-With it the run prints `WARNING: published WITHOUT a verified download` and the report row says `published, NOT verified`.
+With it a run of an unverified download prints `WARNING: published WITHOUT a verified download` and the report row says `published, NOT verified`.
 
 ### 5. The real run, the catalogs, the second run
 
@@ -165,7 +217,7 @@ With it the run prints `WARNING: published WITHOUT a verified download` and the 
 
        autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/GeoGebra.cimian.recipe
 
-   Expected (not run): `Published <CIMIAN_NAME> <version> (pkgsinfo/<the item's folder>/<CIMIAN_NAME>-<version>.yaml). Build the catalogs with makecatalogs.` and a report row with the result `published, NOT verified`. The repository now has the installer under `pkgs/`, then the pkginfo under `pkgsinfo/`. Neither file replaces another: a file that is there already stops the run. (Where the share does not allow hard links the check and the rename are two steps: do not run two runs of one item at the same time.)
+   Expected (not run): `Published <CIMIAN_NAME> <version> (pkgsinfo/<the item's folder>/<CIMIAN_NAME>-<version>.yaml). Build the catalogs with makecatalogs.` and a report row with the result `published`. The repository now has the installer under `pkgs/`, then the pkginfo under `pkgsinfo/`. Neither file replaces another: a file that is there already stops the run. (Where the share does not allow hard links the check and the rename are two steps: do not run two runs of one item at the same time.)
 
 2. **Build the catalogs with Cimian's `makecatalogs`** against the repository (`CimianImporter` does not do it; see Cimian's documentation for how it is run). Without it no PC sees the new version. (Not run.)
 
@@ -236,6 +288,9 @@ This way needs the owner's package tool, `pcman`, which is **not part of this re
    the template is made from the MSI that is current at GeoGebra, the first run says
    "Nothing new" (see step c).**
 
+4. **`osslsigncode` on the build machine** (`brew install osslsigncode`), as step 3 of "With any Cimian repository" says: the signature step of the download recipe needs it, and without it
+   every run stops, also a dry run.
+
 ## b. Make the override INTO THE WINDOWS OVERRIDES FOLDER
 
 First check that no other recipe has the same name. AutoPkg takes the first match
@@ -276,11 +331,11 @@ Expected, from the code and the runs of other folders, NOT printed by this recip
 the current version is not yet in the repository:
 
     GeoGebra's address names version 6.0.936.0: https://download.geogebra.org/installers/6.0/GeoGebra-Windows-Installer-6-0-936-0.msi
+    Signature verified: GeoGebra-Windows-Installer-6.0.936.0.msi, signed by CN=GeoGebra GmbH, O=GeoGebra GmbH, C=AT, timestamp ...; SHA-256 ...
     WARNING: DRY RUN. Nothing was written, because pcman_dry_run is on. ...
-    WARNING: the download was NOT verified: no step of the recipe set checksum_verified together with the checksum_sha256 of this file. ...
     Dry run: the package tool wrote nothing (pcman_dry_run is on):
     Name      Version                  Catalogs    Result
-    geogebra  <the MSI's own version>  Production  dry run, nothing written, NOT verified
+    geogebra  <the MSI's own version>  Production  dry run, nothing written
 
 **Read the two versions.** The first line gives the version of the address. The table
 gives the MSI's own version, which is the label. Are they the same four numbers? That is
@@ -295,34 +350,37 @@ the address answered with something that is not a redirect, or leads to another 
 another folder, stop and tell the owner: the recipe never reads an address from another
 host than GeoGebra's one fixed one.
 
-## d. Switch a real run on (NOT YET: see the status line)
+## d. Switch a real run on
 
-A real run of this recipe is refused. `pcman_dry_run` set to false is not enough:
-
-    The download was not verified: no step of the recipe set checksum_verified together
-    with the checksum_sha256 of this file. Nothing was published. Publish by hand after
-    checking the file, or set pcman_allow_unverified to true in the override.
-
-**The right way for now: import by hand.** A person checks the file first. The command
-is the same for every new version. It uses the template, so it makes no second item:
-
-    pcman import <the file> --template geogebra
-
-Do not add `--version` for an MSI: the package tool takes the MSI's own version. Then
-`pcman catalogs` (step e.3).
-
-**Only after the signature check exists, or when a person has decided to accept an
-unverified download:** the override allows it. Both lines are needed.
+The signature step verifies the download, so one line in the override is enough:
 
     /usr/libexec/PlistBuddy -c 'Add :Input:pcman_dry_run bool false' \
-        <the Windows overrides folder>/GeoGebra.pcman.recipe
-    /usr/libexec/PlistBuddy -c 'Add :Input:pcman_allow_unverified bool true' \
         <the Windows overrides folder>/GeoGebra.pcman.recipe
     autopkg verify-trust-info --override-dir=<the Windows overrides folder> <the Windows overrides folder>/GeoGebra.pcman.recipe
 
 A change of the `Input` does not break trust (seen with another recipe of this
 repository). Do not use `-k` instead: on the command line it applies to every recipe of
-that run. A run then prints `WARNING: published WITHOUT a verified download ...` at any
+that run.
+
+**Without the signature step** (a copy of the recipe without it, for example when GeoGebra
+signs with another certificate) a real run is refused, because no step verified the file:
+
+    The download was not verified: no step of the recipe set checksum_verified together
+    with the checksum_sha256 of this file, or signature_verified together with the
+    signature_sha256 of this file. Nothing was published. Publish by hand after checking
+    the file, or set pcman_allow_unverified to true in the override.
+
+Then import by hand after a person has checked the file (`pcman import <the file> --template
+geogebra`; no `--version` for an MSI, the package tool takes the MSI's own version; then
+`pcman catalogs`), or, when a person has decided to accept an unverified download, the
+override allows it. Both lines are needed:
+
+    /usr/libexec/PlistBuddy -c 'Add :Input:pcman_dry_run bool false' \
+        <the Windows overrides folder>/GeoGebra.pcman.recipe
+    /usr/libexec/PlistBuddy -c 'Add :Input:pcman_allow_unverified bool true' \
+        <the Windows overrides folder>/GeoGebra.pcman.recipe
+
+A run then prints `WARNING: published WITHOUT a verified download ...` at any
 verbosity, and the report's row says `published, NOT verified`.
 
 ## e. The real run, the catalogs, the second run
@@ -331,12 +389,11 @@ verbosity, and the report's row says `published, NOT verified`.
 
        autopkg run --override-dir=<the Windows overrides folder> <the Windows overrides folder>/GeoGebra.pcman.recipe
 
-   Only after both lines of step d. Expected (not run): `Published geogebra ...`,
-   the warning `published WITHOUT a verified download`, and the table
+   Expected (not run): `Published geogebra ...` and the table
 
        The following versions were published by the package tool:
        Name      Version                  Catalogs    Result
-       geogebra  <the MSI's own version>  Production  published, NOT verified
+       geogebra  <the MSI's own version>  Production  published
 
    The repository then has the MSI under `pkgs/` and its pkginfo under
    `pkgsinfo/`. The item file of the template is not changed.
@@ -390,8 +447,8 @@ Nothing was written. Mount the share, then run again. (Not run with this recipe.
   The processor does not read it.
 - The recipe's `NAME` is `GeoGebra` and `PCMAN_TEMPLATE` is `geogebra`. Change
   the template name in the override's `Input` (`PCMAN_TEMPLATE`), not in the recipe.
-- `-p` (a local file instead of the download) skips the download. The file is not
-  checked at all.
+- `-p` (a local file instead of the download) skips the download. The signature step
+  still checks that file.
 
 ## Tests
 
@@ -403,7 +460,7 @@ They check that the processor handles every kind of answer (the addresses in `te
 written by hand after the real answer of 2026-11-13, not saved from the real server), that
 the three recipes are property lists, that every argument is an input that the processors
 declare, that no recipe passes a version label for the MSI, that the descriptions and the top
-of this README say that the download is not verified and that a real run is refused, that
+of this README say that the download is verified by its signature and what that does not prove, that
 this README states no hash, has no `make-override` without `--override-dir` and runs no
 recipe by its identifier, that it says what was NOT done, and that nothing site-specific is
 in the folder. They also run each importer against a stand-in: the package tool's for the

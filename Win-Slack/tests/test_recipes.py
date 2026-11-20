@@ -363,7 +363,7 @@ class NotVerifiedTests(unittest.TestCase):
         self.assertTrue(not_verified.startswith("**Not verified. The download is NOT verified:"), not_verified[:60])
         self.assertTrue(not_verified.endswith("**"))
         for needle in ("signature check", "REFUSES a real run", "pcman_allow_unverified",
-                       "Do not set it before the signature check exists",
+                       "Do not set it before a signature check is part of this recipe",
                        "pcman import <file> --template slack", "no `--version` for an MSI",
                        "has NOT been run by anyone"):
             self.assertIn(needle, not_verified)

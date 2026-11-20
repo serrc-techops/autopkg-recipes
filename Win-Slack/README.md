@@ -6,7 +6,7 @@ A Windows recipe pair: Slack, the per-machine 64-bit `.msi`.
 
 **Status. One dry run with AutoPkg 2.9.0 (2026-10-04) stopped at the download (see the mark above). Nothing of this pair has run with the package tool, a share or a PC. Facts of the source were read on 2026-10-04 with `curl` (the pages and the answers named in the mark; no installer was downloaded). READ: (1) the address of the release notes page, `https://slack.com/release-notes/windows`, answers 200 with an HTML page whose first match of the pattern `Slack\s+(?P<version>[0-9]+\.[0-9]+\.[0-9]+)` is `Slack 4.52.171` (September 28, 2026), followed by `Slack 4.52.162` (September 21, 2026) and `Slack 4.52.155` (August 31, 2026), so the FIRST match on that page is the newest release, and the text is in the HTML that `curl` gets (it is not built by script); (2) the first step passed in the run: `URLTextSearcher` stops with `No match found on URL` when the pattern finds nothing, and the run went on to the downloader, and `URLTextSearcher` sets each named group of the pattern in the run under its own name, here `version` (`URLTextSearcher.py`, `main`, of AutoPkg 2.9.0); (3) the address of the file, `https://downloads.slack-edge.com/desktop-releases/windows/x64/<version>/slack-standalone-<version>.0.msi`, was right for the versions up to `4.48.102` and answers 404 since `4.49.81` (see the mark); `Slack.msix` is in the same folder (see the mark), and the package tool does not take an MSIX. NOT established: that this MSI, when it exists, is the per-machine installer and that its own version is the one that the package tool will read from it (nobody downloaded one); why Slack stopped serving the MSI, and whether it will serve it again; any run with AutoPkg beyond the download. When the address works again, the first run on the build Mac is the check of the rest. When it fails, stop: nothing was written. Read the real page or the real release and correct the recipe, never the trust information first.**
 
-**Not verified. The download is NOT verified: Slack publishes no hash for the file, and a check of the signature is not built. Because of this the shared importer REFUSES a real run of this recipe (nothing is published) unless the override sets `pcman_allow_unverified` to true. Do not set it before the signature check exists. Until then run the dry run only, and import by hand after a person has checked the file: `pcman import <file> --template slack` (no `--version` for an MSI). A real run of this recipe has NOT been run by anyone, not against a share and not on a PC, and its one dry run (2026-10-04) stopped at the download. `pcman catalogs` was NOT run either. The Windows overrides folder is not one of AutoPkg's override folders, so every override command here carries `--override-dir`: see the paragraph below.**
+**Not verified. The download is NOT verified: Slack publishes no hash for the file, and the shared signature check (`AuthenticodeVerifier`) is not part of this recipe. Because of this the shared importer REFUSES a real run of this recipe (nothing is published) unless the override sets `pcman_allow_unverified` to true. Do not set it before a signature check is part of this recipe. Until then run the dry run only, and import by hand after a person has checked the file: `pcman import <file> --template slack` (no `--version` for an MSI). A real run of this recipe has NOT been run by anyone, not against a share and not on a PC, and its one dry run (2026-10-04) stopped at the download. `pcman catalogs` was NOT run either. The Windows overrides folder is not one of AutoPkg's override folders, so every override command here carries `--override-dir`: see the paragraph below.**
 
 | Recipe | Identifier | What it does |
 | --- | --- | --- |
@@ -29,7 +29,7 @@ Below, `pcman` stands for
 ## What protects, and what does not
 
 Nothing proves that the downloaded file is what Slack published: there is no vendor
-hash, and a signature check is not built. The shared importer knows this: no step of
+hash, and the shared signature check (`AuthenticodeVerifier`) is not part of this recipe. The shared importer knows this: no step of
 the recipe sets `checksum_verified` with the hash of the file, so a real run is refused
 before the package tool starts. Two checks of the package tool remain. They do not
 replace a verification.
@@ -268,7 +268,7 @@ repository (the lines of the 7-Zip rehearsal, with this program's name; they wer
 NOT seen for this recipe, and the version is the MSI's own):
 
     WARNING: DRY RUN. Nothing was written, because pcman_dry_run is on. ...
-    WARNING: the download was NOT verified: no step of the recipe set checksum_verified together with the checksum_sha256 of this file. ...
+    WARNING: the download was NOT verified: no step of the recipe set checksum_verified together with the checksum_sha256 of this file, or signature_verified together with the signature_sha256 of this file. ...
     Dry run: the package tool wrote nothing (pcman_dry_run is on):
     Name   Version  Catalogs    Result
     slack  <the MSI's own version>  Production  dry run, nothing written, NOT verified
@@ -283,8 +283,9 @@ That is correct.
 A real run of this recipe is refused. `pcman_dry_run` set to false is not enough:
 
     The download was not verified: no step of the recipe set checksum_verified together
-    with the checksum_sha256 of this file. Nothing was published. Publish by hand after
-    checking the file, or set pcman_allow_unverified to true in the override.
+    with the checksum_sha256 of this file, or signature_verified together with the
+    signature_sha256 of this file. Nothing was published. Publish by hand after checking
+    the file, or set pcman_allow_unverified to true in the override.
 
 **The right way for now: import by hand.** A person checks the file first. The command
 is the same for every new version. It uses the template, so it makes no second item:

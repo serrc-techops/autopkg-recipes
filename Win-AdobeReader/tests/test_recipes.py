@@ -340,8 +340,8 @@ class NotVerifiedTests(unittest.TestCase):
         status = lines[2]
         self.assertTrue(status.startswith("**Status. Run on 2026-10-04 under AutoPkg 2.9.0, as follows."), status[:60])
         self.assertTrue(status.endswith("**"))
-        for needle in ("The download is NOT verified", "a check of the signature is not built", "REFUSES a real run",
-                       "pcman_allow_unverified", "Do not set it before the signature check exists",
+        for needle in ("The download is NOT verified", "the shared signature check (`AuthenticodeVerifier`) is not part of this recipe", "REFUSES a real run",
+                       "pcman_allow_unverified", "Do not set it before a signature check is part of this recipe",
                        "pcman import <file> --template adobereader --version <the label>",
                        "No run of this recipe has published anything, and none can while the download is unverified",
                        "nothing has been installed on a PC"):

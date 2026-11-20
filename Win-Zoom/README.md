@@ -2,7 +2,7 @@
 
 A Windows recipe pair: Zoom Workplace, the 64-bit `.msi`.
 
-**Status. The download is NOT verified: Zoom publishes no hash for the file, and a check of the signature is not built. Because of this the shared importer REFUSES a real run of this recipe (nothing is published) unless the override sets `pcman_allow_unverified` to true. Do not set it before the signature check exists. Until then run the dry run only, and import by hand after a person has checked the file: `pcman import <file> --template zoom` (no `--version` for an MSI). On 2026-10-01 it ran with the real AutoPkg 2.9.0 in a scratch folder up to "Nothing new", against a template of the same version (the download, the dry-run default and the importer ran). In that rehearsal the scratch overrides folder was one of AutoPkg's override folders; on the build machine the Windows overrides folder is not, so every override command here carries `--override-dir`: see the paragraph below. On 2026-10-04, under AutoPkg 2.9.0, the first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the item `zoom` (an MSI item, version `7.2.48556` read from the MSI, architectures `x64`) in the package tool's repository, in the catalog `Production`. The first import went beside the Chocolatey item `zoom` (version 1.0) without any option of the tool; the Chocolatey item file and its `zoom-1.0` pkginfo remain until a person removes them by hand, and `pcman validate` warns that the item has two versions until then. The override of `Zoom.pcman` (`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false) then ran for real and the importer REFUSED the run with `The download was not verified: no step of the recipe set checksum_verified together with the checksum_sha256 of this file. Nothing was published. ...` (exit 70), which is what an unverified download must get; `pcman_allow_unverified` was not set. The override downloaded the file again about ten minutes after the first import, and its hash was the imported file's. The hand-import form `pcman import <file> --template zoom --no-prompt --if-new --dry-run` printed `Nothing new: zoom <version> exists already ...` with exit 3. `pcman catalogs` ran once for all the new items together (2026-10-04): the tool's configured command ran `makecatalogs` on the repository's server, with exit 0, and wrote the catalogs `All` and `Production`, 106 items each. The silent install is the client's (`/qn /norestart` for an MSI) and was NOT tested on a PC. Still NOT established after those runs: that the MSI installs silently on a PC; any install; that a new release has the same upgrade code as the template.**
+**Status. The download is NOT verified: Zoom publishes no hash for the file, and the shared signature check (`AuthenticodeVerifier`) is not part of this recipe. Because of this the shared importer REFUSES a real run of this recipe (nothing is published) unless the override sets `pcman_allow_unverified` to true. Do not set it before a signature check is part of this recipe. Until then run the dry run only, and import by hand after a person has checked the file: `pcman import <file> --template zoom` (no `--version` for an MSI). On 2026-10-01 it ran with the real AutoPkg 2.9.0 in a scratch folder up to "Nothing new", against a template of the same version (the download, the dry-run default and the importer ran). In that rehearsal the scratch overrides folder was one of AutoPkg's override folders; on the build machine the Windows overrides folder is not, so every override command here carries `--override-dir`: see the paragraph below. On 2026-10-04, under AutoPkg 2.9.0, the first import (the command of step a.3 below, run with `--no-prompt` and `--build`) made the item `zoom` (an MSI item, version `7.2.48556` read from the MSI, architectures `x64`) in the package tool's repository, in the catalog `Production`. The first import went beside the Chocolatey item `zoom` (version 1.0) without any option of the tool; the Chocolatey item file and its `zoom-1.0` pkginfo remain until a person removes them by hand, and `pcman validate` warns that the item has two versions until then. The override of `Zoom.pcman` (`make-override` with `--override-dir`, `ParentRecipe` right, `verify-trust-info` OK, `pcman_dry_run` false) then ran for real and the importer REFUSED the run with `The download was not verified: no step of the recipe set checksum_verified together with the checksum_sha256 of this file. Nothing was published. ...` (exit 70), which is what an unverified download must get; `pcman_allow_unverified` was not set. The override downloaded the file again about ten minutes after the first import, and its hash was the imported file's. The hand-import form `pcman import <file> --template zoom --no-prompt --if-new --dry-run` printed `Nothing new: zoom <version> exists already ...` with exit 3. `pcman catalogs` ran once for all the new items together (2026-10-04): the tool's configured command ran `makecatalogs` on the repository's server, with exit 0, and wrote the catalogs `All` and `Production`, 106 items each. The silent install is the client's (`/qn /norestart` for an MSI) and was NOT tested on a PC. Still NOT established after those runs: that the MSI installs silently on a PC; any install; that a new release has the same upgrade code as the template.**
 
 | Recipe | Identifier | What it does |
 | --- | --- | --- |
@@ -23,7 +23,7 @@ Below, `pcman` stands for
 ## What protects, and what does not
 
 Nothing proves that the downloaded file is what Zoom published: there is no vendor
-hash, and a signature check is not built. The shared importer knows this: no step of
+hash, and the shared signature check (`AuthenticodeVerifier`) is not part of this recipe. The shared importer knows this: no step of
 the recipe sets `checksum_verified` with the hash of the file, so a real run is refused
 before the package tool starts. Two checks of the package tool remain. They do not
 replace a verification.
@@ -230,7 +230,7 @@ repository (the lines of the 7-Zip rehearsal, with this program's name; the
 version is the MSI's own):
 
     WARNING: DRY RUN. Nothing was written, because pcman_dry_run is on. ...
-    WARNING: the download was NOT verified: no step of the recipe set checksum_verified together with the checksum_sha256 of this file. ...
+    WARNING: the download was NOT verified: no step of the recipe set checksum_verified together with the checksum_sha256 of this file, or signature_verified together with the signature_sha256 of this file. ...
     Dry run: the package tool wrote nothing (pcman_dry_run is on):
     Name   Version  Catalogs    Result
     zoom   7.2.48556  Production  dry run, nothing written, NOT verified
@@ -245,8 +245,9 @@ That is correct.
 A real run of this recipe is refused. `pcman_dry_run` set to false is not enough:
 
     The download was not verified: no step of the recipe set checksum_verified together
-    with the checksum_sha256 of this file. Nothing was published. Publish by hand after
-    checking the file, or set pcman_allow_unverified to true in the override.
+    with the checksum_sha256 of this file, or signature_verified together with the
+    signature_sha256 of this file. Nothing was published. Publish by hand after checking
+    the file, or set pcman_allow_unverified to true in the override.
 
 **The right way for now: import by hand.** A person checks the file first. The command
 is the same for every new version. It uses the template, so it makes no second item:
